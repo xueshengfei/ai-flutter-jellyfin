@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__web-reader__webReader",
+      "Read(//d/claudeProject/视频剪辑/ai-video-project/**)",
+      "Bash(flutter create:*)",
+      "Bash(cd:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter:*)",
+      "Bash(dart pub:*)",
+      "Bash(rm:*)",
+      "Bash(where dart:*)",
+      "WebSearch",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
