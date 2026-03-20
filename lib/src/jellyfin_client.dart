@@ -1,10 +1,11 @@
 import 'jellyfin_configuration.dart';
 import 'core/api_client.dart';
 import 'services/auth_service.dart';
+import 'services/media_library_service.dart';
 
 /// Jellyfin客户端 - 简化版
 ///
-/// 只包含认证功能的主客户端
+/// 包含认证和媒体库功能的主客户端
 class JellyfinClient {
   /// 配置
   final JellyfinConfiguration configuration;
@@ -15,10 +16,14 @@ class JellyfinClient {
   /// 认证服务
   late final AuthService auth;
 
+  /// 媒体库服务
+  late final MediaLibraryService mediaLibrary;
+
   /// 私有构造函数
   JellyfinClient._internal(this.configuration) {
     _apiClient = ApiClient(configuration);
     auth = AuthService(apiClient: _apiClient);
+    mediaLibrary = MediaLibraryService(apiClient: _apiClient);
   }
 
   /// 工厂构造函数 - 创建客户端实例
