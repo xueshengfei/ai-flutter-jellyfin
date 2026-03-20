@@ -1,9 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
-import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import '../core/api_client.dart';
 import '../exceptions/api_exception.dart';
 import '../models/media_library_models.dart';
+import '../models/media_item_models.dart';
 
 /// 媒体库服务
 ///
@@ -163,6 +162,71 @@ class MediaLibraryService {
           error: e, stackTrace: stackTrace);
 
       rethrow;
+    }
+  }
+
+  /// 获取媒体库中的媒体项列表
+  ///
+  /// 参数：
+  /// - [parentId] 媒体库ID
+  /// - [startIndex] 起始索引（用于分页）
+  /// - [limit] 限制返回数量
+  /// - [recursive] 是否递归获取子项（默认true）
+  ///
+  /// 返回：[MediaItemListResult] 包含媒体项列表
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<MediaItemListResult> getMediaItems({
+    required String parentId,
+    int? startIndex = 0,
+    int? limit = 20,
+    bool recursive = true,
+  }) async {
+    _logger.i('Fetching media items for parent: $parentId');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 调用接口SDK获取媒体项
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        parentId: parentId,
+        recursive: recursive,
+        startIndex: startIndex,
+        limit: limit,
+      );
+
+      if (response.data == null) {
+        throw ApiException(
+          'Failed to get media items: No response data',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final result = response.data!;
+
+      _logger.i(
+        'Successfully fetched ${result.items?.length ?? 0} media items',
+      );
+
+      // 转换为业务模型，传递访问令牌用于图片认证
+      return MediaItemListResult.fromDto(
+        result,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch media items',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch media items: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 }

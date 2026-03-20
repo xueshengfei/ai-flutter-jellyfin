@@ -48,6 +48,7 @@ export 'src/services/image_service.dart';
 // 业务模型（业务SDK的核心价值）
 export 'src/models/user_models.dart';
 export 'src/models/media_library_models.dart';
+export 'src/models/media_item_models.dart';
 
 // 异常
 export 'src/exceptions/jellyfin_exception.dart';

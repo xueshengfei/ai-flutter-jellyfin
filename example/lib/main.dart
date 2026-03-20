@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'jellyfin_image.dart';
+import 'media_items_page.dart';
 
 void main() {
   runApp(const JellyfinTestApp());
@@ -18,8 +20,65 @@ class JellyfinTestApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const LoginPage(),
-      routes: {
-        '/media_libraries': (context) => const MediaLibrariesPage(),
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/':
+            return MaterialPageRoute(builder: (context) => const LoginPage());
+          case '/media_libraries':
+            final args = settings.arguments as Map<String, dynamic>?;
+            if (args == null) {
+              return MaterialPageRoute(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const SizedBox(height: 16),
+                        const Text('缺少登录参数'),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: () => Navigator.pushReplacementNamed(context, '/'),
+                          child: const Text('返回登录'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return MaterialPageRoute(
+              builder: (context) => MediaLibrariesPage(
+                client: args['client'] as JellyfinClient,
+                user: args['user'] as UserProfile,
+              ),
+            );
+          case '/media_items':
+            final args = settings.arguments as Map<String, dynamic>?;
+            if (args == null) {
+              return MaterialPageRoute(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: Text('缺少参数: ${settings.name}'),
+                  ),
+                ),
+              );
+            }
+            return MaterialPageRoute(
+              builder: (context) => MediaItemsPage(
+                client: args['client'] as JellyfinClient,
+                library: args['library'] as MediaLibrary,
+              ),
+            );
+          default:
+            return MaterialPageRoute(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: Text('未找到路由: ${settings.name}'),
+                ),
+              ),
+            );
+        }
       },
     );
   }
@@ -128,6 +187,63 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _testConnection() async {
+    if (_serverController.text.isEmpty) {
+      setState(() => _status = '请输入服务器地址');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _status = '正在测试连接...';
+    });
+
+    try {
+      print('🔗 测试服务器连接...');
+      print('   服务器: ${_serverController.text}');
+
+      // 使用Dio直接测试连接
+      final dio = Dio();
+      final serverUrl = _serverController.text.trim();
+      final testUrl = '$serverUrl/System/Info/Public';
+
+      print('   测试URL: $testUrl');
+
+      final response = await dio.get(
+        testUrl,
+        options: Options(
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      print('✅ 服务器连接成功!');
+      print('   响应状态: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _status = '✅ 服务器连接成功!';
+          _isLoading = false;
+        });
+
+        // 3秒后清除成功消息
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            setState(() => _status = '准备登录');
+          }
+        });
+      } else {
+        throw Exception('服务器返回状态码: ${response.statusCode}');
+      }
+    } catch (e, stackTrace) {
+      print('❌ 连接失败: $e');
+      print('   堆栈跟踪: $stackTrace');
+      setState(() {
+        _status = '❌ 连接失败: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -220,7 +336,18 @@ class _LoginPageState extends State<LoginPage> {
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _login(),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+
+                        // 测试连接按钮
+                        OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _testConnection,
+                          icon: const Icon(Icons.wifi_find),
+                          label: const Text('测试连接'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
 
                         // 登录按钮
                         FilledButton(
@@ -262,59 +389,36 @@ class _LoginPageState extends State<LoginPage> {
 // ==================== 媒体库页面 ====================
 
 class MediaLibrariesPage extends StatefulWidget {
-  const MediaLibrariesPage({super.key});
+  final JellyfinClient client;
+  final UserProfile user;
+
+  const MediaLibrariesPage({
+    super.key,
+    required this.client,
+    required this.user,
+  });
 
   @override
   State<MediaLibrariesPage> createState() => _MediaLibrariesPageState();
 }
 
 class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
-  late JellyfinClient _client;
-  late UserProfile _user;
   List<MediaLibrary> _mediaLibraries = [];
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void initState() {
+    super.initState();
 
-    print('🔄 MediaLibrariesPage didChangeDependencies 调用');
+    print('🔄 MediaLibrariesPage initState 调用');
+    print('✅ 接收到参数:');
+    print('   client: ${widget.client}');
+    print('   user: ${widget.user.name}');
 
-    // 获取传递的参数
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-
-    if (args != null) {
-      print('✅ 接收到参数:');
-      print('   client: ${args['client']}');
-      print('   user: ${args['user']}');
-
-      try {
-        _client = args['client'] as JellyfinClient;
-        _user = args['user'] as UserProfile;
-
-        print('✅ 参数转换成功');
-        print('   用户: ${_user.name}');
-        print('   用户ID: ${_user.id}');
-        print('   是否已认证: ${_client.isAuthenticated}');
-
-        // 加载媒体库
-        print('📚 开始加载媒体库...');
-        _loadMediaLibraries();
-      } catch (e) {
-        print('❌ 参数转换失败: $e');
-        setState(() {
-          _errorMessage = '参数转换失败: $e';
-          _isLoading = false;
-        });
-      }
-    } else {
-      print('❌ 没有接收到参数!');
-      setState(() {
-        _errorMessage = '没有接收到登录信息，请先登录';
-        _isLoading = false;
-      });
-    }
+    // 加载媒体库
+    print('📚 开始加载媒体库...');
+    _loadMediaLibraries();
   }
 
   Future<void> _loadMediaLibraries() async {
@@ -326,7 +430,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
 
     try {
       print('📡 调用 client.mediaLibrary.getMediaLibraries()...');
-      final result = await _client.mediaLibrary.getMediaLibraries();
+      final result = await widget.client.mediaLibrary.getMediaLibraries();
 
       print('✅ 媒体库获取成功!');
       print('   媒体库数量: ${result.libraries.length}');
@@ -354,7 +458,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
 
   Future<void> _logout() async {
     try {
-      await _client.auth.logout();
+      await widget.client.auth.logout();
     } catch (e) {
       print('登出失败: $e');
     }
@@ -375,7 +479,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Center(
               child: Text(
-                _user.name,
+                widget.user.name,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -477,16 +581,17 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
         itemBuilder: (context, index) {
           print('   构建卡片 [$index]: ${_mediaLibraries[index].name}');
           return MediaLibraryCard(
-            client: _client,
+            client: widget.client,
             library: _mediaLibraries[index],
             onTap: () {
               print('🖱️ 点击了媒体库: ${_mediaLibraries[index].name}');
-              // TODO: 跳转到媒体项列表页面
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('点击了: ${_mediaLibraries[index].name}'),
-                  duration: const Duration(seconds: 2),
-                ),
+              Navigator.pushNamed(
+                context,
+                '/media_items',
+                arguments: {
+                  'client': widget.client,
+                  'library': _mediaLibraries[index],
+                },
               );
             },
           );
