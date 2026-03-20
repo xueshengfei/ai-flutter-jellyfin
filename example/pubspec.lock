@@ -118,10 +118,9 @@ packages:
   jellyfin_dart:
     dependency: transitive
     description:
-      name: jellyfin_dart
-      sha256: "1dd73d8056a09bb0abf9c3b72e721513a8f688f03f12468b3313b6530a7879ca"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
+      path: "D:\\claudeProject\\视频剪辑\\ai-video-project\\jellyfin_dart-0.1.0"
+      relative: false
+    source: path
     version: "0.1.0"
   jellyfin_service:
     dependency: "direct main"
