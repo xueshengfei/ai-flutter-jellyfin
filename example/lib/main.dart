@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
+import 'jellyfin_image.dart';
 
 void main() {
   runApp(const JellyfinTestApp());
@@ -11,33 +12,36 @@ class JellyfinTestApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Jellyfin Service 测试',
+      title: 'Jellyfin Media Library',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const TestHomePage(),
+      home: const LoginPage(),
+      routes: {
+        '/media_libraries': (context) => const MediaLibrariesPage(),
+      },
     );
   }
 }
 
-class TestHomePage extends StatefulWidget {
-  const TestHomePage({super.key});
+// ==================== 登录页面 ====================
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<TestHomePage> createState() => _TestHomePageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _TestHomePageState extends State<TestHomePage> {
+class _LoginPageState extends State<LoginPage> {
   final _serverController = TextEditingController(
     text: 'http://localhost:8096',
   );
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  JellyfinClient? _client;
-  String _status = '未连接';
-  String _userInfo = '';
+  String _status = '请登录';
   bool _isLoading = false;
 
   @override
@@ -48,38 +52,9 @@ class _TestHomePageState extends State<TestHomePage> {
     super.dispose();
   }
 
-  Future<void> _connect() async {
+  Future<void> _login() async {
     if (_serverController.text.isEmpty) {
       setState(() => _status = '请输入服务器地址');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _status = '正在连接...';
-    });
-
-    try {
-      _client = JellyfinClient(
-        serverUrl: _serverController.text,
-        enableLogging: true,
-      );
-
-      setState(() {
-        _status = '✅ 已连接到服务器';
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _status = '❌ 连接失败: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _login() async {
-    if (_client == null) {
-      setState(() => _status = '请先连接服务器');
       return;
     }
 
@@ -94,239 +69,521 @@ class _TestHomePageState extends State<TestHomePage> {
     });
 
     try {
-      final result = await _client!.auth.authenticate(
+      print('🚀 开始登录流程...');
+      print('   服务器: ${_serverController.text}');
+      print('   用户名: ${_usernameController.text}');
+
+      // 创建客户端
+      final client = JellyfinClient(
+        serverUrl: _serverController.text,
+        enableLogging: true,
+      );
+      print('✅ 客户端创建成功');
+
+      // 执行登录
+      print('🔐 正在认证...');
+      final result = await client.auth.authenticate(
         username: _usernameController.text,
         password: _passwordController.text,
       );
 
+      print('✅ 认证成功!');
+      print('   用户: ${result.user.name}');
+      print('   用户ID: ${result.user.id}');
+      print('   访问令牌: ${result.accessToken.substring(0, 10)}...');
+
       setState(() {
-        _status = '✅ 登录成功!';
-        _userInfo = '''
-用户ID: ${result.user.id}
-用户名: ${result.user.name}
-管理员: ${result.user.isAdmin ? '是' : '否'}
-服务器ID: ${result.serverId ?? 'N/A'}
-访问令牌: ${result.accessToken.substring(0, 10)}...
-''';
+        _status = '✅ 登录成功! 正在跳转...';
         _isLoading = false;
       });
-    } catch (e) {
+
+      // 登录成功，跳转到媒体库页面
+      if (mounted) {
+        print('🔄 开始页面跳转到 /media_libraries...');
+
+        await Navigator.pushReplacementNamed(
+          context,
+          '/media_libraries',
+          arguments: {
+            'client': client,
+            'user': result.user,
+          },
+        );
+
+        print('✅ 页面跳转完成');
+      } else {
+        print('❌ Widget已销毁，无法跳转');
+      }
+    } catch (e, stackTrace) {
+      print('❌ 登录失败: $e');
+      print('   堆栈跟踪: $stackTrace');
       setState(() {
         _status = '❌ 登录失败: $e';
-        _userInfo = '';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer,
+              Theme.of(context).colorScheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Card(
+                  elevation: 8,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Logo和标题
+                        Icon(
+                          Icons.movie,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Jellyfin Media Library',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _status,
+                          style: TextStyle(
+                            color: _status.startsWith('❌')
+                                ? Colors.red
+                                : _status.startsWith('✅')
+                                    ? Colors.green
+                                    : Colors.grey,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+
+                        // 服务器地址
+                        TextField(
+                          controller: _serverController,
+                          decoration: const InputDecoration(
+                            labelText: '服务器地址',
+                            hintText: 'http://localhost:8096',
+                            prefixIcon: Icon(Icons.dns),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 用户名
+                        TextField(
+                          controller: _usernameController,
+                          decoration: const InputDecoration(
+                            labelText: '用户名',
+                            prefixIcon: Icon(Icons.person),
+                            border: OutlineInputBorder(),
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 密码
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: '密码',
+                            prefixIcon: Icon(Icons.lock),
+                            border: OutlineInputBorder(),
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _login(),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 登录按钮
+                        FilledButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('登录', style: TextStyle(fontSize: 16)),
+                        ),
+
+                        const SizedBox(height: 16),
+                        const Text(
+                          '登录成功后将跳转到媒体库页面',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==================== 媒体库页面 ====================
+
+class MediaLibrariesPage extends StatefulWidget {
+  const MediaLibrariesPage({super.key});
+
+  @override
+  State<MediaLibrariesPage> createState() => _MediaLibrariesPageState();
+}
+
+class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
+  late JellyfinClient _client;
+  late UserProfile _user;
+  List<MediaLibrary> _mediaLibraries = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    print('🔄 MediaLibrariesPage didChangeDependencies 调用');
+
+    // 获取传递的参数
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    if (args != null) {
+      print('✅ 接收到参数:');
+      print('   client: ${args['client']}');
+      print('   user: ${args['user']}');
+
+      try {
+        _client = args['client'] as JellyfinClient;
+        _user = args['user'] as UserProfile;
+
+        print('✅ 参数转换成功');
+        print('   用户: ${_user.name}');
+        print('   用户ID: ${_user.id}');
+        print('   是否已认证: ${_client.isAuthenticated}');
+
+        // 加载媒体库
+        print('📚 开始加载媒体库...');
+        _loadMediaLibraries();
+      } catch (e) {
+        print('❌ 参数转换失败: $e');
+        setState(() {
+          _errorMessage = '参数转换失败: $e';
+          _isLoading = false;
+        });
+      }
+    } else {
+      print('❌ 没有接收到参数!');
+      setState(() {
+        _errorMessage = '没有接收到登录信息，请先登录';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMediaLibraries() async {
+    print('🔄 _loadMediaLibraries 开始执行');
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      print('📡 调用 client.mediaLibrary.getMediaLibraries()...');
+      final result = await _client.mediaLibrary.getMediaLibraries();
+
+      print('✅ 媒体库获取成功!');
+      print('   媒体库数量: ${result.libraries.length}');
+
+      for (var i = 0; i < result.libraries.length; i++) {
+        final lib = result.libraries[i];
+        print('   [$i] ${lib.name} (${lib.type.displayName})');
+      }
+
+      setState(() {
+        _mediaLibraries = result.libraries;
+        _isLoading = false;
+      });
+
+      print('✅ UI状态更新完成');
+    } catch (e, stackTrace) {
+      print('❌ 获取媒体库失败: $e');
+      print('   堆栈跟踪: $stackTrace');
+      setState(() {
+        _errorMessage = '获取媒体库失败: $e';
         _isLoading = false;
       });
     }
   }
 
   Future<void> _logout() async {
-    if (_client == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      await _client!.auth.logout();
-      setState(() {
-        _status = '✅ 已登出';
-        _userInfo = '';
-        _isLoading = false;
-      });
+      await _client.auth.logout();
     } catch (e) {
-      setState(() {
-        _status = '❌ 登出失败: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _checkStatus() {
-    if (_client == null) {
-      setState(() => _status = '未连接');
-      return;
+      print('登出失败: $e');
     }
 
-    final isAuthenticated = _client!.isAuthenticated;
-    setState(() {
-      _status = isAuthenticated ? '✅ 已登录' : '✅ 已连接但未登录';
-    });
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Jellyfin Service 测试'),
+        title: const Text('媒体库'),
+        actions: [
+          // 用户信息
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Center(
+              child: Text(
+                _user.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          // 登出按钮
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: '登出',
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      body: _buildBody(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _loadMediaLibraries,
+        tooltip: '刷新',
+        child: const Icon(Icons.refresh),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    print('🎨 _buildBody 被调用');
+    print('   _isLoading: $_isLoading');
+    print('   _errorMessage: $_errorMessage');
+    print('   _mediaLibraries.length: ${_mediaLibraries.length}');
+
+    if (_isLoading) {
+      print('   显示加载指示器');
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('正在加载媒体库...'),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      print('   显示错误信息: $_errorMessage');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _loadMediaLibraries,
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_mediaLibraries.isEmpty) {
+      print('   显示空状态');
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.folder_open, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              '没有找到媒体库',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    print('   显示媒体库列表 (${_mediaLibraries.length} 个)');
+
+    // 显示媒体库网格
+    return RefreshIndicator(
+      onRefresh: () async {
+        print('🔄 刷新媒体库...');
+        await _loadMediaLibraries();
+      },
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 1.2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: _mediaLibraries.length,
+        itemBuilder: (context, index) {
+          print('   构建卡片 [$index]: ${_mediaLibraries[index].name}');
+          return MediaLibraryCard(
+            client: _client,
+            library: _mediaLibraries[index],
+            onTap: () {
+              print('🖱️ 点击了媒体库: ${_mediaLibraries[index].name}');
+              // TODO: 跳转到媒体项列表页面
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('点击了: ${_mediaLibraries[index].name}'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ==================== 媒体库卡片 ====================
+
+class MediaLibraryCard extends StatelessWidget {
+  final JellyfinClient client;
+  final MediaLibrary library;
+  final VoidCallback onTap;
+
+  const MediaLibraryCard({
+    super.key,
+    required this.client,
+    required this.library,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    print('🎴 MediaLibraryCard.build: ${library.name}');
+    print('   类型: ${library.type.displayName}');
+    print('   有封面: ${library.hasCoverImage}');
+    print('   ID: ${library.id}');
+    print('   数量: ${library.itemCount}');
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 4,
+      child: InkWell(
+        onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 状态卡片
-            Card(
+            // 封面图片区域
+            Expanded(
+              flex: 3,
+              child: _buildCoverImage(context),
+            ),
+
+            // 信息区域
+            Expanded(
+              flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    // 媒体库名称
                     Text(
-                      '状态',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      library.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    Text(_status),
-                    if (_userInfo.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      const Text('用户信息:',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text(_userInfo, style: const TextStyle(fontFamily: 'monospace')),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
 
-            // 服务器连接
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '1. 连接服务器',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _serverController,
-                      decoration: const InputDecoration(
-                        labelText: '服务器地址',
-                        hintText: 'http://localhost:8096',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: _isLoading ? null : _connect,
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('连接'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+                    const SizedBox(height: 4),
 
-            // 登录
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '2. 用户登录',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: '用户名',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: '密码',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+                    // 类型和数量
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: _isLoading ? null : _login,
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Text('登录'),
+                        // 类型行
+                        Text(
+                          '${library.type.icon} ${library.type.displayName}',
+                          style: TextStyle(
+                            color: _parseColor(library.type.color),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _isLoading ? null : _logout,
-                            child: const Text('登出'),
+
+                        // 数量
+                        if (library.itemCount != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2.0),
+                            child: Text(
+                              '${library.itemCount} 项',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 检查状态
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '3. 检查状态',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.tonal(
-                      onPressed: _isLoading ? null : _checkStatus,
-                      child: const Text('检查登录状态'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 说明
-            Card(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '使用说明',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('1. 确保你的 Jellyfin 服务器正在运行'),
-                    const Text('2. 输入服务器地址（本地: http://localhost:8096）'),
-                    const Text('3. 点击"连接"按钮'),
-                    const Text('4. 输入用户名和密码'),
-                    const Text('5. 点击"登录"按钮'),
-                    const Text('6. 查看登录结果和用户信息'),
                   ],
                 ),
               ),
@@ -335,5 +592,61 @@ class _TestHomePageState extends State<TestHomePage> {
         ),
       ),
     );
+  }
+
+  Widget _buildCoverImage(BuildContext context) {
+    // 如果有封面，使用JellyfinImageWithClient加载认证图片
+    if (library.hasCoverImage) {
+      print('   使用JellyfinImage加载认证图片');
+
+      return JellyfinImageWithClient(
+        client: client,
+        itemId: library.id,
+        imageTag: library.primaryImageTag,
+        fillWidth: 288,    // 使用你推荐的尺寸
+        fillHeight: 428,
+        fit: BoxFit.cover,
+        placeholder: _buildPlaceholder(context),
+        errorWidget: _buildPlaceholder(context),
+      );
+    }
+
+    // 没有封面，显示占位图
+    print('   使用占位图显示');
+    return _buildPlaceholder(context);
+  }
+
+  Widget _buildPlaceholder(BuildContext context) {
+    return Container(
+      color: _parseColor(library.type.color).withValues(alpha: 0.3),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              library.type.icon,
+              style: const TextStyle(fontSize: 48),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              library.type.displayName,
+              style: TextStyle(
+                color: _parseColor(library.type.color),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _parseColor(String hexColor) {
+    try {
+      final color = hexColor.replaceAll('#', '0xFF');
+      return Color(int.parse(color));
+    } catch (e) {
+      return Colors.blue;
+    }
   }
 }

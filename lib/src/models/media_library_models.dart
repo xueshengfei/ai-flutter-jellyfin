@@ -26,6 +26,9 @@ class MediaLibrary extends Equatable {
   /// 服务器URL
   final String serverUrl;
 
+  /// 访问令牌（用于图片认证）
+  final String? accessToken;
+
   const MediaLibrary({
     required this.id,
     required this.name,
@@ -34,15 +37,25 @@ class MediaLibrary extends Equatable {
     this.primaryImageTag,
     this.backdropImageTag,
     this.itemCount,
+    this.accessToken,
   });
 
-  /// 从jellyfin_dart的BaseItemDto创建MediaLibrary
+  /// 从jellyfin_dart的BaseItemDto创建Media库
   factory MediaLibrary.fromDto(
     jellyfin_dart.BaseItemDto dto,
-    String serverUrl,
-  ) {
-    // 简化图片处理：只要有blurhashes就认为有图片
-    final hasImage = dto.imageBlurHashes != null;
+    String serverUrl, {
+    String? accessToken,
+  }) {
+    // 检查是否有图片标签
+    final imageTags = dto.imageTags;
+    final primaryImageTag = imageTags?['Primary'];
+
+    // 检查是否有图片（有图片标签或有blurhash）
+    final hasImageTag = primaryImageTag != null && primaryImageTag.isNotEmpty;
+    final hasBlurHash = dto.imageBlurHashes != null;
+
+    // 使用图片标签作为图片标识
+    final hasImage = hasImageTag || hasBlurHash;
 
     final backdropImageTags = dto.backdropImageTags;
     final hasBackdrop = backdropImageTags != null && backdropImageTags.isNotEmpty;
@@ -52,22 +65,49 @@ class MediaLibrary extends Equatable {
       name: dto.name ?? '未知媒体库',
       type: MediaLibraryType.fromCollectionType(dto.collectionType),
       serverUrl: serverUrl,
-      primaryImageTag: hasImage ? 'image' : null,
+      primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
       backdropImageTag: hasBackdrop ? backdropImageTags.first : null,
       itemCount: dto.childCount,
+      accessToken: accessToken,
     );
   }
 
   /// 获取封面图片URL
   String? getCoverImageUrl() {
     if (primaryImageTag == null) return null;
-    return '$serverUrl/Items/$id/Images/Primary?$primaryImageTag';
+
+    // Jellyfin图片URL格式：/Items/{id}/Images/Primary?tag={imageTag}
+    var url = '$serverUrl/Items/$id/Images/Primary';
+
+    // 优先使用图片标签
+    if (primaryImageTag != null && primaryImageTag!.isNotEmpty) {
+      url += '?tag=$primaryImageTag';
+    }
+    // 如果没有图片标签但有访问令牌，使用访问令牌
+    else if (accessToken != null && accessToken!.isNotEmpty) {
+      url += '?api_key=$accessToken';
+    }
+
+    return url;
   }
 
   /// 获取背景图片URL
   String? getBackdropImageUrl() {
     if (backdropImageTag == null) return null;
-    return '$serverUrl/Items/$id/Images/Backdrop?$backdropImageTag';
+
+    // Jellyfin图片URL格式：/Items/{id}/Images/Backdrop?tag={imageTag}
+    var url = '$serverUrl/Items/$id/Images/Backdrop';
+
+    // 优先使用图片标签
+    if (backdropImageTag != null && backdropImageTag!.isNotEmpty) {
+      url += '?tag=$backdropImageTag';
+    }
+    // 如果没有图片标签但有访问令牌，使用访问令牌
+    else if (accessToken != null && accessToken!.isNotEmpty) {
+      url += '?api_key=$accessToken';
+    }
+
+    return url;
   }
 
   /// 是否有封面图片
@@ -85,6 +125,7 @@ class MediaLibrary extends Equatable {
         primaryImageTag,
         backdropImageTag,
         itemCount,
+        accessToken,
       ];
 
   @override
@@ -221,10 +262,15 @@ class MediaLibraryListResult extends Equatable {
   /// 从jellyfin_dart的BaseItemDtoQueryResult创建
   factory MediaLibraryListResult.fromDto(
     jellyfin_dart.BaseItemDtoQueryResult dto,
-    String serverUrl,
-  ) {
+    String serverUrl, {
+    String? accessToken,
+  }) {
     final libraries = dto.items
-            ?.map((item) => MediaLibrary.fromDto(item, serverUrl))
+            ?.map((item) => MediaLibrary.fromDto(
+                  item,
+                  serverUrl,
+                  accessToken: accessToken,
+                ))
             .toList() ??
         [];
 

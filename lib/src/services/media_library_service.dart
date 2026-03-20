@@ -50,10 +50,11 @@ class MediaLibraryService {
         'Successfully fetched ${result.items?.length ?? 0} media libraries',
       );
 
-      // 转换为业务模型
+      // 转换为业务模型，传递访问令牌用于图片认证
       return MediaLibraryListResult.fromDto(
         result,
         _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
       );
     } on ApiException {
       rethrow;
@@ -112,7 +113,11 @@ class MediaLibraryService {
 
       _logger.i('Successfully fetched media library: ${library.name}');
 
-      return MediaLibrary.fromDto(library, _apiClient.config.serverUrl);
+      return MediaLibrary.fromDto(
+        library,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
     } on ApiException {
       rethrow;
     } catch (e, stackTrace) {

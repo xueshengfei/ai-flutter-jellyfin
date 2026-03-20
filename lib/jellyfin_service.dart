@@ -43,6 +43,7 @@ export 'src/core/api_client.dart';
 // 服务
 export 'src/services/auth_service.dart';
 export 'src/services/media_library_service.dart';
+export 'src/services/image_service.dart';
 
 // 业务模型（业务SDK的核心价值）
 export 'src/models/user_models.dart';
