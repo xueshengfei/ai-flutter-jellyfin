@@ -38,8 +38,12 @@ class _LoginPageState extends State<LoginPage> {
   final _serverController = TextEditingController(
     text: 'http://localhost:8096',
   );
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController(
+    text: 'xue13',
+  );
+  final _passwordController = TextEditingController(
+    text: '123456',
+  );
 
   String _status = '请登录';
   bool _isLoading = false;
