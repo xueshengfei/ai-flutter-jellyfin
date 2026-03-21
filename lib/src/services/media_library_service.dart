@@ -1,4 +1,5 @@
 import 'package:logger/logger.dart';
+import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import '../core/api_client.dart';
 import '../exceptions/api_exception.dart';
 import '../models/media_library_models.dart';
@@ -224,6 +225,200 @@ class MediaLibraryService {
 
       throw ApiException(
         'Failed to fetch media items: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 获取剧集的所有季
+  ///
+  /// 参数：
+  /// - [seriesId] 剧集ID
+  ///
+  /// 返回：[SeasonListResult] 包含季列表
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<SeasonListResult> getSeasons(String seriesId) async {
+    _logger.i('Fetching seasons for series: $seriesId');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 获取剧集的所有季
+      // 使用 includeItemTypes 参数只获取 Season 类型
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        parentId: seriesId,
+        includeItemTypes: const [jellyfin_dart.BaseItemKind.season],
+      );
+
+      if (response.data == null) {
+        throw ApiException(
+          'Failed to get seasons: No response data',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final result = response.data!;
+      final seasonItems = result.items ?? [];
+
+      _logger.i('Successfully fetched ${seasonItems.length} seasons');
+
+      // 获取每个季的剧集数量（可选）
+      final episodeCounts = <String, int>{};
+      for (final season in seasonItems) {
+        if (season.id != null) {
+          try {
+            final episodeResponse = await itemsApi.getItems(
+              userId: _apiClient.config.userId,
+              parentId: season.id!,
+            );
+            episodeCounts[season.id!] = episodeResponse.data?.totalRecordCount ?? 0;
+          } catch (e) {
+            _logger.w('Failed to get episode count for season ${season.id}: $e');
+            episodeCounts[season.id!] = 0;
+          }
+        }
+      }
+
+      // 转换为业务模型
+      return SeasonListResult.fromDto(
+        seasonItems,
+        seriesId,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+        episodeCounts: episodeCounts,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch seasons',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch seasons: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 获取季的所有集
+  ///
+  /// 参数：
+  /// - [seasonId] 季ID
+  /// - [seriesId] 剧集ID（必需，用于Episode模型）
+  /// - [startIndex] 起始索引（用于分页）
+  /// - [limit] 限制返回数量
+  ///
+  /// 返回：[EpisodeListResult] 包含集列表
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<EpisodeListResult> getEpisodes({
+    required String seasonId,
+    required String seriesId,
+    int? startIndex = 0,
+    int? limit = 50,
+  }) async {
+    _logger.i('Fetching episodes for season: $seasonId');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 获取季的所有集
+      // 使用 includeItemTypes 参数只获取 Episode 类型
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        parentId: seasonId,
+        includeItemTypes: const [jellyfin_dart.BaseItemKind.episode],
+        startIndex: startIndex,
+        limit: limit,
+        sortBy: const [jellyfin_dart.ItemSortBy.sortName],
+        sortOrder: const [jellyfin_dart.SortOrder.ascending],
+      );
+
+      if (response.data == null) {
+        throw ApiException(
+          'Failed to get episodes: No response data',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final result = response.data!;
+
+      _logger.i('Successfully fetched ${result.items?.length ?? 0} episodes');
+
+      // 转换为业务模型
+      return EpisodeListResult.fromDto(
+        result,
+        seriesId,
+        seasonId,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch episodes',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch episodes: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 获取剧集详情
+  ///
+  /// 参数：
+  /// - [seriesId] 剧集ID
+  ///
+  /// 返回：[MediaItem] 剧集详情
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<MediaItem> getSeriesDetail(String seriesId) async {
+    _logger.i('Fetching series detail: $seriesId');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 获取用户项目，筛选出指定ID的剧集
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        ids: [seriesId],
+      );
+
+      if (response.data == null || response.data!.items == null || response.data!.items!.isEmpty) {
+        throw ApiException(
+          'Series not found: $seriesId',
+          statusCode: 404,
+        );
+      }
+
+      final seriesDto = response.data!.items![0];
+
+      _logger.i('Successfully fetched series: ${seriesDto.name}');
+
+      // 转换为业务模型
+      return MediaItem.fromDto(
+        seriesDto,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch series detail',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch series detail: ${e.toString()}',
           cause: e,
         stackTrace: stackTrace,
       );

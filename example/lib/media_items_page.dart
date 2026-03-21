@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'media_item_card.dart';
+import 'seasons_page.dart';
 
 /// 媒体项列表页面
 ///
@@ -33,6 +34,7 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
 
   Future<void> _loadMediaItems() async {
     print('🔄 _loadMediaItems 开始执行');
+    print('   媒体库类型: ${widget.library.type}');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -42,10 +44,13 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
       print('📡 调用 client.mediaLibrary.getMediaItems()...');
       print('   媒体库ID: ${widget.library.id}');
 
+      // 对于电视剧类型，只获取 Series 类型的媒体项
+      final isTvShows = widget.library.type == MediaLibraryType.tvshows;
+
       final result = await widget.client.mediaLibrary.getMediaItems(
         parentId: widget.library.id,
-        recursive: true,
-        limit: 50,
+        recursive: !isTvShows, // 电视剧不递归，只获取直接子项
+        limit: isTvShows ? null : 50, // 电视剧不限制数量
       );
 
       print('✅ 媒体项获取成功!');
@@ -55,13 +60,22 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
         print('   总数: ${result.totalCount}');
       }
 
-      for (var i = 0; i < result.items.length && i < 5; i++) {
-        final item = result.items[i];
+      // 对于电视剧类型，过滤出 Series 类型
+      List<MediaItem> filteredItems = result.items;
+      if (isTvShows) {
+        filteredItems = result.items
+            .where((item) => item.type.toLowerCase() == 'series')
+            .toList();
+        print('   过滤后的剧集数量: ${filteredItems.length}');
+      }
+
+      for (var i = 0; i < filteredItems.length && i < 5; i++) {
+        final item = filteredItems[i];
         print('   [$i] ${item.name} (${item.typeDisplayName})');
       }
 
       setState(() {
-        _mediaItems = result.items;
+        _mediaItems = filteredItems;
         _isLoading = false;
       });
 
@@ -186,17 +200,35 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
         ),
         itemCount: _mediaItems.length,
         itemBuilder: (context, index) {
+          final item = _mediaItems[index];
           return MediaItemCard(
             client: widget.client,
-            item: _mediaItems[index],
+            item: item,
             onTap: () {
-              print('🖱️ 点击了媒体项: ${_mediaItems[index].name}');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('点击了: ${_mediaItems[index].name}'),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              print('🖱️ 点击了媒体项: ${item.name}');
+              print('   类型: ${item.type}');
+
+              // 如果是剧集类型，跳转到季列表页面
+              if (item.type.toLowerCase() == 'series') {
+                print('   → 跳转到季列表页面');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SeasonsPage(
+                      client: widget.client,
+                      series: item,
+                    ),
+                  ),
+                );
+              } else {
+                // 其他类型显示 SnackBar
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('点击了: ${item.name} (${item.typeDisplayName})'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             },
           );
         },
