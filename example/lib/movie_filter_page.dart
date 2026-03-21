@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import 'media_item_detail_page.dart';
+import 'models/view_mode_models.dart';
+import 'services/view_mode_manager.dart';
+import 'widgets/view_mode_selector.dart';
+import 'widgets/media_list_builder.dart';
 
 /// 电影过滤页面
 ///
@@ -39,6 +43,10 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
   // 滚动控制器
   final ScrollController _scrollController = ScrollController();
 
+  // 视图模式配置
+  final ViewModeManager _viewModeManager = ViewModeManager();
+  ViewModeConfig _viewModeConfig = const ViewModeConfig();
+
   @override
   void initState() {
     super.initState();
@@ -51,8 +59,29 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
     _filter = MovieFilter.defaultFilter(parentId: widget.libraryId);
     print('   Filter created: $_filter');
 
+    _loadViewModeConfig();
     _loadMovies();
     _scrollController.addListener(_onScroll);
+  }
+
+  /// 加载视图模式配置
+  Future<void> _loadViewModeConfig() async {
+    final config = await _viewModeManager.getViewModeConfig(widget.libraryId);
+    if (mounted) {
+      setState(() {
+        _viewModeConfig = config;
+      });
+    }
+  }
+
+  /// 保存视图模式配置
+  Future<void> _saveViewModeConfig(ViewModeConfig config) async {
+    await _viewModeManager.saveViewModeConfig(widget.libraryId, config);
+    if (mounted) {
+      setState(() {
+        _viewModeConfig = config;
+      });
+    }
   }
 
   @override
@@ -225,6 +254,11 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
         ),
       ),
       actions: [
+        // 视图模式选择器
+        ViewModeSelector(
+          libraryId: widget.libraryId,
+          onViewModeChanged: _saveViewModeConfig,
+        ),
         // 搜索按钮
         IconButton(
           icon: const Icon(Icons.search),
@@ -466,29 +500,48 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
     return chips;
   }
 
-  /// 电影网格
+  /// 电影列表
   Widget _buildMovieGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.7,
-        ),
-        itemCount: _movies.length,
-        itemBuilder: (context, index) {
-          return _MovieCard(
-            movie: _movies[index],
-            client: widget.client,
+    return SizedBox(
+      height: _calculateListHeight(),
+      child: MediaListBuilder(
+        client: widget.client,
+        items: _movies,
+        config: _viewModeConfig,
+        onTap: (item) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MediaItemDetailPage(
+                client: widget.client,
+                item: item,
+              ),
+            ),
           );
         },
       ),
     );
+  }
+
+  /// 计算列表高度
+  double _calculateListHeight() {
+    // 根据视图模式和项目数量动态计算高度
+    if (_movies.isEmpty) return 400;
+
+    switch (_viewModeConfig.viewMode) {
+      case ViewMode.banner:
+        // 横幅视图：每个项目约 300px
+        return _movies.length * 300.0 + 32;
+      case ViewMode.list:
+        // 列表视图：每个项目 120px
+        return _movies.length * 120.0 + 32;
+      case ViewMode.poster:
+      case ViewMode.card:
+        // 网格视图：根据列数计算
+        final rowCount = (_movies.length / _viewModeConfig.crossAxisCount).ceil();
+        final itemHeight = _viewModeConfig.viewMode == ViewMode.poster ? 280.0 : 320.0;
+        return rowCount * itemHeight + 32;
+    }
   }
 
   /// 显示搜索对话框

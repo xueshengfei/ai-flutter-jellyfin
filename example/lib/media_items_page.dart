@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'media_item_card.dart';
 import 'media_item_detail_page.dart';
+import 'models/view_mode_models.dart';
+import 'services/view_mode_manager.dart';
+import 'widgets/view_mode_selector.dart';
+import 'widgets/media_list_builder.dart';
 
 /// 媒体项列表页面
 ///
@@ -25,11 +28,36 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  // 视图模式配置
+  final ViewModeManager _viewModeManager = ViewModeManager();
+  ViewModeConfig _viewModeConfig = const ViewModeConfig();
+
   @override
   void initState() {
     super.initState();
     print('📺 MediaItemsPage 初始化: ${widget.library.name}');
+    _loadViewModeConfig();
     _loadMediaItems();
+  }
+
+  /// 加载视图模式配置
+  Future<void> _loadViewModeConfig() async {
+    final config = await _viewModeManager.getViewModeConfig(widget.library.id);
+    if (mounted) {
+      setState(() {
+        _viewModeConfig = config;
+      });
+    }
+  }
+
+  /// 保存视图模式配置
+  Future<void> _saveViewModeConfig(ViewModeConfig config) async {
+    await _viewModeManager.saveViewModeConfig(widget.library.id, config);
+    if (mounted) {
+      setState(() {
+        _viewModeConfig = config;
+      });
+    }
   }
 
   Future<void> _loadMediaItems() async {
@@ -111,6 +139,11 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
       appBar: AppBar(
         title: Text(widget.library.name),
         actions: [
+          // 视图模式选择器
+          ViewModeSelector(
+            libraryId: widget.library.id,
+            onViewModeChanged: _saveViewModeConfig,
+          ),
           // 显示数量
           if (!_isLoading && _errorMessage == null && _mediaItems.isNotEmpty)
             Padding(
@@ -199,44 +232,32 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
 
     print('   显示媒体项列表 (${_mediaItems.length} 个)');
 
-    // 显示媒体项网格
+    // 显示媒体项列表
     return RefreshIndicator(
       onRefresh: () async {
         print('🔄 刷新媒体项...');
         await _loadMediaItems();
       },
-      child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: 0.67,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: _mediaItems.length,
-        itemBuilder: (context, index) {
-          final item = _mediaItems[index];
-          return MediaItemCard(
-            client: widget.client,
-            item: item,
-            onTap: () {
-              print('🖱️ 点击了媒体项: ${item.name}');
-              print('   类型: ${item.type}');
-              print('   ID: ${item.id}');
+      child: MediaListBuilder(
+        client: widget.client,
+        items: _mediaItems,
+        config: _viewModeConfig,
+        onTap: (item) {
+          print('🖱️ 点击了媒体项: ${item.name}');
+          print('   类型: ${item.type}');
+          print('   ID: ${item.id}');
 
-              // 统一跳转到通用详情页面
-              // 详情页面会根据类型显示不同的内容
-              print('   → 跳转到详情页面');
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MediaItemDetailPage(
-                    client: widget.client,
-                    item: item,
-                  ),
-                ),
-              );
-            },
+          // 统一跳转到通用详情页面
+          // 详情页面会根据类型显示不同的内容
+          print('   → 跳转到详情页面');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MediaItemDetailPage(
+                client: widget.client,
+                item: item,
+              ),
+            ),
           );
         },
       ),
