@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'actor_avatar_card.dart';
+import 'person_avatar_card.dart';
+import 'person_detail_page.dart';
 import 'seasons_page.dart';
 import 'episodes_page.dart';
 
@@ -210,9 +212,82 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
 
         // 演员列表
         if (item.actorInfos != null && item.actorInfos!.isNotEmpty)
-          ActorListRow(
-            actors: item.actorInfos!,
+          PersonListRow(
+            persons: item.actorInfos!,
             title: '演员',
+            itemBuilder: (person) => PersonAvatarCard(
+              person: person,
+              onTap: () {
+                // 跳转到演员详情页
+                if (person.id != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PersonDetailPage(
+                        client: widget.client,
+                        personId: person.id!,
+                        personName: person.name,
+                        personType: jellyfin_dart.PersonKind.actor,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        const SizedBox(height: 24),
+
+        // 导演列表
+        if (item.directorInfos != null && item.directorInfos!.isNotEmpty)
+          PersonListRow(
+            persons: item.directorInfos!,
+            title: '导演',
+            itemBuilder: (person) => PersonAvatarCard(
+              person: person,
+              onTap: () {
+                // 跳转到导演详情页
+                if (person.id != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PersonDetailPage(
+                        client: widget.client,
+                        personId: person.id!,
+                        personName: person.name,
+                        personType: jellyfin_dart.PersonKind.director,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        const SizedBox(height: 24),
+
+        // 编剧列表
+        if (item.writerInfos != null && item.writerInfos!.isNotEmpty)
+          PersonListRow(
+            persons: item.writerInfos!,
+            title: '编剧',
+            itemBuilder: (person) => PersonAvatarCard(
+              person: person,
+              onTap: () {
+                // 跳转到编剧详情页
+                if (person.id != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PersonDetailPage(
+                        client: widget.client,
+                        personId: person.id!,
+                        personName: person.name,
+                        personType: jellyfin_dart.PersonKind.writer,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
           ),
         const SizedBox(height: 24),
 
@@ -473,48 +548,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               children: item.genres!
                   .map((genre) => Chip(
                         label: Text(genre),
-                        visualDensity: VisualDensity.compact,
-                      ))
-                  .toList(),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // 导演
-        if (item.directors != null && item.directors!.isNotEmpty) ...[
-          _buildSectionTitle('导演'),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: item.directors!
-                  .map((director) => Chip(
-                        avatar: Icon(Icons.person, size: 16),
-                        label: Text(director),
-                        visualDensity: VisualDensity.compact,
-                      ))
-                  .toList(),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // 作者
-        if (item.writers != null && item.writers!.isNotEmpty) ...[
-          _buildSectionTitle('作者'),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: item.writers!
-                  .map((writer) => Chip(
-                        avatar: Icon(Icons.edit, size: 16),
-                        label: Text(writer),
                         visualDensity: VisualDensity.compact,
                       ))
                   .toList(),

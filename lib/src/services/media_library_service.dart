@@ -4,6 +4,7 @@ import '../core/api_client.dart';
 import '../exceptions/api_exception.dart';
 import '../models/media_library_models.dart';
 import '../models/media_item_models.dart';
+import '../models/person_models.dart';
 
 /// 媒体库服务
 ///
@@ -500,5 +501,176 @@ class MediaLibraryService {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  /// 获取人员详细信息
+  ///
+  /// 参数：
+  /// - [personId] 人员ID
+  /// - [personType] 人员类型（演员、导演、编剧等）
+  ///
+  /// 返回：[Person] 人员详细信息
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<Person> getPersonDetail(
+    String personId,
+    jellyfin_dart.PersonKind personType,
+  ) async {
+    _logger.i('Fetching person detail: $personId');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 获取人员详情
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        ids: [personId],
+      );
+
+      if (response.data == null || response.data!.items == null || response.data!.items!.isEmpty) {
+        throw ApiException(
+          'Failed to get person detail: No response data',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final personDto = response.data!.items![0];
+
+      _logger.i('Successfully fetched person: ${personDto.name}');
+
+      // 转换为业务模型
+      return Person.fromDto(
+        personDto,
+        personType,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch person detail',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch person detail: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 获取人员参与的作品列表
+  ///
+  /// 参数：
+  /// - [personId] 人员ID
+  /// - [includeItemTypes] 包含的媒体类型（默认为电影和剧集）
+  /// - [limit] 限制返回数量（默认50）
+  ///
+  /// 返回：[PersonCreditsResult] 包含作品列表的结果
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<PersonCreditsResult> getPersonCredits({
+    required String personId,
+    List<jellyfin_dart.BaseItemKind>? includeItemTypes,
+    int? limit,
+  }) async {
+    _logger.i('Fetching person credits for: $personId');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 按人员ID筛选作品（递归搜索）
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        personIds: [personId],
+        includeItemTypes: includeItemTypes ??
+            const [jellyfin_dart.BaseItemKind.movie, jellyfin_dart.BaseItemKind.series],
+        recursive: true, // 重要！递归搜索所有子文件夹
+        fields: const [
+          jellyfin_dart.ItemFields.genres,
+          jellyfin_dart.ItemFields.overview,
+          jellyfin_dart.ItemFields.people,
+          jellyfin_dart.ItemFields.primaryImageAspectRatio,
+        ],
+        limit: limit ?? 50,
+        sortBy: const [
+          jellyfin_dart.ItemSortBy.premiereDate,
+          jellyfin_dart.ItemSortBy.productionYear,
+          jellyfin_dart.ItemSortBy.sortName,
+        ],
+        sortOrder: const [
+          jellyfin_dart.SortOrder.descending,
+          jellyfin_dart.SortOrder.descending,
+          jellyfin_dart.SortOrder.ascending,
+        ],
+      );
+
+      if (response.data == null) {
+        throw ApiException(
+          'Failed to get person credits: No response data',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final result = response.data!;
+
+      _logger.i('Successfully fetched ${result.items?.length ?? 0} credits for person $personId');
+
+      // 转换为业务模型
+      final items = result.items
+              ?.map((dto) => MediaItem.fromDto(
+                    dto,
+                    _apiClient.config.serverUrl,
+                    accessToken: _apiClient.config.accessToken,
+                  ))
+              .toList() ??
+          [];
+
+      return PersonCreditsResult(
+        items: items,
+        totalCount: result.totalRecordCount,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch person credits',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch person credits: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 获取人员参与的作品（按类型筛选）
+  ///
+  /// 参数：
+  /// - [personId] 人员ID
+  /// - [personType] 人员类型
+  /// - [limit] 限制返回数量（默认50）
+  ///
+  /// 返回：[PersonCreditsResult] 包含作品列表的结果
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<PersonCreditsResult> getPersonCreditsByType({
+    required String personId,
+    required jellyfin_dart.PersonKind personType,
+    int? limit,
+  }) async {
+    // 根据人员类型筛选，这里默认为电影和剧集
+    // 如果需要更精细的筛选，可以扩展此方法
+    return getPersonCredits(
+      personId: personId,
+      includeItemTypes: const [
+        jellyfin_dart.BaseItemKind.movie,
+        jellyfin_dart.BaseItemKind.series,
+      ],
+      limit: limit,
+    );
   }
 }

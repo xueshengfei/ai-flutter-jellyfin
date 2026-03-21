@@ -59,6 +59,12 @@ class MediaItem extends Equatable {
   /// 演员列表（完整信息，包含图片）
   final List<ActorInfo>? actorInfos;
 
+  /// 导演列表（完整信息，包含图片）
+  final List<ActorInfo>? directorInfos;
+
+  /// 编剧列表（完整信息，包含图片）
+  final List<ActorInfo>? writerInfos;
+
   /// 所属媒体库ID
   final String? parentId;
 
@@ -88,6 +94,8 @@ class MediaItem extends Equatable {
     this.writers,
     this.actors,
     this.actorInfos,
+    this.directorInfos,
+    this.writerInfos,
     this.parentId,
     this.accessToken,
   });
@@ -126,60 +134,72 @@ class MediaItem extends Equatable {
       print('   🏢 工作室列表: $studios');
     }
 
-    // 提取导演
+    // 提取导演（名称）
     final directors = <String>[];
+    // 提取导演（完整信息，包含图片）
+    final directorInfos = <ActorInfo>[];
+
+    // 提取作者（名称）
+    final writers = <String>[];
+    // 提取作者（完整信息，包含图片）
+    final writerInfos = <ActorInfo>[];
+
+    // 提取演员（名称）
+    final actors = <String>[];
+    // 提取演员（完整信息，包含图片）
+    final actorInfos = <ActorInfo>[];
+
     print('   👤 人员总数: ${dto.people?.length ?? 0}');
     for (final person in (dto.people ?? [])) {
       // PersonKind 是枚举，直接比较枚举值
       final personType = person.type?.value ?? 'unknown';
       print('      人员: ${person.name} - 类型: $personType');
 
-      if (person.type == jellyfin_dart.PersonKind.director && person.name != null) {
-        directors.add(person.name!);
+      if (person.name != null) {
+        // 创建人员图片URL
+        final personImageTag = person.primaryImageTag;
+        String? personImageUrl;
+        if (personImageTag != null && personImageTag.isNotEmpty) {
+          // Jellyfin 头像图片URL格式
+          personImageUrl = '$serverUrl/Items/${person.id}/Images/Primary?tag=$personImageTag';
+          if (accessToken != null && accessToken!.isNotEmpty) {
+            personImageUrl += '&api_key=$accessToken';
+          }
+        }
+
+        // 根据类型分类
+        if (person.type == jellyfin_dart.PersonKind.director) {
+          directors.add(person.name!);
+          directorInfos.add(ActorInfo(
+            name: person.name!,
+            role: '导演',
+            imageUrl: personImageUrl,
+            id: person.id,
+          ));
+        } else if (person.type == jellyfin_dart.PersonKind.writer) {
+          writers.add(person.name!);
+          writerInfos.add(ActorInfo(
+            name: person.name!,
+            role: '编剧',
+            imageUrl: personImageUrl,
+            id: person.id,
+          ));
+        } else if (person.type == jellyfin_dart.PersonKind.actor) {
+          actors.add(person.name!);
+          actorInfos.add(ActorInfo(
+            name: person.name!,
+            role: person.role,
+            imageUrl: personImageUrl,
+            id: person.id,
+          ));
+        }
       }
     }
     print('   🎬 导演数量: ${directors.length}');
     if (directors.isNotEmpty) {
       print('   🎬 导演列表: $directors');
     }
-
-    // 提取作者
-    final writers = <String>[];
-    for (final person in (dto.people ?? [])) {
-      if (person.type == jellyfin_dart.PersonKind.writer && person.name != null) {
-        writers.add(person.name!);
-      }
-    }
     print('   ✏️ 作者数量: ${writers.length}');
-
-    // 提取演员
-    final actors = <String>[];
-    final actorInfos = <ActorInfo>[];
-    for (final person in (dto.people ?? [])) {
-      if (person.type == jellyfin_dart.PersonKind.actor) {
-        if (person.name != null) {
-          actors.add(person.name!);
-
-          // 创建演员信息（包含图片）
-          final actorImageTag = person.primaryImageTag;
-          String? actorImageUrl;
-          if (actorImageTag != null && actorImageTag.isNotEmpty) {
-            // Jellyfin 头像图片URL格式
-            actorImageUrl = '$serverUrl/Items/${person.id}/Images/Primary?tag=$actorImageTag';
-            if (accessToken != null && accessToken!.isNotEmpty) {
-              actorImageUrl += '&api_key=$accessToken';
-            }
-          }
-
-          actorInfos.add(ActorInfo(
-            name: person.name!,
-            role: person.role,
-            imageUrl: actorImageUrl,
-            id: person.id,
-          ));
-        }
-      }
-    }
     print('   🎭 演员数量: ${actors.length}');
     print('   🎭 带图片的演员数量: ${actorInfos.length}');
 
@@ -217,6 +237,8 @@ class MediaItem extends Equatable {
       writers: writers,
       actors: actors,
       actorInfos: actorInfos.isNotEmpty ? actorInfos : null,
+      directorInfos: directorInfos.isNotEmpty ? directorInfos : null,
+      writerInfos: writerInfos.isNotEmpty ? writerInfos : null,
       parentId: dto.parentId,
       accessToken: accessToken,
     );
@@ -348,6 +370,8 @@ class MediaItem extends Equatable {
         writers,
         actors,
         actorInfos,
+        directorInfos,
+        writerInfos,
         parentId,
         accessToken,
       ];
