@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
+import 'video_player_page.dart';
+import 'models/view_mode_models.dart';
+import 'services/view_mode_manager.dart';
+import 'widgets/view_mode_selector.dart';
+import 'widgets/media_list_builder.dart';
 
 /// 集列表页面
 ///
@@ -24,10 +29,35 @@ class _EpisodesPageState extends State<EpisodesPage> {
   late Future<EpisodeListResult> _episodesFuture;
   int _totalEpisodes = 0;
 
+  // 视图模式配置
+  final ViewModeManager _viewModeManager = ViewModeManager();
+  ViewModeConfig _viewModeConfig = const ViewModeConfig();
+
   @override
   void initState() {
     super.initState();
+    _loadViewModeConfig();
     _loadEpisodes();
+  }
+
+  /// 加载视图模式配置
+  Future<void> _loadViewModeConfig() async {
+    final config = await _viewModeManager.getViewModeConfig(widget.season.id);
+    if (mounted) {
+      setState(() {
+        _viewModeConfig = config;
+      });
+    }
+  }
+
+  /// 保存视图模式配置
+  Future<void> _saveViewModeConfig(ViewModeConfig config) async {
+    await _viewModeManager.saveViewModeConfig(widget.season.id, config);
+    if (mounted) {
+      setState(() {
+        _viewModeConfig = config;
+      });
+    }
   }
 
   void _loadEpisodes() {
@@ -45,6 +75,11 @@ class _EpisodesPageState extends State<EpisodesPage> {
       appBar: AppBar(
         title: Text('${widget.series.name} - ${widget.season.name}'),
         actions: [
+          // 视图模式选择器
+          ViewModeSelector(
+            libraryId: widget.season.id,
+            onViewModeChanged: _saveViewModeConfig,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -133,25 +168,92 @@ class _EpisodesPageState extends State<EpisodesPage> {
                     _loadEpisodes();
                     await _episodesFuture;
                   },
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: result.episodes.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final episode = result.episodes[index];
-                      return EpisodeCard(
-                        episode: episode,
-                        onTap: () {
-                          _showEpisodeDetail(episode);
-                        },
-                      );
-                    },
-                  ),
+                  child: _buildEpisodesList(result),
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// 构建集列表（根据视图模式）
+  Widget _buildEpisodesList(EpisodeListResult result) {
+    // 列表视图模式使用原有的卡片
+    if (_viewModeConfig.viewMode == ViewMode.list) {
+      return ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: result.episodes.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final episode = result.episodes[index];
+          return EpisodeCard(
+            episode: episode,
+            client: widget.client,
+            onTap: () {
+              _showEpisodeDetail(episode);
+            },
+            onPlay: () {
+              _playEpisode(context, episode);
+            },
+          );
+        },
+      );
+    }
+
+    // 其他视图模式转换为 MediaItem 并使用 MediaListBuilder
+    final mediaItems = result.episodes.map((episode) {
+      return MediaItem(
+        id: episode.id,
+        name: episode.name,
+        type: 'Episode',
+        primaryImageTag: episode.primaryImageTag,
+        runTimeTicks: episode.runTimeTicks,
+        runTimeMinutes: episode.runTimeMinutes,
+        overview: episode.overview,
+        serverUrl: widget.client.configuration.serverUrl,
+      );
+    }).toList();
+
+    return MediaListBuilder(
+      client: widget.client,
+      items: mediaItems,
+      config: _viewModeConfig,
+      onTap: (item) {
+        // 找到对应的 Episode 并播放
+        final episode = result.episodes.firstWhere(
+          (e) => e.id == item.id,
+        );
+        _playEpisode(context, episode);
+      },
+    );
+  }
+
+  /// 播放剧集
+  void _playEpisode(BuildContext context, Episode episode) {
+    print('🎬 播放剧集: ${episode.name}');
+    print('   ID: ${episode.id}');
+
+    // 创建临时 MediaItem 用于播放
+    final mediaItem = MediaItem(
+      id: episode.id,
+      name: episode.name,
+      type: 'Episode',
+      primaryImageTag: episode.primaryImageTag,
+      runTimeTicks: episode.runTimeTicks,
+      runTimeMinutes: episode.runTimeMinutes,
+      overview: episode.overview,
+      serverUrl: widget.client.configuration.serverUrl,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoPlayerPage(
+          client: widget.client,
+          item: mediaItem,
+        ),
       ),
     );
   }
@@ -178,12 +280,16 @@ class _EpisodesPageState extends State<EpisodesPage> {
 /// 集卡片组件
 class EpisodeCard extends StatelessWidget {
   final Episode episode;
+  final JellyfinClient client;
   final VoidCallback onTap;
+  final VoidCallback? onPlay;
 
   const EpisodeCard({
     super.key,
     required this.episode,
+    required this.client,
     required this.onTap,
+    this.onPlay,
   });
 
   @override
@@ -327,7 +433,7 @@ class EpisodeCard extends StatelessWidget {
                 icon: const Icon(Icons.play_circle_filled),
                 color: Theme.of(context).colorScheme.primary,
                 iconSize: 32,
-                onPressed: onTap,
+                onPressed: onPlay,
               ),
             ),
           ],
