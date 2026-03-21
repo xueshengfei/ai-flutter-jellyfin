@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_service/jellyfin_image.dart';
+import '../jellyfin_image.dart';
 
 /// 带操作按钮的媒体项卡片组件
 ///

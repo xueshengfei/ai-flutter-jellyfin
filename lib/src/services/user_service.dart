@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import '../core/api_client.dart';
@@ -23,6 +24,12 @@ class UserService {
   /// 获取当前用户ID
   String? get currentUserId => _apiClient.config.userId;
 
+  /// 获取服务器URL
+  String get serverUrl => _apiClient.config.serverUrl;
+
+  /// 获取访问令牌
+  String? get accessToken => _apiClient.config.accessToken;
+
   /// 标记为收藏
   ///
   /// [itemId] 媒体项ID
@@ -38,13 +45,15 @@ class UserService {
     try {
       _logger.i('标记收藏: $itemId, 收藏状态: $isFavorite');
 
-      final userLibraryApi = _apiClient.jellyfinClient.getUserLibraryApi();
+      // 使用 HTTP 直接调用
+      final dio = _apiClient.dio;
+      final url = '$serverUrl/Users/${currentUserId!}/FavoriteItems/$itemId';
 
-      await userLibraryApi.markFavoriteItem(
-        userId: currentUserId!,
-        itemId: itemId,
-        isFavorite: isFavorite,
-      );
+      if (isFavorite) {
+        await dio.post(url);
+      } else {
+        await dio.delete(url);
+      }
 
       _logger.i('收藏状态更新成功');
     } catch (e) {
@@ -70,27 +79,27 @@ class UserService {
 
       final itemsApi = _apiClient.jellyfinClient.getItemsApi();
 
-      // 构建查询参数
-      final queryParams = {
-        'userId': currentUserId!,
-        'isFavorite': true,
-        'limit': limit,
-        'sortBy': 'SortName',
-        'sortOrder': 'Ascending',
-      };
-
-      if (mediaType != null && mediaType.isNotEmpty) {
-        queryParams['includeItemTypes'] = mediaType;
-      }
-
-      final response = await itemsApi.getItems(queryParams);
+      // 调用 API
+      final response = await itemsApi.getItems(
+        userId: currentUserId!,
+        isFavorite: true,
+        limit: limit,
+        sortBy: const [jellyfin_dart.ItemSortBy.sortName],
+        sortOrder: const [jellyfin_dart.SortOrder.ascending],
+        includeItemTypes: mediaType != null
+            ? [jellyfin_dart.BaseItemKind.values.firstWhere(
+                (kind) => kind.name == mediaType,
+                orElse: () => jellyfin_dart.BaseItemKind.movie,
+              )]
+            : null,
+      );
 
       if (response.data == null) {
         return MediaItemListResult(items: [], totalCount: 0);
       }
 
       final itemsDto = response.data!;
-      final items = itemsDto.items?.map((dto) => MediaItem.fromDto(dto)).toList() ?? [];
+      final items = itemsDto.items?.map((dto) => MediaItem.fromDto(dto, serverUrl, accessToken: accessToken)).toList() ?? [];
 
       return MediaItemListResult(
         items: items,
@@ -118,24 +127,21 @@ class UserService {
 
       final itemsApi = _apiClient.jellyfinClient.getItemsApi();
 
-      final queryParams = {
-        'userId': currentUserId!,
-        'limit': limit,
-        'sortBy': 'DatePlayed',
-        'sortOrder': 'Descending',
-        'filters': 'IsResumable', // 可恢复播放（有播放进度但未完成）
-        'recursive': true,
-        'excludeItemTypes': 'Recording', // 排除录制
-      };
-
-      final response = await itemsApi.getItems(queryParams);
+      final response = await itemsApi.getItems(
+        userId: currentUserId!,
+        limit: limit,
+        sortBy: const [jellyfin_dart.ItemSortBy.datePlayed],
+        sortOrder: const [jellyfin_dart.SortOrder.descending],
+        filters: const [jellyfin_dart.ItemFilter.isResumable],
+        recursive: true,
+      );
 
       if (response.data == null) {
         return MediaItemListResult(items: [], totalCount: 0);
       }
 
       final itemsDto = response.data!;
-      final items = itemsDto.items?.map((dto) => MediaItem.fromDto(dto)).toList() ?? [];
+      final items = itemsDto.items?.map((dto) => MediaItem.fromDto(dto, serverUrl, accessToken: accessToken)).toList() ?? [];
 
       return MediaItemListResult(
         items: items,
@@ -164,27 +170,27 @@ class UserService {
 
       final itemsApi = _apiClient.jellyfinClient.getItemsApi();
 
-      final queryParams = {
-        'userId': currentUserId!,
-        'limit': limit,
-        'sortBy': 'DatePlayed',
-        'sortOrder': 'Descending',
-        'isPlayed': true, // 已播放完成
-        'recursive': true,
-      };
-
-      if (mediaType != null && mediaType.isNotEmpty) {
-        queryParams['includeItemTypes'] = mediaType;
-      }
-
-      final response = await itemsApi.getItems(queryParams);
+      final response = await itemsApi.getItems(
+        userId: currentUserId!,
+        limit: limit,
+        sortBy: const [jellyfin_dart.ItemSortBy.datePlayed],
+        sortOrder: const [jellyfin_dart.SortOrder.descending],
+        isPlayed: true,
+        recursive: true,
+        includeItemTypes: mediaType != null
+            ? [jellyfin_dart.BaseItemKind.values.firstWhere(
+                (kind) => kind.name == mediaType,
+                orElse: () => jellyfin_dart.BaseItemKind.movie,
+              )]
+            : null,
+      );
 
       if (response.data == null) {
         return MediaItemListResult(items: [], totalCount: 0);
       }
 
       final itemsDto = response.data!;
-      final items = itemsDto.items?.map((dto) => MediaItem.fromDto(dto)).toList() ?? [];
+      final items = itemsDto.items?.map((dto) => MediaItem.fromDto(dto, serverUrl, accessToken: accessToken)).toList() ?? [];
 
       return MediaItemListResult(
         items: items,
@@ -251,15 +257,16 @@ class UserService {
     try {
       _logger.i('更新用户数据: $itemId');
 
-      final userLibraryApi = _apiClient.jellyfinClient.getUserLibraryApi();
+      // 使用 HTTP 直接调用
+      final dio = _apiClient.dio;
+      final url = '$serverUrl/Users/${currentUserId!}/Items/$itemId/UserData';
 
-      await userLibraryApi.updateUserItemData(
-        userId: currentUserId!,
-        itemId: itemId,
-        isFavorite: isFavorite,
-        isPlayed: isPlayed,
-        playedPercentage: playedPercentage,
-      );
+      final data = <String, dynamic>{};
+      if (isFavorite != null) data['IsFavorite'] = isFavorite;
+      if (isPlayed != null) data['Played'] = isPlayed;
+      if (playedPercentage != null) data['PlayedPercentage'] = playedPercentage;
+
+      await dio.post(url, data: data);
 
       _logger.i('用户数据更新成功');
     } catch (e) {
