@@ -17,6 +17,9 @@ class MediaItem extends Equatable {
   /// 主图片标签（用于封面）
   final String? primaryImageTag;
 
+  /// 背景图片标签（用于海报背景）
+  final String? backdropImageTag;
+
   /// 制作年份
   final int? productionYear;
 
@@ -26,8 +29,29 @@ class MediaItem extends Equatable {
   /// 社区评分
   final double? communityRating;
 
+  /// 投票数
+  final int? voteCount;
+
+  /// 官方评级（如 PG-13, R 等）
+  final String? officialRating;
+
+  /// 播放时长（Ticks）
+  final int? runTimeTicks;
+
+  /// 播放时长（分钟）
+  final int? runTimeMinutes;
+
   /// 剧情简介
   final String? overview;
+
+  /// 工作室列表
+  final List<String>? studios;
+
+  /// 导演列表
+  final List<String>? directors;
+
+  /// 作者列表
+  final List<String>? writers;
 
   /// 所属媒体库ID
   final String? parentId;
@@ -44,10 +68,18 @@ class MediaItem extends Equatable {
     required this.type,
     required this.serverUrl,
     this.primaryImageTag,
+    this.backdropImageTag,
     this.productionYear,
     this.genres,
     this.communityRating,
+    this.voteCount,
+    this.officialRating,
+    this.runTimeTicks,
+    this.runTimeMinutes,
     this.overview,
+    this.studios,
+    this.directors,
+    this.writers,
     this.parentId,
     this.accessToken,
   });
@@ -74,16 +106,76 @@ class MediaItem extends Equatable {
         ? dto.type!.name
         : 'unknown';
 
+    // 计算播放时长（分钟）
+    final runTimeMinutes = dto.runTimeTicks != null
+        ? (dto.runTimeTicks! / 600000000).round()
+        : null;
+
+    // 提取工作室名称
+    final studios = dto.studios?.map((s) => s.name ?? '').toList();
+    print('   🏢 工作室数量: ${studios?.length ?? 0}');
+    if (studios != null && studios.isNotEmpty) {
+      print('   🏢 工作室列表: $studios');
+    }
+
+    // 提取导演
+    final directors = <String>[];
+    print('   👤 人员总数: ${dto.people?.length ?? 0}');
+    for (final person in (dto.people ?? [])) {
+      // PersonKind 是枚举，直接比较枚举值
+      final personType = person.type?.value ?? 'unknown';
+      print('      人员: ${person.name} - 类型: $personType');
+
+      if (person.type == jellyfin_dart.PersonKind.director && person.name != null) {
+        directors.add(person.name!);
+      }
+    }
+    print('   🎬 导演数量: ${directors.length}');
+    if (directors.isNotEmpty) {
+      print('   🎬 导演列表: $directors');
+    }
+
+    // 提取作者
+    final writers = <String>[];
+    for (final person in (dto.people ?? [])) {
+      if (person.type == jellyfin_dart.PersonKind.writer && person.name != null) {
+        writers.add(person.name!);
+      }
+    }
+    print('   ✏️ 作者数量: ${writers.length}');
+
+    // 检查背景图片标签
+    // Jellyfin 有两种方式存储背景图片标签：
+    // 1. ImageTags['Backdrop']
+    // 2. BackdropImageTags 数组
+    final backdropImageTags = dto.imageTags;
+    final backdropTagsList = dto.backdropImageTags;
+
+    String? backdropTag;
+    if (backdropImageTags?['Backdrop'] != null && backdropImageTags!['Backdrop']!.isNotEmpty) {
+      backdropTag = backdropImageTags!['Backdrop'];
+    } else if (backdropTagsList != null && backdropTagsList.isNotEmpty) {
+      backdropTag = backdropTagsList.first;
+    }
+
     return MediaItem(
       id: dto.id ?? '',
       name: dto.name ?? '未知媒体',
       type: typeString,
       serverUrl: serverUrl,
       primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
+      backdropImageTag: backdropTag,
       productionYear: dto.productionYear,
       genres: dto.genres,
       communityRating: dto.communityRating,
+      voteCount: null, // BaseItemDto 中没有此字段
+      officialRating: dto.officialRating,
+      runTimeTicks: dto.runTimeTicks,
+      runTimeMinutes: runTimeMinutes,
       overview: dto.overview,
+      studios: studios,
+      directors: directors,
+      writers: writers,
       parentId: dto.parentId,
       accessToken: accessToken,
     );
@@ -108,8 +200,46 @@ class MediaItem extends Equatable {
     return url;
   }
 
+  /// 获取背景图片URL（用于海报）
+  String? getBackdropImageUrl() {
+    if (backdropImageTag == null) return null;
+
+    var url = '$serverUrl/Items/$id/Images/Backdrop';
+
+    if (backdropImageTag != null && backdropImageTag!.isNotEmpty) {
+      url += '?tag=$backdropImageTag';
+    } else if (accessToken != null && accessToken!.isNotEmpty) {
+      url += '?api_key=$accessToken';
+    }
+
+    return url;
+  }
+
   /// 是否有封面图片
   bool get hasCoverImage => primaryImageTag != null;
+
+  /// 是否有背景图片
+  bool get hasBackdropImage => backdropImageTag != null;
+
+  /// 获取播放时长显示文本
+  String get durationText {
+    if (runTimeMinutes == null) return '';
+
+    final hours = runTimeMinutes! ~/ 60;
+    final minutes = runTimeMinutes! % 60;
+
+    if (hours > 0) {
+      return '${hours}小时${minutes}分钟';
+    } else {
+      return '${minutes}分钟';
+    }
+  }
+
+  /// 获取评分显示文本
+  String get ratingText {
+    if (communityRating == null) return '';
+    return communityRating!.toStringAsFixed(1);
+  }
 
   /// 获取类型显示名称
   String get typeDisplayName {
@@ -163,10 +293,18 @@ class MediaItem extends Equatable {
         type,
         serverUrl,
         primaryImageTag,
+        backdropImageTag,
         productionYear,
         genres,
         communityRating,
+        voteCount,
+        officialRating,
+        runTimeTicks,
+        runTimeMinutes,
         overview,
+        studios,
+        directors,
+        writers,
         parentId,
         accessToken,
       ];

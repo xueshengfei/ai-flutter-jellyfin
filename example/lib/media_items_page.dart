@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'media_item_card.dart';
 import 'seasons_page.dart';
+import 'movie_detail_page.dart';
 
 /// 媒体项列表页面
 ///
@@ -55,18 +56,33 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
 
       print('✅ 媒体项获取成功!');
       print('   媒体项数量: ${result.items.length}');
+      print('   媒体库类型: ${widget.library.type}');
 
       if (result.totalCount != null) {
         print('   总数: ${result.totalCount}');
       }
 
-      // 对于电视剧类型，过滤出 Series 类型
+      // 对于电视剧类型，先打印所有项的类型，不过滤
       List<MediaItem> filteredItems = result.items;
       if (isTvShows) {
-        filteredItems = result.items
-            .where((item) => item.type.toLowerCase() == 'series')
-            .toList();
-        print('   过滤后的剧集数量: ${filteredItems.length}');
+        print('   🔍 电视剧类型，打印所有项的类型（前10个）:');
+        for (var i = 0; i < result.items.length && i < 10; i++) {
+          final item = result.items[i];
+          print('      [$i] "${item.name}"');
+          print('          type: "${item.type}"');
+          print('          typeDisplayName: ${item.typeDisplayName}');
+          print('          id: ${item.id}');
+        }
+
+        // 暂时不过滤，显示所有项
+        print('   ⚠️ 暂不过滤，显示所有项');
+        filteredItems = result.items;
+
+        // TODO: 确认数据类型后再决定是否过滤
+        // filteredItems = result.items
+        //     .where((item) => item.type.toLowerCase() == 'series')
+        //     .toList();
+        // print('   过滤后的剧集数量: ${filteredItems.length}');
       }
 
       for (var i = 0; i < filteredItems.length && i < 5; i++) {
@@ -207,9 +223,11 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
             onTap: () {
               print('🖱️ 点击了媒体项: ${item.name}');
               print('   类型: ${item.type}');
+              print('   ID: ${item.id}');
 
-              // 如果是剧集类型，跳转到季列表页面
+              // 根据类型跳转到不同的页面
               if (item.type.toLowerCase() == 'series') {
+                // 剧集 → 季列表页面
                 print('   → 跳转到季列表页面');
                 Navigator.push(
                   context,
@@ -220,12 +238,34 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
                     ),
                   ),
                 );
+              } else if (item.type.toLowerCase() == 'movie') {
+                // 电影 → 详情页面
+                print('   → 跳转到电影详情页面');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MovieDetailPage(
+                      client: widget.client,
+                      movie: item,
+                    ),
+                  ),
+                );
+              } else if (item.type.toLowerCase() == 'boxset' ||
+                         item.type.toLowerCase() == 'folder') {
+                // 合集或文件夹
+                print('   → 这是合集/文件夹');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${item.name} 是 ${item.typeDisplayName}，暂不支持'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
               } else {
                 // 其他类型显示 SnackBar
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('点击了: ${item.name} (${item.typeDisplayName})'),
-                    duration: const Duration(seconds: 2),
+                    content: Text('点击了: ${item.name} (${item.typeDisplayName})\n类型: ${item.type}'),
+                    duration: const Duration(seconds: 3),
                   ),
                 );
               }

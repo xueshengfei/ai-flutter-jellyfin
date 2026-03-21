@@ -30,6 +30,11 @@ class _SeasonsPageState extends State<SeasonsPage> {
   }
 
   void _loadSeasons() {
+    print('🔄 SeasonsPage: 加载季列表');
+    print('   剧集ID: ${widget.series.id}');
+    print('   剧集名称: ${widget.series.name}');
+    print('   剧集类型: ${widget.series.type}');
+
     setState(() {
       _seasonsFuture = widget.client.mediaLibrary.getSeasons(widget.series.id);
     });

@@ -266,6 +266,19 @@ class MediaLibraryService {
 
       _logger.i('Successfully fetched ${seasonItems.length} seasons');
 
+      // 调试：打印所有返回的项
+      if (seasonItems.isEmpty) {
+        _logger.w('⚠️ 没有找到任何季！');
+        _logger.w('   seriesId: $seriesId');
+        _logger.w('   totalRecordCount: ${result.totalRecordCount}');
+      } else {
+        _logger.i('找到的季列表:');
+        for (var i = 0; i < seasonItems.length && i < 10; i++) {
+          final item = seasonItems[i];
+          _logger.i('  [$i] ${item.name} (id: ${item.id}, type: ${item.type?.name})');
+        }
+      }
+
       // 获取每个季的剧集数量（可选）
       final episodeCounts = <String, int>{};
       for (final season in seasonItems) {
@@ -419,6 +432,70 @@ class MediaLibraryService {
 
       throw ApiException(
         'Failed to fetch series detail: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 获取媒体项详情
+  ///
+  /// 参数：
+  /// - [itemId] 媒体项ID
+  ///
+  /// 返回：[MediaItem] 包含完整元数据的媒体项
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<MediaItem> getMediaItemDetail(String itemId) async {
+    _logger.i('Fetching media item detail: $itemId');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 获取媒体项详情，指定要返回的字段
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        ids: [itemId],
+        // 指定要返回的额外字段
+        fields: const [
+          jellyfin_dart.ItemFields.genres,              // 类型
+          jellyfin_dart.ItemFields.studios,             // 工作室
+          jellyfin_dart.ItemFields.people,              // 人员（导演、演员、作者等）
+          jellyfin_dart.ItemFields.overview,            // 剧情简介
+          jellyfin_dart.ItemFields.productionLocations, // 制作地点
+        ],
+      );
+
+      if (response.data == null || response.data!.items == null || response.data!.items!.isEmpty) {
+        throw ApiException(
+          'Media item not found: $itemId',
+          statusCode: 404,
+        );
+      }
+
+      final itemDto = response.data!.items![0];
+
+      _logger.i('Successfully fetched item: ${itemDto.name}');
+      _logger.i('  Genres: ${itemDto.genres}');
+      _logger.i('  Studios: ${itemDto.studios}');
+      _logger.i('  People count: ${itemDto.people?.length ?? 0}');
+      _logger.i('  Overview: ${itemDto.overview?.substring(0, itemDto.overview!.length > 50 ? 50 : itemDto.overview!.length)}...');
+
+      // 转换为业务模型，包含完整元数据
+      return MediaItem.fromDto(
+        itemDto,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch media item detail',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch media item detail: ${e.toString()}',
           cause: e,
         stackTrace: stackTrace,
       );
