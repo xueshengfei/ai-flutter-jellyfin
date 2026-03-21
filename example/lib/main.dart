@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'jellyfin_image.dart';
 import 'media_items_page.dart';
+import 'movie_filter_page.dart';
+import 'test_api_page.dart';
 
 void main() {
   runApp(const JellyfinTestApp());
@@ -24,6 +26,23 @@ class JellyfinTestApp extends StatelessWidget {
         switch (settings.name) {
           case '/':
             return MaterialPageRoute(builder: (context) => const LoginPage());
+          case '/test_api':
+            final args = settings.arguments as Map<String, dynamic>?;
+            if (args == null) {
+              return MaterialPageRoute(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: Text('缺少参数: ${settings.name}'),
+                  ),
+                ),
+              );
+            }
+            return MaterialPageRoute(
+              builder: (context) => TestApiPage(
+                client: args['client'] as JellyfinClient,
+              ),
+            );
+
           case '/media_libraries':
             final args = settings.arguments as Map<String, dynamic>?;
             if (args == null) {
@@ -64,10 +83,22 @@ class JellyfinTestApp extends StatelessWidget {
                 ),
               );
             }
+            // 如果是电影类型，使用电影过滤页面
+            final library = args['library'] as MediaLibrary;
+            if (library.type == MediaLibraryType.movies) {
+              return MaterialPageRoute(
+                builder: (context) => MovieFilterPage(
+                  client: args['client'] as JellyfinClient,
+                  libraryId: library.id,
+                  libraryName: library.name,
+                ),
+              );
+            }
+            // 其他类型使用原有的媒体项页面
             return MaterialPageRoute(
               builder: (context) => MediaItemsPage(
                 client: args['client'] as JellyfinClient,
-                library: args['library'] as MediaLibrary,
+                library: library,
               ),
             );
           default:
@@ -474,6 +505,18 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       appBar: AppBar(
         title: const Text('媒体库'),
         actions: [
+          // 测试按钮
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/test_api',
+                arguments: {'client': widget.client},
+              );
+            },
+            tooltip: 'API测试',
+          ),
           // 用户信息
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),

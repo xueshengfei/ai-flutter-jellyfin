@@ -3,7 +3,6 @@ import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'person_avatar_card.dart';
 import 'person_detail_page.dart';
-import 'seasons_page.dart';
 import 'episodes_page.dart';
 
 /// 通用媒体项详情页面

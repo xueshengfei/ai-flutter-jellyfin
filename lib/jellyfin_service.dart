@@ -50,6 +50,7 @@ export 'src/models/user_models.dart';
 export 'src/models/media_library_models.dart';
 export 'src/models/media_item_models.dart';
 export 'src/models/person_models.dart';
+export 'src/models/movie_filter_models.dart';
 
 // 异常
 export 'src/exceptions/jellyfin_exception.dart';

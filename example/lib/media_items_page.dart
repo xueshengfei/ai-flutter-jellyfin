@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'media_item_card.dart';
-import 'seasons_page.dart';
-import 'movie_detail_page.dart';
 import 'media_item_detail_page.dart';
 
 /// 媒体项列表页面

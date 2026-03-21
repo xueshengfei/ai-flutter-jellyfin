@@ -5,6 +5,7 @@ import '../exceptions/api_exception.dart';
 import '../models/media_library_models.dart';
 import '../models/media_item_models.dart';
 import '../models/person_models.dart';
+import '../models/movie_filter_models.dart';
 
 /// 媒体库服务
 ///
@@ -672,5 +673,95 @@ class MediaLibraryService {
       ],
       limit: limit,
     );
+  }
+
+  /// 获取电影列表（支持过滤）
+  ///
+  /// 参数：
+  /// - [filter] 电影过滤器
+  ///
+  /// 返回：[MediaItemListResult] 包含电影列表的结果
+  ///
+  /// 抛出：
+  /// - [ApiException] 请求失败时
+  Future<MediaItemListResult> getMovies(MovieFilter filter) async {
+    _logger.i('Fetching movies with filter: $filter');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 构建查询参数
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        // 基础参数
+        parentId: filter.parentId,
+        startIndex: filter.startIndex,
+        limit: filter.limit,
+        recursive: filter.recursive,
+        // 过滤类型为电影
+        includeItemTypes: const [jellyfin_dart.BaseItemKind.movie],
+        // 过滤参数
+        genres: filter.genres,
+        tags: filter.tags,
+        years: filter.years,
+        nameStartsWith: filter.nameStartsWith,
+        studios: filter.studios,
+        minCommunityRating: filter.minCommunityRating,
+        minOfficialRating: filter.minOfficialRating,
+        maxOfficialRating: filter.maxOfficialRating,
+        isHd: filter.isHD,
+        is4K: filter.is4K,
+        isPlayed: filter.isPlayed,
+        isFavorite: filter.isFavorite,
+        filters: filter.filters,
+        // 排序
+        sortBy: filter.sortBy,
+        sortOrder: filter.sortOrder,
+        // 额外字段
+        fields: filter.fields ?? const [
+          jellyfin_dart.ItemFields.primaryImageAspectRatio,
+          jellyfin_dart.ItemFields.mediaSourceCount,
+          jellyfin_dart.ItemFields.genres,
+          jellyfin_dart.ItemFields.studios,
+          jellyfin_dart.ItemFields.people,
+          jellyfin_dart.ItemFields.overview,
+          jellyfin_dart.ItemFields.productionLocations,
+        ],
+        // 图片配置
+        enableImages: true,
+        enableUserData: true,
+      );
+
+      if (response.data == null) {
+        throw ApiException(
+          'Failed to get movies: No response data',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final result = response.data!;
+
+      _logger.i(
+        'Successfully fetched ${result.items?.length ?? 0} movies (total: ${result.totalRecordCount})',
+      );
+
+      // 转换为业务模型
+      return MediaItemListResult.fromDto(
+        result,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to fetch movies',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to fetch movies: ${e.toString()}',
+          cause: e,
+        stackTrace: stackTrace,
+      );
+    }
   }
 }
