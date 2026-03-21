@@ -53,6 +53,12 @@ class MediaItem extends Equatable {
   /// 作者列表
   final List<String>? writers;
 
+  /// 演员列表（名称）
+  final List<String>? actors;
+
+  /// 演员列表（完整信息，包含图片）
+  final List<ActorInfo>? actorInfos;
+
   /// 所属媒体库ID
   final String? parentId;
 
@@ -80,6 +86,8 @@ class MediaItem extends Equatable {
     this.studios,
     this.directors,
     this.writers,
+    this.actors,
+    this.actorInfos,
     this.parentId,
     this.accessToken,
   });
@@ -144,6 +152,37 @@ class MediaItem extends Equatable {
     }
     print('   ✏️ 作者数量: ${writers.length}');
 
+    // 提取演员
+    final actors = <String>[];
+    final actorInfos = <ActorInfo>[];
+    for (final person in (dto.people ?? [])) {
+      if (person.type == jellyfin_dart.PersonKind.actor) {
+        if (person.name != null) {
+          actors.add(person.name!);
+
+          // 创建演员信息（包含图片）
+          final actorImageTag = person.primaryImageTag;
+          String? actorImageUrl;
+          if (actorImageTag != null && actorImageTag.isNotEmpty) {
+            // Jellyfin 头像图片URL格式
+            actorImageUrl = '$serverUrl/Items/${person.id}/Images/Primary?tag=$actorImageTag';
+            if (accessToken != null && accessToken!.isNotEmpty) {
+              actorImageUrl += '&api_key=$accessToken';
+            }
+          }
+
+          actorInfos.add(ActorInfo(
+            name: person.name!,
+            role: person.role,
+            imageUrl: actorImageUrl,
+            id: person.id,
+          ));
+        }
+      }
+    }
+    print('   🎭 演员数量: ${actors.length}');
+    print('   🎭 带图片的演员数量: ${actorInfos.length}');
+
     // 检查背景图片标签
     // Jellyfin 有两种方式存储背景图片标签：
     // 1. ImageTags['Backdrop']
@@ -176,6 +215,8 @@ class MediaItem extends Equatable {
       studios: studios,
       directors: directors,
       writers: writers,
+      actors: actors,
+      actorInfos: actorInfos.isNotEmpty ? actorInfos : null,
       parentId: dto.parentId,
       accessToken: accessToken,
     );
@@ -305,6 +346,8 @@ class MediaItem extends Equatable {
         studios,
         directors,
         writers,
+        actors,
+        actorInfos,
         parentId,
         accessToken,
       ];
@@ -627,6 +670,38 @@ class Episode extends Equatable {
   @override
   String toString() {
     return 'Episode(id: $id, name: $name, S${seasonNumber}E${episodeNumber}, duration: $durationText)';
+  }
+}
+
+/// 演员信息（业务模型）
+///
+/// 用于存储演员的完整信息，包括头像图片
+class ActorInfo extends Equatable {
+  /// 演员名称
+  final String name;
+
+  /// 角色名称
+  final String? role;
+
+  /// 头像图片URL
+  final String? imageUrl;
+
+  /// 演员ID
+  final String? id;
+
+  const ActorInfo({
+    required this.name,
+    this.role,
+    this.imageUrl,
+    this.id,
+  });
+
+  @override
+  List<Object?> get props => [name, role, imageUrl, id];
+
+  @override
+  String toString() {
+    return 'ActorInfo(name: $name, role: $role, hasImage: ${imageUrl != null})';
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 import 'media_item_card.dart';
 import 'seasons_page.dart';
 import 'movie_detail_page.dart';
+import 'media_item_detail_page.dart';
 
 /// 媒体项列表页面
 ///
@@ -225,50 +226,18 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
               print('   类型: ${item.type}');
               print('   ID: ${item.id}');
 
-              // 根据类型跳转到不同的页面
-              if (item.type.toLowerCase() == 'series') {
-                // 剧集 → 季列表页面
-                print('   → 跳转到季列表页面');
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SeasonsPage(
-                      client: widget.client,
-                      series: item,
-                    ),
+              // 统一跳转到通用详情页面
+              // 详情页面会根据类型显示不同的内容
+              print('   → 跳转到详情页面');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MediaItemDetailPage(
+                    client: widget.client,
+                    item: item,
                   ),
-                );
-              } else if (item.type.toLowerCase() == 'movie') {
-                // 电影 → 详情页面
-                print('   → 跳转到电影详情页面');
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MovieDetailPage(
-                      client: widget.client,
-                      movie: item,
-                    ),
-                  ),
-                );
-              } else if (item.type.toLowerCase() == 'boxset' ||
-                         item.type.toLowerCase() == 'folder') {
-                // 合集或文件夹
-                print('   → 这是合集/文件夹');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${item.name} 是 ${item.typeDisplayName}，暂不支持'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              } else {
-                // 其他类型显示 SnackBar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('点击了: ${item.name} (${item.typeDisplayName})\n类型: ${item.type}'),
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              }
+                ),
+              );
             },
           );
         },
