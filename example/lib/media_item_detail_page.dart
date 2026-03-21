@@ -4,6 +4,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 import 'person_avatar_card.dart';
 import 'person_detail_page.dart';
 import 'episodes_page.dart';
+import 'video_player_page.dart';
 
 /// 通用媒体项详情页面
 ///
@@ -70,6 +71,12 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               background: _buildBackdrop(),
             ),
             actions: [
+              // 播放按钮
+              IconButton(
+                icon: const Icon(Icons.play_arrow),
+                onPressed: _startPlayback,
+                tooltip: '播放',
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: _loadData,
@@ -186,18 +193,11 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           child: SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('播放功能待实现'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-              icon: Icon(Icons.play_arrow),
-              label: Text('播放'),
+              onPressed: _startPlayback,
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('播放'),
               style: FilledButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
@@ -588,6 +588,21 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
+      ),
+    );
+  }
+
+  /// 开始播放
+  void _startPlayback() {
+    print('🎬 开始播放: ${widget.item.name}');
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoPlayerPage(
+          client: widget.client,
+          item: widget.item,
+        ),
       ),
     );
   }
