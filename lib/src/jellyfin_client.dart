@@ -3,6 +3,7 @@ import 'core/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/media_library_service.dart';
 import 'services/image_service.dart';
+import 'services/user_service.dart';
 
 /// Jellyfin客户端 - 简化版
 ///
@@ -23,12 +24,16 @@ class JellyfinClient {
   /// 图片服务
   late final ImageService image;
 
+  /// 用户服务
+  late final UserService user;
+
   /// 私有构造函数
   JellyfinClient._internal(this.configuration) {
     _apiClient = ApiClient(configuration);
     auth = AuthService(apiClient: _apiClient);
     mediaLibrary = MediaLibraryService(apiClient: _apiClient);
     image = ImageService(apiClient: _apiClient);
+    user = UserService(apiClient: _apiClient);
   }
 
   /// 工厂构造函数 - 创建客户端实例

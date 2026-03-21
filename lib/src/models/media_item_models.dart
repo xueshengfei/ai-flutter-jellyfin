@@ -74,6 +74,15 @@ class MediaItem extends Equatable {
   /// 访问令牌（用于图片认证）
   final String? accessToken;
 
+  /// 是否收藏
+  final bool? isFavorite;
+
+  /// 是否已播放
+  final bool? played;
+
+  /// 播放进度百分比
+  final double? playedPercentage;
+
   const MediaItem({
     required this.id,
     required this.name,
@@ -98,6 +107,9 @@ class MediaItem extends Equatable {
     this.writerInfos,
     this.parentId,
     this.accessToken,
+    this.isFavorite,
+    this.played,
+    this.playedPercentage,
   });
 
   /// 从jellyfin_dart的BaseItemDto创建媒体项
@@ -203,6 +215,12 @@ class MediaItem extends Equatable {
     print('   🎭 演员数量: ${actors.length}');
     print('   🎭 带图片的演员数量: ${actorInfos.length}');
 
+    // 从 userData 获取用户数据
+    final userData = dto.userData;
+    final isFavorite = userData?.isFavorite;
+    final played = userData?.played;
+    final playedPercentage = userData?.playedPercentage;
+
     // 检查背景图片标签
     // Jellyfin 有两种方式存储背景图片标签：
     // 1. ImageTags['Backdrop']
@@ -241,6 +259,9 @@ class MediaItem extends Equatable {
       writerInfos: writerInfos.isNotEmpty ? writerInfos : null,
       parentId: dto.parentId,
       accessToken: accessToken,
+      isFavorite: isFavorite,
+      played: played,
+      playedPercentage: playedPercentage,
     );
   }
 
@@ -374,6 +395,9 @@ class MediaItem extends Equatable {
         writerInfos,
         parentId,
         accessToken,
+        isFavorite,
+        played,
+        playedPercentage,
       ];
 
   @override

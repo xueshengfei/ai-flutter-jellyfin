@@ -10,6 +10,7 @@ class PosterGridView extends StatelessWidget {
   final List<MediaItem> items;
   final int crossAxisCount;
   final ValueChanged<MediaItem>? onTap;
+  final Widget Function(MediaItem item, VoidCallback onTap)? cardBuilder;
 
   const PosterGridView({
     super.key,
@@ -17,6 +18,7 @@ class PosterGridView extends StatelessWidget {
     required this.items,
     this.crossAxisCount = 3,
     this.onTap,
+    this.cardBuilder,
   });
 
   @override
@@ -32,10 +34,18 @@ class PosterGridView extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
+        final handleTap = () => onTap?.call(item);
+
+        // 如果提供了自定义卡片构建器，使用它
+        if (cardBuilder != null) {
+          return cardBuilder!(item, handleTap);
+        }
+
+        // 否则使用默认的 MediaItemCard
         return MediaItemCard(
           client: client,
           item: item,
-          onTap: () => onTap?.call(item),
+          onTap: handleTap,
         );
       },
     );

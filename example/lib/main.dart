@@ -5,6 +5,7 @@ import 'jellyfin_image.dart';
 import 'media_items_page.dart';
 import 'movie_filter_page.dart';
 import 'test_api_page.dart';
+import 'personal_page.dart';
 
 void main() {
   runApp(const JellyfinTestApp());
@@ -24,6 +25,22 @@ class JellyfinTestApp extends StatelessWidget {
       home: const LoginPage(),
       onGenerateRoute: (settings) {
         switch (settings.name) {
+          case '/personal':
+            final args = settings.arguments as Map<String, dynamic>?;
+            if (args == null) {
+              return MaterialPageRoute(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: Text('缺少参数: ${settings.name}'),
+                  ),
+                ),
+              );
+            }
+            return MaterialPageRoute(
+              builder: (context) => PersonalPage(
+                client: args['client'] as JellyfinClient,
+              ),
+            );
           case '/':
             return MaterialPageRoute(builder: (context) => const LoginPage());
           case '/test_api':
@@ -505,6 +522,30 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       appBar: AppBar(
         title: const Text('媒体库'),
         actions: [
+          // 个人中心按钮
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/personal',
+                arguments: {'client': widget.client},
+              );
+            },
+            tooltip: '个人中心',
+          ),
+          // 测试按钮
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/test_api',
+                arguments: {'client': widget.client},
+              );
+            },
+            tooltip: 'API测试',
+          ),
           // 测试按钮
           IconButton(
             icon: const Icon(Icons.bug_report),
