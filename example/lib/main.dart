@@ -4,6 +4,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 import 'jellyfin_image.dart';
 import 'media_items_page.dart';
 import 'movie_filter_page.dart';
+import 'music_library_page.dart';
 import 'test_api_page.dart';
 import 'personal_page.dart';
 
@@ -105,6 +106,16 @@ class JellyfinTestApp extends StatelessWidget {
             if (library.type == MediaLibraryType.movies) {
               return MaterialPageRoute(
                 builder: (context) => MovieFilterPage(
+                  client: args['client'] as JellyfinClient,
+                  libraryId: library.id,
+                  libraryName: library.name,
+                ),
+              );
+            }
+            // 如果是音乐类型，使用音乐专用页面
+            if (library.type == MediaLibraryType.music) {
+              return MaterialPageRoute(
+                builder: (context) => MusicLibraryPage(
                   client: args['client'] as JellyfinClient,
                   libraryId: library.id,
                   libraryName: library.name,

@@ -45,6 +45,7 @@ export 'src/services/auth_service.dart';
 export 'src/services/media_library_service.dart';
 export 'src/services/image_service.dart';
 export 'src/services/user_service.dart';
+export 'src/services/music_service.dart';
 
 // 业务模型（业务SDK的核心价值）
 export 'src/models/user_models.dart';
@@ -52,6 +53,7 @@ export 'src/models/media_library_models.dart';
 export 'src/models/media_item_models.dart';
 export 'src/models/person_models.dart';
 export 'src/models/movie_filter_models.dart';
+export 'src/models/music_models.dart';
 
 // 异常
 export 'src/exceptions/jellyfin_exception.dart';
