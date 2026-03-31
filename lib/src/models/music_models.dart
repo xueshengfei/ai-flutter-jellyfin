@@ -5,6 +5,7 @@ import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 class MusicAlbum extends Equatable {
   final String id;
   final String name;
+  final String? sortName;
   final int? productionYear;
   final List<String>? artists;
   final List<String>? genres;
@@ -21,6 +22,7 @@ class MusicAlbum extends Equatable {
     required this.id,
     required this.name,
     required this.serverUrl,
+    this.sortName,
     this.productionYear,
     this.artists,
     this.genres,
@@ -61,6 +63,7 @@ class MusicAlbum extends Equatable {
     return MusicAlbum(
       id: dto.id ?? '',
       name: dto.name ?? '未知专辑',
+      sortName: dto.sortName,
       serverUrl: serverUrl,
       productionYear: dto.productionYear,
       artists: artists.isNotEmpty ? artists : null,
@@ -100,6 +103,7 @@ class MusicAlbum extends Equatable {
 class MusicArtist extends Equatable {
   final String id;
   final String name;
+  final String? sortName;
   final int? albumCount;
   final int? songCount;
   final String? overview;
@@ -114,6 +118,7 @@ class MusicArtist extends Equatable {
     required this.id,
     required this.name,
     required this.serverUrl,
+    this.sortName,
     this.albumCount,
     this.songCount,
     this.overview,
@@ -141,6 +146,7 @@ class MusicArtist extends Equatable {
     return MusicArtist(
       id: dto.id ?? '',
       name: dto.name ?? '未知艺术家',
+      sortName: dto.sortName,
       serverUrl: serverUrl,
       albumCount: dto.albumCount,
       songCount: dto.songCount,
@@ -175,6 +181,7 @@ class MusicArtist extends Equatable {
 class MusicSong extends Equatable {
   final String id;
   final String name;
+  final String? sortName;
   final String? albumId;
   final String? albumName;
   final String? albumPrimaryImageTag;
@@ -197,6 +204,7 @@ class MusicSong extends Equatable {
     required this.id,
     required this.name,
     required this.serverUrl,
+    this.sortName,
     this.albumId,
     this.albumName,
     this.albumPrimaryImageTag,
@@ -244,6 +252,7 @@ class MusicSong extends Equatable {
     return MusicSong(
       id: dto.id ?? '',
       name: dto.name ?? '未知歌曲',
+      sortName: dto.sortName,
       serverUrl: serverUrl,
       albumId: dto.albumId,
       albumName: dto.album,

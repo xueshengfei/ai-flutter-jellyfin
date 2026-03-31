@@ -3,6 +3,42 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'artist_detail_page.dart';
 import 'album_detail_page.dart';
+import 'music_search_page.dart';
+
+// ==================== 首字母索引工具函数 ====================
+
+/// 提取首字母：A-Z 或 "#"（非字母归入 #）
+String getSortLetter(String? sortName, String? name) {
+  final text = (sortName ?? name ?? '').trim();
+  if (text.isEmpty) return '#';
+  final upper = text.toUpperCase();
+  final codeUnit = upper.codeUnitAt(0);
+  if (codeUnit >= 65 && codeUnit <= 90) return upper[0]; // A-Z
+  return '#';
+}
+
+/// 按首字母分组并排序
+Map<String, List<T>> groupByFirstLetter<T>(
+  List<T> items,
+  String? Function(T) getSortName,
+  String? Function(T) getName,
+) {
+  final map = <String, List<T>>{};
+  for (final item in items) {
+    final letter = getSortLetter(getSortName(item), getName(item));
+    (map[letter] ??= []).add(item);
+  }
+  // 排序 key：字母 A-Z 在前，# 在最后
+  final sortedKeys = map.keys.toList()
+    ..sort((a, b) {
+      if (a == '#') return 1;
+      if (b == '#') return -1;
+      return a.compareTo(b);
+    });
+  return {for (final k in sortedKeys) k: map[k]!};
+}
+
+// ==================== 音乐媒体库页面 ====================
 
 /// 音乐媒体库页面
 ///
@@ -45,6 +81,17 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.libraryName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => MusicSearchPage(
+                client: widget.client,
+                libraryId: widget.libraryId,
+              ),
+            )),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -66,6 +113,79 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
   }
 }
 
+// ==================== 字母索引条 Widget ====================
+
+class _AlphabetIndexBar extends StatefulWidget {
+  final List<String> letters;
+  final String activeLetter;
+  final ValueChanged<String> onLetterTap;
+
+  const _AlphabetIndexBar({
+    required this.letters,
+    required this.activeLetter,
+    required this.onLetterTap,
+  });
+
+  @override
+  State<_AlphabetIndexBar> createState() => _AlphabetIndexBarState();
+}
+
+class _AlphabetIndexBarState extends State<_AlphabetIndexBar> {
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.letters.isEmpty) return const SizedBox.shrink();
+    return GestureDetector(
+      onVerticalDragStart: (_) => setState(() => _isDragging = true),
+      onVerticalDragEnd: (_) => setState(() => _isDragging = false),
+      onVerticalDragUpdate: (details) => _handleDrag(details.localPosition.dy),
+      onTapUp: (details) => _handleTap(details.localPosition.dy),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: _isDragging ? 36 : 28,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: _isDragging ? 0.3 : 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: widget.letters.map((letter) {
+            final isActive = letter == widget.activeLetter;
+            return Expanded(
+              child: Center(
+                child: Text(
+                  letter,
+                  style: TextStyle(
+                    fontSize: _isDragging ? 12 : 10,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color: isActive
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _handleTap(double dy) {
+    final index = (dy / (context.size!.height / widget.letters.length))
+        .floor()
+        .clamp(0, widget.letters.length - 1);
+    widget.onLetterTap(widget.letters[index]);
+  }
+
+  void _handleDrag(double dy) {
+    final index = (dy / (context.size!.height / widget.letters.length))
+        .floor()
+        .clamp(0, widget.letters.length - 1);
+    widget.onLetterTap(widget.letters[index]);
+  }
+}
+
 // ==================== 艺术家 Tab ====================
 
 class _ArtistsTab extends StatefulWidget {
@@ -80,15 +200,82 @@ class _ArtistsTabState extends State<_ArtistsTab> {
   List<MusicArtist> _artists = [];
   bool _isLoading = true;
   String? _error;
+  late ScrollController _scrollController;
+  String _activeLetter = '';
+  Map<String, List<MusicArtist>> _grouped = {};
+  List<String> _letters = [];
+  final Map<String, GlobalKey> _headerKeys = {};
+  static const double _headerHeight = 40.0;
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _rebuildGroups() {
+    _grouped = groupByFirstLetter(
+      _artists,
+      (a) => a.sortName,
+      (a) => a.name,
+    );
+    _letters = _grouped.keys.toList();
+    _headerKeys.clear();
+    for (final letter in _letters) {
+      _headerKeys[letter] = GlobalKey();
+    }
+    if (_letters.isNotEmpty) _activeLetter = _letters.first;
+  }
+
+  void _onScroll() {
+    for (final letter in _letters) {
+      final key = _headerKeys[letter];
+      if (key?.currentContext != null) {
+        final box = key!.currentContext!.findRenderObject() as RenderBox?;
+        if (box != null) {
+          final pos = box.localToGlobal(Offset.zero, ancestor: null);
+          if (pos.dy <= _headerHeight) {
+            if (_activeLetter != letter && mounted) {
+              setState(() => _activeLetter = letter);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void _scrollToLetter(String letter) {
+    final key = _headerKeys[letter];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0.0,
+      );
+    }
+  }
 
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
       final result = await widget.client.music.getAlbumArtists(parentId: widget.libraryId, limit: 100);
-      if (mounted) setState(() { _artists = result.artists; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _artists = result.artists;
+          _isLoading = false;
+        });
+        _rebuildGroups();
+      }
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
     }
@@ -99,29 +286,69 @@ class _ArtistsTabState extends State<_ArtistsTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return _buildError(_error!, _load);
     if (_artists.isEmpty) return const Center(child: Text('暂无艺术家'));
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: GridView.builder(
-        padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, childAspectRatio: 0.75, crossAxisSpacing: 12, mainAxisSpacing: 12,
+
+    return Stack(children: [
+      RefreshIndicator(
+        onRefresh: _load,
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            for (final letter in _letters) ...[
+              SliverToBoxAdapter(
+                child: Container(
+                  key: _headerKeys[letter],
+                  padding: const EdgeInsets.fromLTRB(16, 12, 40, 4),
+                  child: Text(
+                    letter,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 40, 8),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3, childAspectRatio: 0.75,
+                    crossAxisSpacing: 12, mainAxisSpacing: 12,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final artist = _grouped[letter]![index];
+                      return _AvatarCard(
+                        imageUrl: artist.getPrimaryImageUrl(fillWidth: 200, fillHeight: 200),
+                        hasImage: artist.hasImage,
+                        title: artist.name,
+                        subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
+                        placeholderIcon: Icons.person,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
+                        )),
+                      );
+                    },
+                    childCount: _grouped[letter]!.length,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
-        itemCount: _artists.length,
-        itemBuilder: (context, index) {
-          final artist = _artists[index];
-          return _AvatarCard(
-            imageUrl: artist.getPrimaryImageUrl(fillWidth: 200, fillHeight: 200),
-            hasImage: artist.hasImage,
-            title: artist.name,
-            subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
-            placeholderIcon: Icons.person,
-            onTap: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
-            )),
-          );
-        },
       ),
-    );
+      Positioned(
+        right: 2,
+        top: 0,
+        bottom: 0,
+        width: 28,
+        child: _AlphabetIndexBar(
+          letters: _letters,
+          activeLetter: _activeLetter,
+          onLetterTap: _scrollToLetter,
+        ),
+      ),
+    ]);
   }
 }
 
@@ -139,15 +366,82 @@ class _AlbumsTabState extends State<_AlbumsTab> {
   List<MusicAlbum> _albums = [];
   bool _isLoading = true;
   String? _error;
+  late ScrollController _scrollController;
+  String _activeLetter = '';
+  Map<String, List<MusicAlbum>> _grouped = {};
+  List<String> _letters = [];
+  final Map<String, GlobalKey> _headerKeys = {};
+  static const double _headerHeight = 40.0;
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _rebuildGroups() {
+    _grouped = groupByFirstLetter(
+      _albums,
+      (a) => a.sortName,
+      (a) => a.name,
+    );
+    _letters = _grouped.keys.toList();
+    _headerKeys.clear();
+    for (final letter in _letters) {
+      _headerKeys[letter] = GlobalKey();
+    }
+    if (_letters.isNotEmpty) _activeLetter = _letters.first;
+  }
+
+  void _onScroll() {
+    for (final letter in _letters) {
+      final key = _headerKeys[letter];
+      if (key?.currentContext != null) {
+        final box = key!.currentContext!.findRenderObject() as RenderBox?;
+        if (box != null) {
+          final pos = box.localToGlobal(Offset.zero, ancestor: null);
+          if (pos.dy <= _headerHeight) {
+            if (_activeLetter != letter && mounted) {
+              setState(() => _activeLetter = letter);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void _scrollToLetter(String letter) {
+    final key = _headerKeys[letter];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0.0,
+      );
+    }
+  }
 
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
       final result = await widget.client.music.getAlbums(parentId: widget.libraryId, limit: 100);
-      if (mounted) setState(() { _albums = result.albums; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _albums = result.albums;
+          _isLoading = false;
+        });
+        _rebuildGroups();
+      }
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
     }
@@ -158,29 +452,69 @@ class _AlbumsTabState extends State<_AlbumsTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return _buildError(_error!, _load);
     if (_albums.isEmpty) return const Center(child: Text('暂无专辑'));
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: GridView.builder(
-        padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, childAspectRatio: 0.7, crossAxisSpacing: 12, mainAxisSpacing: 12,
+
+    return Stack(children: [
+      RefreshIndicator(
+        onRefresh: _load,
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            for (final letter in _letters) ...[
+              SliverToBoxAdapter(
+                child: Container(
+                  key: _headerKeys[letter],
+                  padding: const EdgeInsets.fromLTRB(16, 12, 40, 4),
+                  child: Text(
+                    letter,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 40, 8),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3, childAspectRatio: 0.7,
+                    crossAxisSpacing: 12, mainAxisSpacing: 12,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final album = _grouped[letter]![index];
+                      return _AvatarCard(
+                        imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200),
+                        hasImage: album.hasCoverImage,
+                        title: album.name,
+                        subtitle: album.artistText,
+                        placeholderIcon: Icons.album,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => AlbumDetailPage(client: widget.client, album: album),
+                        )),
+                      );
+                    },
+                    childCount: _grouped[letter]!.length,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
-        itemCount: _albums.length,
-        itemBuilder: (context, index) {
-          final album = _albums[index];
-          return _AvatarCard(
-            imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200),
-            hasImage: album.hasCoverImage,
-            title: album.name,
-            subtitle: album.artistText,
-            placeholderIcon: Icons.album,
-            onTap: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => AlbumDetailPage(client: widget.client, album: album),
-            )),
-          );
-        },
       ),
-    );
+      Positioned(
+        right: 2,
+        top: 0,
+        bottom: 0,
+        width: 28,
+        child: _AlphabetIndexBar(
+          letters: _letters,
+          activeLetter: _activeLetter,
+          onLetterTap: _scrollToLetter,
+        ),
+      ),
+    ]);
   }
 }
 
@@ -198,15 +532,82 @@ class _SongsTabState extends State<_SongsTab> {
   List<MusicSong> _songs = [];
   bool _isLoading = true;
   String? _error;
+  late ScrollController _scrollController;
+  String _activeLetter = '';
+  Map<String, List<MusicSong>> _grouped = {};
+  List<String> _letters = [];
+  final Map<String, GlobalKey> _headerKeys = {};
+  static const double _headerHeight = 48.0;
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _rebuildGroups() {
+    _grouped = groupByFirstLetter(
+      _songs,
+      (s) => s.sortName,
+      (s) => s.name,
+    );
+    _letters = _grouped.keys.toList();
+    _headerKeys.clear();
+    for (final letter in _letters) {
+      _headerKeys[letter] = GlobalKey();
+    }
+    if (_letters.isNotEmpty) _activeLetter = _letters.first;
+  }
+
+  void _onScroll() {
+    for (final letter in _letters) {
+      final key = _headerKeys[letter];
+      if (key?.currentContext != null) {
+        final box = key!.currentContext!.findRenderObject() as RenderBox?;
+        if (box != null) {
+          final pos = box.localToGlobal(Offset.zero, ancestor: null);
+          if (pos.dy <= _headerHeight) {
+            if (_activeLetter != letter && mounted) {
+              setState(() => _activeLetter = letter);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void _scrollToLetter(String letter) {
+    final key = _headerKeys[letter];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0.0,
+      );
+    }
+  }
 
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
       final result = await widget.client.music.getLatestSongs(parentId: widget.libraryId, limit: 100);
-      if (mounted) setState(() { _songs = result.songs; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _songs = result.songs;
+          _isLoading = false;
+        });
+        _rebuildGroups();
+      }
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
     }
@@ -217,39 +618,79 @@ class _SongsTabState extends State<_SongsTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return _buildError(_error!, _load);
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        itemCount: _songs.length,
-        itemBuilder: (context, index) {
-          final song = _songs[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: song.trackNumber != null
-                  ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
-                  : const Icon(Icons.music_note, size: 20),
-            ),
-            title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(
-              '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-            trailing: Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-            onTap: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => AudioPlayerPage(
-                client: widget.client, song: song, playlist: _songs, initialIndex: index,
+
+    return Stack(children: [
+      RefreshIndicator(
+        onRefresh: _load,
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            for (final letter in _letters) ...[
+              SliverToBoxAdapter(
+                child: Container(
+                  key: _headerKeys[letter],
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Text(
+                    letter,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
               ),
-            )),
-          );
-        },
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final song = _grouped[letter]![index];
+                    final songIndex = _songs.indexOf(song);
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        child: song.trackNumber != null
+                            ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
+                            : const Icon(Icons.music_note, size: 20),
+                      ),
+                      title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                        '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                      trailing: Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => AudioPlayerPage(
+                          client: widget.client, song: song, playlist: _songs, initialIndex: songIndex,
+                        ),
+                      )),
+                    );
+                  },
+                  childCount: _grouped[letter]!.length,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
-    );
+      Positioned(
+        right: 2,
+        top: 0,
+        bottom: 0,
+        width: 28,
+        child: _AlphabetIndexBar(
+          letters: _letters,
+          activeLetter: _activeLetter,
+          onLetterTap: _scrollToLetter,
+        ),
+      ),
+    ]);
   }
 }
 
 // ==================== 音频播放页 ====================
+
+enum RepeatMode { off, repeatAll, repeatOne }
 
 class AudioPlayerPage extends StatefulWidget {
   final JellyfinClient client;
@@ -278,14 +719,30 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
 
+  // Shuffle / Repeat
+  RepeatMode _repeatMode = RepeatMode.off;
+  bool _shuffleMode = false;
+  List<int> _shuffleOrder = [];
+  int _shufflePosition = 0;
+
   MusicSong get _currentSong => widget.playlist[_currentIndex];
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _initShuffleOrder();
     _setupListeners();
     _playSong();
+  }
+
+  void _initShuffleOrder() {
+    _shuffleOrder = List.generate(widget.playlist.length, (i) => i);
+    _shuffleOrder.shuffle();
+    // Ensure current song is first in shuffle
+    _shuffleOrder.remove(_currentIndex);
+    _shuffleOrder.insert(0, _currentIndex);
+    _shufflePosition = 0;
   }
 
   void _setupListeners() {
@@ -293,7 +750,9 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
       if (!mounted) return;
       setState(() {
         _isPlaying = state == PlayerState.playing;
-        _isLoading = state == PlayerState.playing && _position == Duration.zero;
+        if (state == PlayerState.playing || state == PlayerState.paused || state == PlayerState.completed) {
+          _isLoading = false;
+        }
       });
     });
 
@@ -306,7 +765,12 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
-      _playNext();
+      if (_repeatMode == RepeatMode.repeatOne) {
+        _audioPlayer.seek(Duration.zero);
+        _audioPlayer.resume();
+      } else {
+        _playNext();
+      }
     });
   }
 
@@ -324,17 +788,59 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
   }
 
   Future<void> _playNext() async {
-    if (_currentIndex < widget.playlist.length - 1) {
-      setState(() => _currentIndex++);
-      await _playSong();
+    final len = widget.playlist.length;
+    if (len <= 1 && _repeatMode != RepeatMode.repeatAll) return;
+
+    if (_shuffleMode) {
+      _shufflePosition++;
+      if (_shufflePosition >= len) {
+        if (_repeatMode == RepeatMode.repeatAll) {
+          _initShuffleOrder();
+        } else {
+          return;
+        }
+      }
+      setState(() => _currentIndex = _shuffleOrder[_shufflePosition]);
+    } else {
+      if (_currentIndex < len - 1) {
+        setState(() => _currentIndex++);
+      } else if (_repeatMode == RepeatMode.repeatAll) {
+        setState(() => _currentIndex = 0);
+      } else {
+        return;
+      }
     }
+    await _playSong();
   }
 
   Future<void> _playPrevious() async {
-    if (_currentIndex > 0) {
-      setState(() => _currentIndex--);
-      await _playSong();
+    // 播放超过 3 秒先回到开头
+    if (_position.inSeconds >= 3) {
+      await _audioPlayer.seek(Duration.zero);
+      return;
     }
+
+    final len = widget.playlist.length;
+    if (len <= 1) {
+      await _audioPlayer.seek(Duration.zero);
+      return;
+    }
+
+    if (_shuffleMode) {
+      if (_shufflePosition > 0) {
+        _shufflePosition--;
+      } else {
+        _shufflePosition = len - 1;
+      }
+      setState(() => _currentIndex = _shuffleOrder[_shufflePosition]);
+    } else {
+      if (_currentIndex > 0) {
+        setState(() => _currentIndex--);
+      } else {
+        setState(() => _currentIndex = len - 1);
+      }
+    }
+    await _playSong();
   }
 
   @override
@@ -398,18 +904,56 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
               ),
               const SizedBox(height: 16),
 
-              // 控制
+              // 控制: [Shuffle] [Prev] [Play/Pause] [Next] [Repeat]
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                IconButton(onPressed: _currentIndex > 0 ? _playPrevious : null, icon: const Icon(Icons.skip_previous, size: 40)),
-                const SizedBox(width: 24),
+                // Shuffle
+                IconButton(
+                  onPressed: () => setState(() {
+                    _shuffleMode = !_shuffleMode;
+                    if (_shuffleMode) _initShuffleOrder();
+                  }),
+                  icon: const Icon(Icons.shuffle, size: 28),
+                  color: _shuffleMode ? Theme.of(context).colorScheme.primary : null,
+                ),
+                const SizedBox(width: 8),
+                // Previous
+                IconButton(
+                  onPressed: _playPrevious,
+                  icon: const Icon(Icons.skip_previous, size: 40),
+                ),
+                const SizedBox(width: 12),
+                // Play/Pause
                 _isLoading
                     ? const SizedBox(width: 56, height: 56, child: CircularProgressIndicator())
                     : IconButton.filled(
                         onPressed: () async { _isPlaying ? await _audioPlayer.pause() : await _audioPlayer.resume(); },
                         icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, size: 40),
                         style: IconButton.styleFrom(minimumSize: const Size(64, 64))),
-                const SizedBox(width: 24),
-                IconButton(onPressed: _currentIndex < widget.playlist.length - 1 ? _playNext : null, icon: const Icon(Icons.skip_next, size: 40)),
+                const SizedBox(width: 12),
+                // Next
+                IconButton(
+                  onPressed: _playNext,
+                  icon: const Icon(Icons.skip_next, size: 40),
+                ),
+                const SizedBox(width: 8),
+                // Repeat
+                IconButton(
+                  onPressed: () => setState(() {
+                    switch (_repeatMode) {
+                      case RepeatMode.off:
+                        _repeatMode = RepeatMode.repeatAll;
+                      case RepeatMode.repeatAll:
+                        _repeatMode = RepeatMode.repeatOne;
+                      case RepeatMode.repeatOne:
+                        _repeatMode = RepeatMode.off;
+                    }
+                  }),
+                  icon: Icon(
+                    _repeatMode == RepeatMode.repeatOne ? Icons.repeat_one : Icons.repeat,
+                    size: 28,
+                  ),
+                  color: _repeatMode != RepeatMode.off ? Theme.of(context).colorScheme.primary : null,
+                ),
               ]),
               const SizedBox(height: 16),
 
