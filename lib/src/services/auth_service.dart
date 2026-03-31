@@ -65,6 +65,9 @@ class AuthService {
       // 更新API客户端的访问令牌
       _apiClient.updateAccessToken(authResult.accessToken ?? '');
 
+      // 保存用户ID到配置，UserService 等服务依赖此字段
+      _apiClient.config.userId = authResult.user?.id;
+
       _logger.i('Authentication successful for user: $username');
 
       // 创建会话信息
