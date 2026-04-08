@@ -159,22 +159,32 @@ class MediaLibrariesPage extends StatefulWidget {
 
 class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
   List<MediaLibrary> _mediaLibraries = [];
+  List<MediaItem> _continueWatching = [];
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadMediaLibraries();
+    _loadAll();
   }
 
-  Future<void> _loadMediaLibraries() async {
+  Future<void> _loadAll() async {
     setState(() { _isLoading = true; _errorMessage = null; });
     try {
-      final result = await widget.client.mediaLibrary.getMediaLibraries();
-      setState(() { _mediaLibraries = result.libraries; _isLoading = false; });
+      final results = await Future.wait([
+        widget.client.mediaLibrary.getMediaLibraries(),
+        widget.client.user.getContinueWatching(limit: 10),
+      ]);
+      if (mounted) {
+        setState(() {
+          _mediaLibraries = (results[0] as MediaLibraryListResult).libraries;
+          _continueWatching = (results[1] as MediaItemListResult).items;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() { _errorMessage = '获取媒体库失败: $e'; _isLoading = false; });
+      if (mounted) setState(() { _errorMessage = '$e'; _isLoading = false; });
     }
   }
 
@@ -209,26 +219,52 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: _loadMediaLibraries, tooltip: '刷新', child: const Icon(Icons.refresh)),
+      floatingActionButton: FloatingActionButton(onPressed: _loadAll, tooltip: '刷新', child: const Icon(Icons.refresh)),
     );
   }
 
   Widget _buildBody() {
-    if (_isLoading) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('正在加载媒体库...')]));
-    if (_errorMessage != null) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 64, color: Colors.red), const SizedBox(height: 16), Text(_errorMessage!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center), const SizedBox(height: 16), FilledButton(onPressed: _loadMediaLibraries, child: const Text('重试'))]));
-    if (_mediaLibraries.isEmpty) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.folder_open, size: 64, color: Colors.grey), SizedBox(height: 16), Text('没有找到媒体库', style: TextStyle(fontSize: 16, color: Colors.grey))]));
+    if (_isLoading) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('正在加载...')]));
+    if (_errorMessage != null) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 64, color: Colors.red), const SizedBox(height: 16), Text(_errorMessage!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center), const SizedBox(height: 16), FilledButton(onPressed: _loadAll, child: const Text('重试'))]));
 
     return RefreshIndicator(
-      onRefresh: _loadMediaLibraries,
-      child: GridView.builder(
+      onRefresh: _loadAll,
+      child: ListView(
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.5, crossAxisSpacing: 12, mainAxisSpacing: 12),
-        itemCount: _mediaLibraries.length,
-        itemBuilder: (context, index) => _LibraryCard(
-          client: widget.client,
-          library: _mediaLibraries[index],
-          onTap: () => _navigateToLibrary(_mediaLibraries[index]),
-        ),
+        children: [
+          // 媒体库
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text('媒体库', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _mediaLibraries.map((lib) => _LibraryCard(
+              client: widget.client,
+              library: lib,
+              onTap: () => _navigateToLibrary(lib),
+            )).toList(),
+          ),
+          // 继续观看
+          if (_continueWatching.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('继续观看', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            SizedBox(
+              height: 180,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _continueWatching.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) =>
+                    _ContinueWatchingCard(item: _continueWatching[index], client: widget.client),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -246,7 +282,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
   }
 }
 
-/// 媒体库卡片
+/// 媒体库卡片（紧凑横条）
 class _LibraryCard extends StatelessWidget {
   final JellyfinClient client;
   final MediaLibrary library;
@@ -256,33 +292,41 @@ class _LibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 4,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: (MediaQuery.of(context).size.width - 42) / 2,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
           children: [
-            Expanded(child: library.hasCoverImage
-                ? JellyfinImageWithClient(client: client, itemId: library.id, imageTag: library.primaryImageTag, fillWidth: 288, fillHeight: 428, fit: BoxFit.cover)
-                : Container(color: Colors.blue.withValues(alpha: 0.3), child: Center(child: Text(library.type.icon, style: const TextStyle(fontSize: 48))))),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Row(
+            // 小图标/封面
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).colorScheme.primaryContainer,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: library.hasCoverImage
+                  ? JellyfinImageWithClient(client: client, itemId: library.id, imageTag: library.primaryImageTag, fillWidth: 80, fillHeight: 80, fit: BoxFit.cover)
+                  : Center(child: Text(library.type.icon, style: const TextStyle(fontSize: 22))),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(library.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        if (library.itemCount != null)
-                          Text('${library.itemCount} 项', style: TextStyle(color: Colors.grey[600], fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                  Text(library.type.icon, style: const TextStyle(fontSize: 20)),
+                  Text(library.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (library.itemCount != null)
+                    Text('${library.itemCount} 项', style: TextStyle(color: Colors.grey[600], fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -291,4 +335,90 @@ class _LibraryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 继续观看卡片
+class _ContinueWatchingCard extends StatelessWidget {
+  final MediaItem item;
+  final JellyfinClient client;
+
+  const _ContinueWatchingCard({required this.item, required this.client});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (item.playedPercentage ?? 0) / 100;
+    final coverUrl = item.getCoverImageUrl();
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => MediaItemDetailPage(client: client, item: item),
+        ));
+      },
+      child: SizedBox(
+        width: 130,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 封面 + 进度条
+            Expanded(
+              child: Stack(
+                children: [
+                  // 封面
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: coverUrl != null
+                        ? Image.network(coverUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
+                            errorBuilder: (_, __, ___) => _placeholder(context))
+                        : _placeholder(context),
+                  ),
+                  // 底部蓝色进度条
+                  if (progress > 0)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                        child: LinearProgressIndicator(
+                          value: progress.clamp(0.0, 1.0),
+                          minHeight: 3,
+                          backgroundColor: Colors.white.withValues(alpha: 0.3),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            // 标题
+            Text(
+              item.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            // 副标题（类型 + 年份）
+            Text(
+              '${item.typeDisplayName}${item.productionYear != null ? ' · ${item.productionYear}' : ''}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder(BuildContext context) => Container(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: Center(child: Icon(item.typeIcon != '' ? null : Icons.play_circle_outline,
+        size: 32, color: Colors.white54)),
+  );
 }
