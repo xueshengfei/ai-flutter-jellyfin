@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import '../../jellyfin_image.dart';
 
 /// 横幅列表视图
 ///

@@ -1,6 +1,6 @@
 name: jellyfin_service
-description: Jellyfin业务SDK - 简化版，只包含认证功能
-version: 0.1.0
+description: Jellyfin业务SDK - 提供完整的Jellyfin媒体库浏览、播放功能
+version: 0.2.0
 publish_to: 'none'
 
 environment:
@@ -24,6 +24,16 @@ dependencies:
   # JSON序列化
   json_annotation: ^4.9.0
   equatable: ^2.0.7
+
+  # 视频播放
+  video_player: ^2.8.1
+  chewie: ^1.7.5
+
+  # 音频播放
+  audioplayers: ^6.1.0
+
+  # 本地存储（视图模式偏好等）
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

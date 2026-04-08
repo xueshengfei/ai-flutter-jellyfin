@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'album_detail_page.dart';
+import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
 
 /// 艺术家详情页
 ///

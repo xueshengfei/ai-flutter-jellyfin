@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'artist_detail_page.dart';
-import 'album_detail_page.dart';
-import 'music_library_page.dart' show AudioPlayerPage;
+import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
+import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
+import 'package:jellyfin_service/src/ui/pages/music_library_page.dart' show AudioPlayerPage;
 
 /// 音乐搜索页面
 ///

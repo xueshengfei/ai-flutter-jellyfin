@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'services/playback_service.dart';
 
 /// 视频播放页面
 ///

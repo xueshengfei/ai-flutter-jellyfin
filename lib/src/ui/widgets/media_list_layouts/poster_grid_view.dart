@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import '../../media_item_card.dart';
 
 /// 海报网格视图
 ///

@@ -62,3 +62,37 @@ export 'src/exceptions/api_exception.dart';
 
 // 主客户端
 export 'src/jellyfin_client.dart';
+
+// ==================== UI 层 ====================
+
+// UI 模型
+export 'src/ui/models/view_mode_models.dart';
+
+// UI 服务
+export 'src/ui/services/playback_service.dart';
+export 'src/ui/services/view_mode_manager.dart';
+
+// UI 组件
+export 'src/ui/widgets/jellyfin_image.dart';
+export 'src/ui/widgets/media_item_card.dart';
+export 'src/ui/widgets/actor_avatar_card.dart';
+export 'src/ui/widgets/person_avatar_card.dart';
+export 'src/ui/widgets/media_item_card_with_actions.dart';
+export 'src/ui/widgets/media_list_builder.dart';
+export 'src/ui/widgets/view_mode_selector.dart';
+
+// UI 页面
+export 'src/ui/pages/video_player_page.dart';
+export 'src/ui/pages/media_item_detail_page.dart';
+export 'src/ui/pages/media_items_page.dart';
+export 'src/ui/pages/movie_detail_page.dart';
+export 'src/ui/pages/movie_filter_page.dart';
+export 'src/ui/pages/personal_page.dart';
+export 'src/ui/pages/person_detail_page.dart';
+export 'src/ui/pages/episodes_page.dart';
+export 'src/ui/pages/seasons_page.dart';
+export 'src/ui/pages/music_library_page.dart';
+export 'src/ui/pages/music_search_page.dart';
+export 'src/ui/pages/artist_detail_page.dart';
+export 'src/ui/pages/album_detail_page.dart';
+export 'src/ui/pages/test_api_page.dart';

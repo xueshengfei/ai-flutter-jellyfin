@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/view_mode_models.dart';
+import 'package:jellyfin_service/src/ui/models/view_mode_models.dart';
 
 /// 视图模式管理服务
 ///

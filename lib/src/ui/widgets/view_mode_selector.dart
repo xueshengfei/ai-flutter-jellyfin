@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/view_mode_models.dart';
-import '../services/view_mode_manager.dart';
+import 'package:jellyfin_service/src/ui/models/view_mode_models.dart';
+import 'package:jellyfin_service/src/ui/services/view_mode_manager.dart';
 
 /// 视图模式选择器
 ///

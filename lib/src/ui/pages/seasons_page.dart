@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'episodes_page.dart';
-import 'video_player_page.dart';
 
 /// 季列表页面
 ///

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import '../models/view_mode_models.dart';
-import 'media_list_layouts/banner_list_view.dart';
-import 'media_list_layouts/vertical_list_view.dart';
-import 'media_list_layouts/poster_grid_view.dart';
-import 'media_list_layouts/card_grid_view.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_layouts/banner_list_view.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_layouts/vertical_list_view.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_layouts/poster_grid_view.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_layouts/card_grid_view.dart';
 
 /// 媒体列表构建器
 ///

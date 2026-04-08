@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'artist_detail_page.dart';
-import 'album_detail_page.dart';
-import 'music_search_page.dart';
+import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
+import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
+import 'package:jellyfin_service/src/ui/pages/music_search_page.dart';
 
 // ==================== 首字母索引工具函数 ====================
 

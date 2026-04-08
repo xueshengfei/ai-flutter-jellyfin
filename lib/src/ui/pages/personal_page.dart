@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'media_item_detail_page.dart';
-import 'video_player_page.dart';
-import 'widgets/media_list_builder.dart';
-import 'widgets/media_list_layouts/poster_grid_view.dart';
-import 'models/view_mode_models.dart';
-import 'services/view_mode_manager.dart';
-import 'widgets/view_mode_selector.dart';
-import 'widgets/media_item_card_with_actions.dart';
+import 'package:jellyfin_service/src/ui/pages/media_item_detail_page.dart';
+import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_builder.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_layouts/poster_grid_view.dart';
+import 'package:jellyfin_service/src/ui/models/view_mode_models.dart';
+import 'package:jellyfin_service/src/ui/services/view_mode_manager.dart';
+import 'package:jellyfin_service/src/ui/widgets/view_mode_selector.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_item_card_with_actions.dart';
 
 /// 个人中心页面
 ///

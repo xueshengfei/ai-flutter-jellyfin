@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'person_avatar_card.dart';
-import 'person_detail_page.dart';
-import 'episodes_page.dart';
-import 'video_player_page.dart';
+import 'package:jellyfin_service/src/ui/widgets/person_avatar_card.dart';
+import 'package:jellyfin_service/src/ui/pages/person_detail_page.dart';
+import 'package:jellyfin_service/src/ui/pages/episodes_page.dart';
+import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
 
 /// 通用媒体项详情页面
 ///

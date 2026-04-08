@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'video_player_page.dart';
-import 'models/view_mode_models.dart';
-import 'services/view_mode_manager.dart';
-import 'widgets/view_mode_selector.dart';
-import 'widgets/media_list_builder.dart';
+import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
+import 'package:jellyfin_service/src/ui/models/view_mode_models.dart';
+import 'package:jellyfin_service/src/ui/services/view_mode_manager.dart';
+import 'package:jellyfin_service/src/ui/widgets/view_mode_selector.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_builder.dart';
 
 /// 集列表页面
 ///

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'music_library_page.dart';
+import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
 
 /// 专辑详情页
 ///

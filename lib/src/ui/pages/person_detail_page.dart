@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'media_item_card.dart';
-import 'media_item_detail_page.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_item_card.dart';
+import 'package:jellyfin_service/src/ui/pages/media_item_detail_page.dart';
 
 /// 个人详情页面
 ///
