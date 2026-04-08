@@ -109,6 +109,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       // 等待控制器初始化
       await _videoController!.initialize();
 
+      // 续播：跳转到上次播放位置
+      if (resumeTicks != null && resumeTicks > 0) {
+        final resumeSeconds = resumeTicks / 10000000; // ticks → seconds
+        await _videoController!.seekTo(Duration(seconds: resumeSeconds.round()));
+      }
+
       // 创建 Chewie 控制器
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
