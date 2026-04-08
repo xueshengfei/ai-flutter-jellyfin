@@ -37,12 +37,65 @@ class _LoginPageState extends State<LoginPage> {
   String _status = '请登录';
   bool _isLoading = false;
 
+  // 服务器发现
+  final _discoveryService = ServerDiscoveryService();
+  List<DiscoveredServer> _discoveredServers = [];
+  bool _isDiscovering = false;
+  String? _verifyingAddress;
+
+  @override
+  void initState() {
+    super.initState();
+    _discoverServers();
+  }
+
   @override
   void dispose() {
     _serverController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _discoverServers() async {
+    setState(() {
+      _isDiscovering = true;
+      _discoveredServers = [];
+    });
+    try {
+      final servers = await _discoveryService.discoverServers();
+      if (mounted) {
+        setState(() {
+          _discoveredServers = servers;
+          _isDiscovering = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isDiscovering = false);
+    }
+  }
+
+  Future<void> _selectServer(DiscoveredServer server) async {
+    _serverController.text = server.address;
+    setState(() {
+      _verifyingAddress = server.address;
+      _status = '正在验证服务器...';
+    });
+    final verified = await _discoveryService.verifyServer(server.address);
+    if (!mounted) return;
+
+    // 用 PublicInfo 详情更新列表中的条目
+    final updated = verified != null ? server.mergeWith(verified) : server;
+    setState(() {
+      _verifyingAddress = null;
+      final idx = _discoveredServers.indexWhere((s) => s.id == server.id);
+      if (idx >= 0) _discoveredServers[idx] = updated;
+      if (verified != null) {
+        _status = '服务器已验证: ${updated.name}';
+      } else {
+        _status = '服务器验证失败，请确认地址是否正确';
+      }
+    });
   }
 
   Future<void> _login() async {
@@ -91,6 +144,97 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Widget _buildDiscoverySection(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Text('局域网服务器', style: Theme.of(context).textTheme.titleSmall),
+            const Spacer(),
+            if (_isDiscovering)
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              TextButton.icon(
+                onPressed: _discoverServers,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('扫描'),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_isDiscovering)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('正在扫描局域网...', style: TextStyle(color: Colors.grey)),
+          ))
+        else if (_discoveredServers.isEmpty)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('未发现局域网服务器，请手动输入', style: TextStyle(color: Colors.grey)),
+          ))
+        else
+          Column(
+            children: _discoveredServers.map((server) {
+              final isVerifying = _verifyingAddress == server.address;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: isVerifying ? null : () => _selectServer(server),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: _verifyingAddress == server.address
+                          ? Border.all(color: colorScheme.primary, width: 1.5)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        // 服务器图标
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: colorScheme.primaryContainer,
+                          ),
+                          child: isVerifying
+                              ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+                              : const Icon(Icons.dns, size: 22, color: Colors.white70),
+                        ),
+                        const SizedBox(width: 12),
+                        // 名称 + 地址 + 版本
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(server.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 2),
+                              Text(server.address, style: TextStyle(fontSize: 12, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              if (server.version != null)
+                                Text('v${server.version}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                            ],
+                          ),
+                        ),
+                        // 点击连接箭头
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,6 +269,9 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 8),
                         Text(_status, style: TextStyle(color: _status.contains('失败') ? Colors.red : Colors.grey), textAlign: TextAlign.center),
                         const SizedBox(height: 32),
+                        // 服务器发现区域
+                        _buildDiscoverySection(context),
+                        const SizedBox(height: 12),
                         TextField(controller: _serverController, decoration: const InputDecoration(labelText: '服务器地址', prefixIcon: Icon(Icons.dns), border: OutlineInputBorder())),
                         const SizedBox(height: 16),
                         TextField(controller: _usernameController, decoration: const InputDecoration(labelText: '用户名', prefixIcon: Icon(Icons.person), border: OutlineInputBorder()), textInputAction: TextInputAction.next),
