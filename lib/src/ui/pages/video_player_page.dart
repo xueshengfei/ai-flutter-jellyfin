@@ -87,9 +87,17 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
       // 获取播放 URL
       print('📡 获取播放 URL...');
+      // 计算续播位置：playedPercentage * runTimeTicks
+      int? resumeTicks;
+      if (widget.item.playedPercentage != null &&
+          widget.item.playedPercentage! > 0 &&
+          widget.item.runTimeTicks != null) {
+        resumeTicks = (widget.item.runTimeTicks! * widget.item.playedPercentage! / 100).round();
+      }
+
       final playbackInfo = await _playbackService.getPlaybackUrl(
         itemId: widget.item.id,
-        startTimeTicks: widget.item.runTimeTicks,
+        startTimeTicks: resumeTicks,
       );
 
       // 初始化视频控制器
@@ -100,12 +108,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
       // 等待控制器初始化
       await _videoController!.initialize();
-
-      // TODO: 实现断点续播功能（需要获取 userData）
-      // 如果有上次播放位置，跳转到该位置
-      // if (widget.item.playedPercentage != null && widget.item.playedPercentage! > 0) {
-      //   // 跳转逻辑
-      // }
 
       // 创建 Chewie 控制器
       _chewieController = ChewieController(

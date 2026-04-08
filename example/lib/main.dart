@@ -352,7 +352,7 @@ class _ContinueWatchingCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         Navigator.push(context, MaterialPageRoute(
-          builder: (_) => MediaItemDetailPage(client: client, item: item),
+          builder: (_) => VideoPlayerPage(client: client, item: item),
         ));
       },
       child: SizedBox(
