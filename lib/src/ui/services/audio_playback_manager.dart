@@ -180,6 +180,7 @@ class AudioPlaybackManager extends ChangeNotifier {
       final url = _client!.music.getUniversalAudioStreamUrl(
         song.id,
         container: const ['mp3', 'aac'],
+        audioCodec: 'mp3',
       );
       await _player.play(UrlSource(url));
     } catch (e) {

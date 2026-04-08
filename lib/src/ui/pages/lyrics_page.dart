@@ -30,13 +30,22 @@ class _LyricsPageState extends State<LyricsPage> {
   Timer? _scrollResumeTimer;
 
   final ScrollController _scrollController = ScrollController();
-  late double _itemHeight;
+  static const double _itemHeight = 56.0;
+
+  StreamSubscription<Duration>? _positionSub;
 
   @override
   void initState() {
     super.initState();
-    _itemHeight = 56.0;
     _loadLyrics();
+  }
+
+  void _startPositionTracking() {
+    _positionSub?.cancel();
+    _positionSub = AudioPlaybackManager.instance.player.onPositionChanged.listen((p) {
+      if (!mounted) return;
+      _updateCurrentLine(p);
+    });
   }
 
   Future<void> _loadLyrics() async {
@@ -48,6 +57,8 @@ class _LyricsPageState extends State<LyricsPage> {
           _lyricsData = data;
           _isLoading = false;
         });
+        // 歌词加载完成后开始监听位置
+        _startPositionTracking();
       }
     } catch (e) {
       if (mounted) {
@@ -62,7 +73,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
     final positionTicks = position.inMicroseconds * 10;
 
-    // 二分查找：找到 startTicks <= currentPosition 的最后一行
+    // 找到 startTicks <= currentPosition 的最后一行
     int newIndex = -1;
     for (int i = lines.length - 1; i >= 0; i--) {
       if (lines[i].startTicks != null && lines[i].startTicks! <= positionTicks) {
@@ -72,7 +83,9 @@ class _LyricsPageState extends State<LyricsPage> {
     }
 
     if (newIndex != _currentLineIndex) {
-      _currentLineIndex = newIndex;
+      setState(() {
+        _currentLineIndex = newIndex;
+      });
       if (!_isUserScrolling) {
         _scrollToLine(newIndex);
       }
@@ -82,17 +95,19 @@ class _LyricsPageState extends State<LyricsPage> {
   void _scrollToLine(int index) {
     if (!_scrollController.hasClients || index < 0) return;
 
-    // 目标：让当前行居中
-    final viewportHeight = _scrollController.position.viewportDimension;
-    final targetOffset = (index * _itemHeight) - (viewportHeight / 2) + (_itemHeight / 2);
-    final maxOffset = _scrollController.position.maxScrollExtent;
-    final clampedOffset = targetOffset.clamp(0.0, maxOffset);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final viewportHeight = _scrollController.position.viewportDimension;
+      final targetOffset = (index * _itemHeight) - (viewportHeight / 2) + (_itemHeight / 2);
+      final maxOffset = _scrollController.position.maxScrollExtent;
+      final clampedOffset = targetOffset.clamp(0.0, maxOffset);
 
-    _scrollController.animateTo(
-      clampedOffset,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+      _scrollController.animateTo(
+        clampedOffset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   void _onUserScroll() {
@@ -164,6 +179,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
       if (selected != null && selected.id != null && mounted) {
         setState(() => _isLoading = true);
+        _positionSub?.cancel();
         final data = await widget.client.music.downloadRemoteLyrics(
           itemId: widget.currentSong.id,
           lyricId: selected.id!,
@@ -174,6 +190,7 @@ class _LyricsPageState extends State<LyricsPage> {
             _isLoading = false;
             _currentLineIndex = -1;
           });
+          _startPositionTracking();
         }
       }
     } catch (e) {
@@ -187,6 +204,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
   @override
   void dispose() {
+    _positionSub?.cancel();
     _scrollResumeTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
@@ -199,18 +217,12 @@ class _LyricsPageState extends State<LyricsPage> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. 模糊封面背景
           _buildBlurredBackground(),
-
-          // 2. 主内容
           SafeArea(
             child: Column(
               children: [
-                // 顶部栏
                 _buildTopBar(),
-                // 歌词列表
                 Expanded(child: _buildBody()),
-                // 底部控制栏
                 _buildBottomControls(manager),
               ],
             ),
@@ -286,7 +298,7 @@ class _LyricsPageState extends State<LyricsPage> {
               },
             ),
           ),
-          const SizedBox(width: 40), // 平衡返回按钮
+          const SizedBox(width: 40),
         ],
       ),
     );
@@ -313,21 +325,13 @@ class _LyricsPageState extends State<LyricsPage> {
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final manager = AudioPlaybackManager.instance;
-          // 使首尾行可居中的 padding
           final verticalPadding = constraints.maxHeight / 2;
-          return ListenableBuilder(
-            listenable: manager,
-            builder: (context, _) {
-              _updateCurrentLine(manager.position);
-              return ListView.builder(
-                controller: _scrollController,
-                padding: EdgeInsets.symmetric(vertical: verticalPadding),
-                itemCount: lines.length,
-                itemExtent: _itemHeight,
-                itemBuilder: (context, index) => _buildLyricLine(lines[index], index),
-              );
-            },
+          return ListView.builder(
+            controller: _scrollController,
+            padding: EdgeInsets.symmetric(vertical: verticalPadding),
+            itemCount: lines.length,
+            itemExtent: _itemHeight,
+            itemBuilder: (context, index) => _buildLyricLine(lines[index], index),
           );
         },
       ),
@@ -409,7 +413,6 @@ class _LyricsPageState extends State<LyricsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 进度条
               Row(
                 children: [
                   Text(_fmtDuration(position),
@@ -443,7 +446,6 @@ class _LyricsPageState extends State<LyricsPage> {
                           color: Colors.white.withValues(alpha: 0.7), fontSize: 11)),
                 ],
               ),
-              // 播放/暂停
               IconButton(
                 onPressed: () => isPlaying ? manager.pause() : manager.resume(),
                 icon: Icon(

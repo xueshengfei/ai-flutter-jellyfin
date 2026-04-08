@@ -5,6 +5,7 @@ import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
 import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
 import 'package:jellyfin_service/src/ui/pages/music_search_page.dart';
 import 'package:jellyfin_service/src/ui/pages/lyrics_page.dart';
+import 'package:jellyfin_service/src/ui/widgets/mini_player_card.dart';
 
 // ==================== 首字母索引工具函数 ====================
 
@@ -102,12 +103,25 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _ArtistsTab(client: widget.client, libraryId: widget.libraryId),
-          _AlbumsTab(client: widget.client, libraryId: widget.libraryId),
-          _SongsTab(client: widget.client, libraryId: widget.libraryId),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _ArtistsTab(client: widget.client, libraryId: widget.libraryId),
+                _AlbumsTab(client: widget.client, libraryId: widget.libraryId),
+                _SongsTab(client: widget.client, libraryId: widget.libraryId),
+              ],
+            ),
+          ),
+          ListenableBuilder(
+            listenable: AudioPlaybackManager.instance,
+            builder: (context, _) {
+              if (!AudioPlaybackManager.instance.hasPlaylist) return const SizedBox.shrink();
+              return MiniPlayerCard(client: widget.client);
+            },
+          ),
         ],
       ),
     );
