@@ -65,11 +65,24 @@ class MusicLibraryPage extends StatefulWidget {
 class _MusicLibraryPageState extends State<MusicLibraryPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ViewModeManager _viewModeManager = ViewModeManager();
+  ViewModeConfig _viewModeConfig = const ViewModeConfig();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadViewModeConfig();
+  }
+
+  Future<void> _loadViewModeConfig() async {
+    final config = await _viewModeManager.getViewModeConfig(widget.libraryId);
+    if (mounted) setState(() => _viewModeConfig = config);
+  }
+
+  Future<void> _saveViewModeConfig(ViewModeConfig config) async {
+    await _viewModeManager.saveViewModeConfig(widget.libraryId, config);
+    if (mounted) setState(() => _viewModeConfig = config);
   }
 
   @override
@@ -84,6 +97,10 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
       appBar: AppBar(
         title: Text(widget.libraryName),
         actions: [
+          ViewModeSelector(
+            libraryId: widget.libraryId,
+            onViewModeChanged: _saveViewModeConfig,
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => Navigator.push(context, MaterialPageRoute(
@@ -109,9 +126,9 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _ArtistsTab(client: widget.client, libraryId: widget.libraryId),
-                _AlbumsTab(client: widget.client, libraryId: widget.libraryId),
-                _SongsTab(client: widget.client, libraryId: widget.libraryId),
+                _ArtistsTab(client: widget.client, libraryId: widget.libraryId, viewMode: _viewModeConfig.viewMode),
+                _AlbumsTab(client: widget.client, libraryId: widget.libraryId, viewMode: _viewModeConfig.viewMode),
+                _SongsTab(client: widget.client, libraryId: widget.libraryId, viewMode: _viewModeConfig.viewMode),
               ],
             ),
           ),
@@ -206,7 +223,8 @@ class _AlphabetIndexBarState extends State<_AlphabetIndexBar> {
 class _ArtistsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
-  const _ArtistsTab({required this.client, required this.libraryId});
+  final ViewMode viewMode;
+  const _ArtistsTab({required this.client, required this.libraryId, required this.viewMode});
   @override
   State<_ArtistsTab> createState() => _ArtistsTabState();
 }
@@ -221,6 +239,8 @@ class _ArtistsTabState extends State<_ArtistsTab> {
   List<String> _letters = [];
   final Map<String, GlobalKey> _headerKeys = {};
   static const double _headerHeight = 40.0;
+
+  bool get _useIndex => widget.viewMode == ViewMode.poster || widget.viewMode == ViewMode.card;
 
   @override
   void initState() {
@@ -302,6 +322,10 @@ class _ArtistsTabState extends State<_ArtistsTab> {
     if (_error != null) return _buildError(_error!, _load);
     if (_artists.isEmpty) return const Center(child: Text('暂无艺术家'));
 
+    // list / banner 视图：无字母分组，扁平列表
+    if (!_useIndex) return _buildFlatList();
+
+    // poster / card 视图：带字母索引分组
     return Stack(children: [
       RefreshIndicator(
         onRefresh: _load,
@@ -365,6 +389,83 @@ class _ArtistsTabState extends State<_ArtistsTab> {
       ),
     ]);
   }
+
+  Widget _buildFlatList() {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: widget.viewMode == ViewMode.list
+          ? ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: _artists.length,
+              itemBuilder: (context, index) {
+                final artist = _artists[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: artist.hasImage && artist.getPrimaryImageUrl() != null
+                          ? NetworkImage(artist.getPrimaryImageUrl()!)
+                          : null,
+                      child: artist.hasImage ? null : const Icon(Icons.person),
+                    ),
+                    title: Text(artist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: artist.albumCount != null ? Text('${artist.albumCount} 张专辑') : null,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
+                    )),
+                  ),
+                );
+              },
+            )
+          : ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: _artists.length,
+              itemBuilder: (context, index) {
+                final artist = _artists[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: InkWell(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
+                    )),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: 72, height: 72,
+                            child: artist.hasImage && artist.getPrimaryImageUrl() != null
+                                ? Image.network(artist.getPrimaryImageUrl()!, fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _iconPlaceholder())
+                                : _iconPlaceholder(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(artist.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              if (artist.albumCount != null)
+                                Text('${artist.albumCount} 张专辑', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _iconPlaceholder() => Container(
+    color: Theme.of(context).colorScheme.primaryContainer,
+    child: const Center(child: Icon(Icons.person, color: Colors.white54)),
+  );
 }
 
 // ==================== 专辑 Tab ====================
@@ -372,7 +473,8 @@ class _ArtistsTabState extends State<_ArtistsTab> {
 class _AlbumsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
-  const _AlbumsTab({required this.client, required this.libraryId});
+  final ViewMode viewMode;
+  const _AlbumsTab({required this.client, required this.libraryId, required this.viewMode});
   @override
   State<_AlbumsTab> createState() => _AlbumsTabState();
 }
@@ -387,6 +489,8 @@ class _AlbumsTabState extends State<_AlbumsTab> {
   List<String> _letters = [];
   final Map<String, GlobalKey> _headerKeys = {};
   static const double _headerHeight = 40.0;
+
+  bool get _useIndex => widget.viewMode == ViewMode.poster || widget.viewMode == ViewMode.card;
 
   @override
   void initState() {
@@ -468,6 +572,8 @@ class _AlbumsTabState extends State<_AlbumsTab> {
     if (_error != null) return _buildError(_error!, _load);
     if (_albums.isEmpty) return const Center(child: Text('暂无专辑'));
 
+    if (!_useIndex) return _buildFlatList();
+
     return Stack(children: [
       RefreshIndicator(
         onRefresh: _load,
@@ -531,6 +637,86 @@ class _AlbumsTabState extends State<_AlbumsTab> {
       ),
     ]);
   }
+
+  Widget _buildFlatList() {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: widget.viewMode == ViewMode.list
+          ? ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: _albums.length,
+              itemBuilder: (context, index) {
+                final album = _albums[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: SizedBox(
+                        width: 50, height: 50,
+                        child: album.hasCoverImage && album.getCoverImageUrl() != null
+                            ? Image.network(album.getCoverImageUrl()!, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _albumPlaceholder())
+                            : _albumPlaceholder(),
+                      ),
+                    ),
+                    title: Text(album.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(album.artistText, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => AlbumDetailPage(client: widget.client, album: album),
+                    )),
+                  ),
+                );
+              },
+            )
+          : ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: _albums.length,
+              itemBuilder: (context, index) {
+                final album = _albums[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: InkWell(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => AlbumDetailPage(client: widget.client, album: album),
+                    )),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: 72, height: 72,
+                            child: album.hasCoverImage && album.getCoverImageUrl() != null
+                                ? Image.network(album.getCoverImageUrl()!, fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _albumPlaceholder())
+                                : _albumPlaceholder(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(album.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text(album.artistText, style: TextStyle(color: Colors.grey.shade600, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _albumPlaceholder() => Container(
+    color: Theme.of(context).colorScheme.primaryContainer,
+    child: const Center(child: Icon(Icons.album, color: Colors.white54)),
+  );
 }
 
 // ==================== 歌曲 Tab ====================
@@ -538,7 +724,8 @@ class _AlbumsTabState extends State<_AlbumsTab> {
 class _SongsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
-  const _SongsTab({required this.client, required this.libraryId});
+  final ViewMode viewMode;
+  const _SongsTab({required this.client, required this.libraryId, required this.viewMode});
   @override
   State<_SongsTab> createState() => _SongsTabState();
 }
@@ -553,6 +740,8 @@ class _SongsTabState extends State<_SongsTab> {
   List<String> _letters = [];
   final Map<String, GlobalKey> _headerKeys = {};
   static const double _headerHeight = 48.0;
+
+  bool get _useIndex => widget.viewMode == ViewMode.poster || widget.viewMode == ViewMode.card;
 
   @override
   void initState() {
@@ -634,6 +823,8 @@ class _SongsTabState extends State<_SongsTab> {
     if (_error != null) return _buildError(_error!, _load);
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
 
+    if (!_useIndex) return _buildFlatList();
+
     return Stack(children: [
       RefreshIndicator(
         onRefresh: _load,
@@ -701,6 +892,95 @@ class _SongsTabState extends State<_SongsTab> {
       ),
     ]);
   }
+
+  Widget _buildFlatList() {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: widget.viewMode == ViewMode.list
+          ? ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: _songs.length,
+              itemBuilder: (context, index) {
+                final song = _songs[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  child: ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      child: song.trackNumber != null
+                          ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
+                          : const Icon(Icons.music_note, size: 20),
+                    ),
+                    title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(
+                      '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    trailing: Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => AudioPlayerPage(
+                        client: widget.client, song: song, playlist: _songs, initialIndex: index,
+                      ),
+                    )),
+                  ),
+                );
+              },
+            )
+          : ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: _songs.length,
+              itemBuilder: (context, index) {
+                final song = _songs[index];
+                final coverUrl = song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100);
+                return InkWell(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => AudioPlayerPage(
+                      client: widget.client, song: song, playlist: _songs, initialIndex: index,
+                    ),
+                  )),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: SizedBox(
+                            width: 48, height: 48,
+                            child: coverUrl != null
+                                ? Image.network(coverUrl, fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _songPlaceholder())
+                                : _songPlaceholder(),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(song.name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text('${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                        Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _songPlaceholder() => Container(
+    color: Theme.of(context).colorScheme.primaryContainer,
+    child: const Center(child: Icon(Icons.music_note, size: 24, color: Colors.white54)),
+  );
 }
 
 // ==================== 音频播放页 ====================
