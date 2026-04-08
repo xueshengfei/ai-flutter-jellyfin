@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 void main() {
@@ -198,7 +197,18 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           }, tooltip: '登出'),
         ],
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          Expanded(child: _buildBody()),
+          ListenableBuilder(
+            listenable: AudioPlaybackManager.instance,
+            builder: (context, _) {
+              if (!AudioPlaybackManager.instance.hasPlaylist) return const SizedBox.shrink();
+              return MiniPlayerCard(client: widget.client);
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(onPressed: _loadMediaLibraries, tooltip: '刷新', child: const Icon(Icons.refresh)),
     );
   }

@@ -54,6 +54,7 @@ export 'src/models/media_item_models.dart';
 export 'src/models/person_models.dart';
 export 'src/models/movie_filter_models.dart';
 export 'src/models/music_models.dart';
+export 'src/models/lyrics_models.dart';
 
 // 异常
 export 'src/exceptions/jellyfin_exception.dart';
@@ -71,6 +72,7 @@ export 'src/ui/models/view_mode_models.dart';
 // UI 服务
 export 'src/ui/services/playback_service.dart';
 export 'src/ui/services/view_mode_manager.dart';
+export 'src/ui/services/audio_playback_manager.dart';
 
 // UI 组件
 export 'src/ui/widgets/jellyfin_image.dart';
@@ -80,6 +82,7 @@ export 'src/ui/widgets/person_avatar_card.dart';
 export 'src/ui/widgets/media_item_card_with_actions.dart';
 export 'src/ui/widgets/media_list_builder.dart';
 export 'src/ui/widgets/view_mode_selector.dart';
+export 'src/ui/widgets/mini_player_card.dart';
 
 // UI 页面
 export 'src/ui/pages/video_player_page.dart';
@@ -96,3 +99,4 @@ export 'src/ui/pages/music_search_page.dart';
 export 'src/ui/pages/artist_detail_page.dart';
 export 'src/ui/pages/album_detail_page.dart';
 export 'src/ui/pages/test_api_page.dart';
+export 'src/ui/pages/lyrics_page.dart';

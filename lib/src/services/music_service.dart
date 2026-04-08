@@ -3,6 +3,7 @@ import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import '../core/api_client.dart';
 import '../exceptions/api_exception.dart';
 import '../models/music_models.dart';
+import '../models/lyrics_models.dart';
 
 /// 音乐服务
 ///
@@ -676,6 +677,74 @@ class MusicService {
     } catch (e, stackTrace) {
       _logger.e('Failed to search artists', error: e, stackTrace: stackTrace);
       throw ApiException('Failed to search artists: $e', cause: e, stackTrace: stackTrace);
+    }
+  }
+
+  // ==================== 歌词 ====================
+
+  /// 获取歌词（本地）
+  ///
+  /// 返回 null 表示无歌词（404 或空数据不抛异常）
+  Future<LyricsData?> getLyrics(String itemId) async {
+    _logger.i('Fetching lyrics for: $itemId');
+
+    try {
+      final lyricsApi = _apiClient.jellyfinClient.getLyricsApi();
+      final response = await lyricsApi.getLyrics(itemId: itemId);
+
+      if (response.data == null) return null;
+
+      final data = LyricsData.fromDto(response.data!);
+      return data.hasLyrics ? data : null;
+    } catch (e) {
+      _logger.d('No lyrics found for $itemId: $e');
+      return null;
+    }
+  }
+
+  /// 搜索远程歌词
+  Future<List<RemoteLyricsInfo>> searchRemoteLyrics(String itemId) async {
+    _logger.i('Searching remote lyrics for: $itemId');
+
+    try {
+      final lyricsApi = _apiClient.jellyfinClient.getLyricsApi();
+      final response = await lyricsApi.searchRemoteLyrics(itemId: itemId);
+
+      if (response.data == null) return [];
+
+      return response.data!
+          .map((dto) => RemoteLyricsInfo.fromDto(dto))
+          .toList();
+    } catch (e, stackTrace) {
+      _logger.e('Failed to search remote lyrics', error: e, stackTrace: stackTrace);
+      throw ApiException('Failed to search remote lyrics: $e', cause: e, stackTrace: stackTrace);
+    }
+  }
+
+  /// 下载远程歌词
+  Future<LyricsData> downloadRemoteLyrics({
+    required String itemId,
+    required String lyricId,
+  }) async {
+    _logger.i('Downloading remote lyrics: $lyricId for $itemId');
+
+    try {
+      final lyricsApi = _apiClient.jellyfinClient.getLyricsApi();
+      final response = await lyricsApi.downloadRemoteLyrics(
+        itemId: itemId,
+        lyricId: lyricId,
+      );
+
+      if (response.data == null) {
+        throw ApiException('Failed to download lyrics: No response data');
+      }
+
+      return LyricsData.fromDto(response.data!);
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to download remote lyrics', error: e, stackTrace: stackTrace);
+      throw ApiException('Failed to download remote lyrics: $e', cause: e, stackTrace: stackTrace);
     }
   }
 }

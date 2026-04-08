@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
 import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
 import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
 import 'package:jellyfin_service/src/ui/pages/music_search_page.dart';
+import 'package:jellyfin_service/src/ui/pages/lyrics_page.dart';
 
 // ==================== 首字母索引工具函数 ====================
 
@@ -690,8 +691,6 @@ class _SongsTabState extends State<_SongsTab> {
 
 // ==================== 音频播放页 ====================
 
-enum RepeatMode { off, repeatAll, repeatOne }
-
 class AudioPlayerPage extends StatefulWidget {
   final JellyfinClient client;
   final MusicSong song;
@@ -711,262 +710,162 @@ class AudioPlayerPage extends StatefulWidget {
 }
 
 class _AudioPlayerPageState extends State<AudioPlayerPage> {
-  late int _currentIndex;
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isPlaying = false;
-  bool _isLoading = true;
-  String? _error;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-
-  // Shuffle / Repeat
-  RepeatMode _repeatMode = RepeatMode.off;
-  bool _shuffleMode = false;
-  List<int> _shuffleOrder = [];
-  int _shufflePosition = 0;
-
-  MusicSong get _currentSong => widget.playlist[_currentIndex];
+  final _manager = AudioPlaybackManager.instance;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
-    _initShuffleOrder();
-    _setupListeners();
-    _playSong();
-  }
-
-  void _initShuffleOrder() {
-    _shuffleOrder = List.generate(widget.playlist.length, (i) => i);
-    _shuffleOrder.shuffle();
-    // Ensure current song is first in shuffle
-    _shuffleOrder.remove(_currentIndex);
-    _shuffleOrder.insert(0, _currentIndex);
-    _shufflePosition = 0;
-  }
-
-  void _setupListeners() {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (!mounted) return;
-      setState(() {
-        _isPlaying = state == PlayerState.playing;
-        if (state == PlayerState.playing || state == PlayerState.paused || state == PlayerState.completed) {
-          _isLoading = false;
-        }
-      });
-    });
-
-    _audioPlayer.onDurationChanged.listen((d) {
-      if (mounted) setState(() => _duration = d);
-    });
-
-    _audioPlayer.onPositionChanged.listen((p) {
-      if (mounted) setState(() => _position = p);
-    });
-
-    _audioPlayer.onPlayerComplete.listen((_) {
-      if (_repeatMode == RepeatMode.repeatOne) {
-        _audioPlayer.seek(Duration.zero);
-        _audioPlayer.resume();
-      } else {
-        _playNext();
-      }
-    });
-  }
-
-  Future<void> _playSong() async {
-    setState(() { _isLoading = true; _error = null; _position = Duration.zero; _duration = Duration.zero; });
-    try {
-      final url = widget.client.music.getUniversalAudioStreamUrl(
-        _currentSong.id,
-        container: const ['mp3', 'aac'],
-      );
-      await _audioPlayer.play(UrlSource(url));
-    } catch (e) {
-      if (mounted) setState(() { _error = '播放失败: $e'; _isLoading = false; });
-    }
-  }
-
-  Future<void> _playNext() async {
-    final len = widget.playlist.length;
-    if (len <= 1 && _repeatMode != RepeatMode.repeatAll) return;
-
-    if (_shuffleMode) {
-      _shufflePosition++;
-      if (_shufflePosition >= len) {
-        if (_repeatMode == RepeatMode.repeatAll) {
-          _initShuffleOrder();
-        } else {
-          return;
-        }
-      }
-      setState(() => _currentIndex = _shuffleOrder[_shufflePosition]);
-    } else {
-      if (_currentIndex < len - 1) {
-        setState(() => _currentIndex++);
-      } else if (_repeatMode == RepeatMode.repeatAll) {
-        setState(() => _currentIndex = 0);
-      } else {
-        return;
-      }
-    }
-    await _playSong();
-  }
-
-  Future<void> _playPrevious() async {
-    // 播放超过 3 秒先回到开头
-    if (_position.inSeconds >= 3) {
-      await _audioPlayer.seek(Duration.zero);
-      return;
-    }
-
-    final len = widget.playlist.length;
-    if (len <= 1) {
-      await _audioPlayer.seek(Duration.zero);
-      return;
-    }
-
-    if (_shuffleMode) {
-      if (_shufflePosition > 0) {
-        _shufflePosition--;
-      } else {
-        _shufflePosition = len - 1;
-      }
-      setState(() => _currentIndex = _shuffleOrder[_shufflePosition]);
-    } else {
-      if (_currentIndex > 0) {
-        setState(() => _currentIndex--);
-      } else {
-        setState(() => _currentIndex = len - 1);
-      }
-    }
-    await _playSong();
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
+    _manager.play(widget.playlist, widget.initialIndex, widget.client);
   }
 
   @override
   Widget build(BuildContext context) {
-    final song = _currentSong;
-    return Scaffold(
-      appBar: AppBar(title: const Text('正在播放')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 封面
-              Container(
-                width: 240, height: 240,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
-                    ? Image.network(song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480)!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholder())
-                    : _placeholder(),
-              ),
-              const SizedBox(height: 32),
+    return ListenableBuilder(
+      listenable: _manager,
+      builder: (context, _) {
+        final song = _manager.currentSong;
+        if (song == null) return const Scaffold(body: SizedBox.shrink());
 
-              // 歌曲信息
-              Text(song.name,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 8),
-              Text('${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-                textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 32),
-
-              // 进度条
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(children: [
-                  Slider(
-                    value: _duration.inMilliseconds > 0
-                        ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0, 1)
-                        : 0,
-                    onChanged: (v) => _audioPlayer.seek(Duration(milliseconds: (_duration.inMilliseconds * v).round())),
+        return Scaffold(
+          appBar: AppBar(title: const Text('正在播放')),
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 封面
+                  Container(
+                    width: 240, height: 240,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
+                        ? Image.network(song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480)!, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _placeholder())
+                        : _placeholder(),
                   ),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text(_fmt(_position), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                    Text(_fmt(_duration), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                  const SizedBox(height: 32),
+
+                  // 歌曲信息
+                  Text(song.name,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 8),
+                  // 歌手名可点击跳转
+                  GestureDetector(
+                    onTap: () {
+                      if (song.artistRefs?.isNotEmpty == true) {
+                        final ref = song.artistRefs!.first;
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => ArtistDetailPage(
+                            client: widget.client,
+                            artist: MusicArtist(
+                              id: ref.id, name: ref.name,
+                              serverUrl: widget.client.configuration.serverUrl,
+                              accessToken: widget.client.configuration.accessToken,
+                            ),
+                          ),
+                        ));
+                      }
+                    },
+                    child: Text('${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: song.artistRefs?.isNotEmpty == true
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // 进度条
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(children: [
+                      Slider(
+                        value: _manager.duration.inMilliseconds > 0
+                            ? (_manager.position.inMilliseconds / _manager.duration.inMilliseconds).clamp(0, 1)
+                            : 0,
+                        onChanged: (v) => _manager.seek(Duration(milliseconds: (_manager.duration.inMilliseconds * v).round())),
+                      ),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Text(_fmt(_manager.position), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                        Text(_fmt(_manager.duration), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      ]),
+                    ]),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 控制: [Shuffle] [Prev] [Play/Pause] [Next] [Repeat] [Lyrics]
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    // Shuffle
+                    IconButton(
+                      onPressed: () => _manager.toggleShuffle(),
+                      icon: const Icon(Icons.shuffle, size: 28),
+                      color: _manager.shuffleMode ? Theme.of(context).colorScheme.primary : null,
+                    ),
+                    const SizedBox(width: 8),
+                    // Previous
+                    IconButton(
+                      onPressed: () => _manager.playPrevious(),
+                      icon: const Icon(Icons.skip_previous, size: 40),
+                    ),
+                    const SizedBox(width: 12),
+                    // Play/Pause
+                    _manager.isLoading
+                        ? const SizedBox(width: 56, height: 56, child: CircularProgressIndicator())
+                        : IconButton.filled(
+                            onPressed: () => _manager.isPlaying ? _manager.pause() : _manager.resume(),
+                            icon: Icon(_manager.isPlaying ? Icons.pause : Icons.play_arrow, size: 40),
+                            style: IconButton.styleFrom(minimumSize: const Size(64, 64))),
+                    const SizedBox(width: 12),
+                    // Next
+                    IconButton(
+                      onPressed: () => _manager.playNext(),
+                      icon: const Icon(Icons.skip_next, size: 40),
+                    ),
+                    const SizedBox(width: 8),
+                    // Repeat
+                    IconButton(
+                      onPressed: () => _manager.cycleRepeatMode(),
+                      icon: Icon(
+                        _manager.repeatMode == RepeatMode.repeatOne ? Icons.repeat_one : Icons.repeat,
+                        size: 28,
+                      ),
+                      color: _manager.repeatMode != RepeatMode.off ? Theme.of(context).colorScheme.primary : null,
+                    ),
+                    const SizedBox(width: 16),
+                    // Lyrics
+                    IconButton(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => LyricsPage(
+                          client: widget.client,
+                          currentSong: song,
+                          albumCoverUrl: song.getAlbumCoverUrl(fillWidth: 600, fillHeight: 600),
+                        ),
+                      )),
+                      icon: const Icon(Icons.lyrics_outlined, size: 28),
+                      tooltip: '歌词',
+                    ),
                   ]),
-                ]),
+                  const SizedBox(height: 16),
+
+                  if (_manager.error != null)
+                    Padding(padding: const EdgeInsets.all(16),
+                      child: Text(_manager.error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center)),
+
+                  Text('${_manager.currentIndex + 1} / ${_manager.playlistLength}',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                ],
               ),
-              const SizedBox(height: 16),
-
-              // 控制: [Shuffle] [Prev] [Play/Pause] [Next] [Repeat]
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                // Shuffle
-                IconButton(
-                  onPressed: () => setState(() {
-                    _shuffleMode = !_shuffleMode;
-                    if (_shuffleMode) _initShuffleOrder();
-                  }),
-                  icon: const Icon(Icons.shuffle, size: 28),
-                  color: _shuffleMode ? Theme.of(context).colorScheme.primary : null,
-                ),
-                const SizedBox(width: 8),
-                // Previous
-                IconButton(
-                  onPressed: _playPrevious,
-                  icon: const Icon(Icons.skip_previous, size: 40),
-                ),
-                const SizedBox(width: 12),
-                // Play/Pause
-                _isLoading
-                    ? const SizedBox(width: 56, height: 56, child: CircularProgressIndicator())
-                    : IconButton.filled(
-                        onPressed: () async { _isPlaying ? await _audioPlayer.pause() : await _audioPlayer.resume(); },
-                        icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, size: 40),
-                        style: IconButton.styleFrom(minimumSize: const Size(64, 64))),
-                const SizedBox(width: 12),
-                // Next
-                IconButton(
-                  onPressed: _playNext,
-                  icon: const Icon(Icons.skip_next, size: 40),
-                ),
-                const SizedBox(width: 8),
-                // Repeat
-                IconButton(
-                  onPressed: () => setState(() {
-                    switch (_repeatMode) {
-                      case RepeatMode.off:
-                        _repeatMode = RepeatMode.repeatAll;
-                      case RepeatMode.repeatAll:
-                        _repeatMode = RepeatMode.repeatOne;
-                      case RepeatMode.repeatOne:
-                        _repeatMode = RepeatMode.off;
-                    }
-                  }),
-                  icon: Icon(
-                    _repeatMode == RepeatMode.repeatOne ? Icons.repeat_one : Icons.repeat,
-                    size: 28,
-                  ),
-                  color: _repeatMode != RepeatMode.off ? Theme.of(context).colorScheme.primary : null,
-                ),
-              ]),
-              const SizedBox(height: 16),
-
-              if (_error != null)
-                Padding(padding: const EdgeInsets.all(16),
-                  child: Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center)),
-
-              Text('${_currentIndex + 1} / ${widget.playlist.length}',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
