@@ -729,7 +729,11 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
   @override
   void initState() {
     super.initState();
-    _manager.play(widget.playlist, widget.initialIndex, widget.client);
+    // 仅当 manager 未在播放同一首歌时才启动新播放
+    final current = _manager.currentSong;
+    if (current == null || current.id != widget.song.id) {
+      _manager.play(widget.playlist, widget.initialIndex, widget.client);
+    }
   }
 
   @override
