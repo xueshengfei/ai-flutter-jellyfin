@@ -222,7 +222,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       onRefresh: _loadMediaLibraries,
       child: GridView.builder(
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.2, crossAxisSpacing: 16, mainAxisSpacing: 16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.5, crossAxisSpacing: 12, mainAxisSpacing: 12),
         itemCount: _mediaLibraries.length,
         itemBuilder: (context, index) => _LibraryCard(
           client: widget.client,
@@ -264,18 +264,28 @@ class _LibraryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(flex: 3, child: library.hasCoverImage
+            Expanded(child: library.hasCoverImage
                 ? JellyfinImageWithClient(client: client, itemId: library.id, imageTag: library.primaryImageTag, fillWidth: 288, fillHeight: 428, fit: BoxFit.cover)
                 : Container(color: Colors.blue.withValues(alpha: 0.3), child: Center(child: Text(library.type.icon, style: const TextStyle(fontSize: 48))))),
-            Expanded(flex: 2, child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, mainAxisSize: MainAxisSize.min, children: [
-                Text(library.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text('${library.type.icon} ${library.type.displayName}', style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (library.itemCount != null) Padding(padding: const EdgeInsets.only(top: 2.0), child: Text('${library.itemCount} 项', style: TextStyle(color: Colors.grey[600], fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              ]),
-            )),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(library.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        if (library.itemCount != null)
+                          Text('${library.itemCount} 项', style: TextStyle(color: Colors.grey[600], fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  Text(library.type.icon, style: const TextStyle(fontSize: 20)),
+                ],
+              ),
+            ),
           ],
         ),
       ),
