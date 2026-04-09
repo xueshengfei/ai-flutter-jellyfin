@@ -199,6 +199,17 @@ class AudioPlaybackManager extends ChangeNotifier {
 
   // ==================== 内部方法 ====================
 
+  /// 从歌曲元数据获取时长（ticks → Duration）
+  Duration _durationFromSong(MusicSong song) {
+    if (song.runTimeTicks != null && song.runTimeTicks! > 0) {
+      return Duration(microseconds: song.runTimeTicks! ~/ 10);
+    }
+    if (song.runTimeSeconds != null && song.runTimeSeconds! > 0) {
+      return Duration(seconds: song.runTimeSeconds!);
+    }
+    return Duration.zero;
+  }
+
   void _initShuffleOrder() {
     _shuffleOrder = List.generate(_playlist.length, (i) => i);
     _shuffleOrder.shuffle();
@@ -213,7 +224,8 @@ class AudioPlaybackManager extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     _position = Duration.zero;
-    _duration = Duration.zero;
+    // 优先用歌曲元数据的时长（FLAC 等格式流播放时 just_audio 可能获取不到 duration）
+    _duration = _durationFromSong(currentSong!);
     notifyListeners();
 
     try {
