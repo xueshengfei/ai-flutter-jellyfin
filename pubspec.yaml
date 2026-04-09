@@ -15,25 +15,29 @@ dependencies:
   jellyfin_dart:
     path: ..\jellyfin_dart-0.1.0
 
-  # HTTP客户端
+  # 纯 Dart 依赖 - 无需鸿蒙适配
   dio: ^5.9.0
-
-  # 日志
   logger: ^2.0.2
-
-  # JSON序列化
   json_annotation: ^4.9.0
   equatable: ^2.0.7
 
-  # 视频播放
-  video_player: ^2.8.1
-  chewie: ^1.7.5
+  # 视频播放 - 鸿蒙适配
+  video_player:
+    path: ../packages/ohos/video_player/video_player
+  chewie:
+    path: ../packages/ohos/fluttertpc_chewie
 
-  # 音频播放
-  flutter_sound: ^9.10.5
+  # 音频播放 - 鸿蒙适配
+  flutter_sound:
+    path: ../packages/ohos/flutter_sound/flutter_sound
 
-  # 本地存储（视图模式偏好等）
-  shared_preferences: ^2.2.2
+  # 文件路径 - 鸿蒙适配
+  path_provider:
+    path: ../packages/ohos/path_provider/path_provider
+
+  # 本地存储 - 鸿蒙适配
+  shared_preferences:
+    path: ../packages/ohos/shared_preferences/shared_preferences
 
 dev_dependencies:
   flutter_test:
