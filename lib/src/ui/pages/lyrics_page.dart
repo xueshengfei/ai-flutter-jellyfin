@@ -42,7 +42,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
   void _startPositionTracking() {
     _positionSub?.cancel();
-    _positionSub = AudioPlaybackManager.instance.player.onPositionChanged.listen((p) {
+    _positionSub = AudioPlaybackManager.instance.onPositionChanged.listen((p) {
       if (!mounted) return;
       _updateCurrentLine(p);
     });

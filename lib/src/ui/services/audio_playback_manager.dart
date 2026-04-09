@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// 循环模式
@@ -8,16 +8,16 @@ enum RepeatMode { off, repeatAll, repeatOne }
 
 /// 全局音频播放管理器（ChangeNotifier 单例）
 ///
-/// 持有 [AudioPlayer] + 播放列表 + 当前索引 + shuffle/repeat 状态，
+/// 持有 [FlutterSoundPlayer] + 播放列表 + 当前索引 + shuffle/repeat 状态，
 /// 生命周期与应用一致，退出歌曲详情页后音乐继续播放。
 class AudioPlaybackManager extends ChangeNotifier {
   AudioPlaybackManager._() {
-    _setupListeners();
+    _init();
   }
 
   static final AudioPlaybackManager instance = AudioPlaybackManager._();
 
-  final AudioPlayer _player = AudioPlayer();
+  final FlutterSoundPlayer _player = FlutterSoundPlayer();
 
   List<MusicSong> _playlist = [];
   int _currentIndex = 0;
@@ -36,6 +36,9 @@ class AudioPlaybackManager extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  // 位置流（供外部订阅实时位置更新）
+  final _positionController = StreamController<Duration>.broadcast();
+
   // ==================== 公开 getter ====================
 
   MusicSong? get currentSong =>
@@ -52,7 +55,10 @@ class AudioPlaybackManager extends ChangeNotifier {
   String? get error => _error;
   List<MusicSong> get playlist => List.unmodifiable(_playlist);
 
-  AudioPlayer get player => _player;
+  /// 位置变化流（替代原 audioplayers 的 onPositionChanged）
+  Stream<Duration> get onPositionChanged => _positionController.stream;
+
+  FlutterSoundPlayer get player => _player;
 
   // ==================== 核心方法 ====================
 
@@ -69,15 +75,15 @@ class AudioPlaybackManager extends ChangeNotifier {
   }
 
   Future<void> pause() async {
-    await _player.pause();
+    await _player.pausePlayer();
   }
 
   Future<void> resume() async {
-    await _player.resume();
+    await _player.resumePlayer();
   }
 
   Future<void> seek(Duration position) async {
-    await _player.seek(position);
+    await _player.seekToPlayer(position);
   }
 
   Future<void> playNext() async {
@@ -110,13 +116,13 @@ class AudioPlaybackManager extends ChangeNotifier {
   Future<void> playPrevious() async {
     // 播放超过 3 秒先回到开头
     if (_position.inSeconds >= 3) {
-      await _player.seek(Duration.zero);
+      await _player.seekToPlayer(Duration.zero);
       return;
     }
 
     final len = _playlist.length;
     if (len <= 1) {
-      await _player.seek(Duration.zero);
+      await _player.seekToPlayer(Duration.zero);
       return;
     }
 
@@ -158,6 +164,12 @@ class AudioPlaybackManager extends ChangeNotifier {
 
   // ==================== 内部方法 ====================
 
+  Future<void> _init() async {
+    await _player.openPlayer();
+    _player.setSubscriptionDuration(const Duration(milliseconds: 200));
+    _setupListeners();
+  }
+
   void _initShuffleOrder() {
     _shuffleOrder = List.generate(_playlist.length, (i) => i);
     _shuffleOrder.shuffle();
@@ -182,7 +194,13 @@ class AudioPlaybackManager extends ChangeNotifier {
         container: const ['mp3', 'aac'],
         audioCodec: 'mp3',
       );
-      await _player.play(UrlSource(url));
+      await _player.startPlayer(
+        fromURI: url,
+        whenFinished: _onPlaybackComplete,
+      );
+      _isPlaying = true;
+      _isLoading = false;
+      notifyListeners();
     } catch (e) {
       _error = '播放失败: $e';
       _isLoading = false;
@@ -190,34 +208,26 @@ class AudioPlaybackManager extends ChangeNotifier {
     }
   }
 
+  void _onPlaybackComplete() {
+    if (_repeatMode == RepeatMode.repeatOne) {
+      _player.seekToPlayer(Duration.zero);
+      _player.resumePlayer();
+    } else {
+      playNext();
+    }
+  }
+
   void _setupListeners() {
-    _player.onPlayerStateChanged.listen((state) {
-      _isPlaying = state == PlayerState.playing;
-      if (state == PlayerState.playing ||
-          state == PlayerState.paused ||
-          state == PlayerState.completed) {
-        _isLoading = false;
+    _player.onProgress!.listen((event) {
+      if (event.duration != null) {
+        _duration = event.duration!;
       }
-      notifyListeners();
-    });
-
-    _player.onDurationChanged.listen((d) {
-      _duration = d;
-      notifyListeners();
-    });
-
-    _player.onPositionChanged.listen((p) {
-      _position = p;
-      notifyListeners();
-    });
-
-    _player.onPlayerComplete.listen((_) {
-      if (_repeatMode == RepeatMode.repeatOne) {
-        _player.seek(Duration.zero);
-        _player.resume();
-      } else {
-        playNext();
+      if (event.position != null) {
+        _position = event.position!;
+        _positionController.add(_position);
       }
+      _isPlaying = _player.isPlaying;
+      notifyListeners();
     });
   }
 }
