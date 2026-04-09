@@ -30,10 +30,15 @@ class ApiClient {
   ApiClient(
     this._config, {
     Logger? logger,
-  }) : _logger = logger ?? Logger() {
+    List<Interceptor>? interceptors,
+  })  : _logger = logger ?? Logger(),
+        _extraInterceptors = interceptors ?? const [] {
     _initializeDio();
     _initializeJellyfinClient();
   }
+
+  /// 外部注入的拦截器（如网络模拟器）
+  final List<Interceptor> _extraInterceptors;
 
   /// 初始化Dio HTTP客户端
   void _initializeDio() {
@@ -50,6 +55,8 @@ class ApiClient {
     ));
 
     _setupInterceptors();
+    // 注入外部拦截器（如网络模拟器）
+    _dio.interceptors.addAll(_extraInterceptors);
   }
 
   /// 初始化jellyfin_dart客户端
@@ -71,6 +78,9 @@ class ApiClient {
         },
       ),
     );
+
+    // 注入外部拦截器（如网络模拟器）
+    customDio.interceptors.addAll(_extraInterceptors);
 
     _jellyfinClient = jellyfin_dart.JellyfinDart(
       dio: customDio,

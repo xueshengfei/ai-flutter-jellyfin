@@ -68,6 +68,10 @@ export 'src/exceptions/api_exception.dart';
 // 主客户端
 export 'src/jellyfin_client.dart';
 
+// 调试工具
+export 'src/debug/network_simulator.dart';
+export 'src/debug/flutter_debug_panel.dart';
+
 // ==================== UI 层 ====================
 
 // UI 模型

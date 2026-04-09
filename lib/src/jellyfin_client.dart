@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import 'jellyfin_configuration.dart';
 import 'core/api_client.dart';
 import 'services/auth_service.dart';
@@ -36,8 +38,8 @@ class JellyfinClient {
   late final BookService book;
 
   /// 私有构造函数
-  JellyfinClient._internal(this.configuration) {
-    _apiClient = ApiClient(configuration);
+  JellyfinClient._internal(this.configuration, [List<Interceptor>? interceptors]) {
+    _apiClient = ApiClient(configuration, interceptors: interceptors);
     auth = AuthService(apiClient: _apiClient);
     mediaLibrary = MediaLibraryService(apiClient: _apiClient);
     image = ImageService(apiClient: _apiClient);
@@ -55,6 +57,7 @@ class JellyfinClient {
     String? deviceId,
     String clientName = 'Jellyfin Flutter',
     bool enableLogging = false,
+    List<Interceptor>? interceptors,
   }) {
     final config = JellyfinConfiguration(
       serverUrl: serverUrl,
@@ -66,12 +69,12 @@ class JellyfinClient {
       enableLogging: enableLogging,
     );
 
-    return JellyfinClient._internal(config);
+    return JellyfinClient._internal(config, interceptors);
   }
 
   /// 从配置创建客户端
-  factory JellyfinClient.fromConfig(JellyfinConfiguration config) {
-    return JellyfinClient._internal(config);
+  factory JellyfinClient.fromConfig(JellyfinConfiguration config, {List<Interceptor>? interceptors}) {
+    return JellyfinClient._internal(config, interceptors);
   }
 
   /// 获取API客户端（用于高级用法）
