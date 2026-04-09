@@ -1,44 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
-import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
-import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
-import 'package:jellyfin_service/src/ui/pages/music_search_page.dart';
-import 'package:jellyfin_service/src/ui/pages/lyrics_page.dart';
-import 'package:jellyfin_service/src/ui/widgets/mini_player_card.dart';
-
-// ==================== 首字母索引工具函数 ====================
-
-/// 提取首字母：A-Z 或 "#"（非字母归入 #）
-String getSortLetter(String? sortName, String? name) {
-  final text = (sortName ?? name ?? '').trim();
-  if (text.isEmpty) return '#';
-  final upper = text.toUpperCase();
-  final codeUnit = upper.codeUnitAt(0);
-  if (codeUnit >= 65 && codeUnit <= 90) return upper[0]; // A-Z
-  return '#';
-}
-
-/// 按首字母分组并排序
-Map<String, List<T>> groupByFirstLetter<T>(
-  List<T> items,
-  String? Function(T) getSortName,
-  String? Function(T) getName,
-) {
-  final map = <String, List<T>>{};
-  for (final item in items) {
-    final letter = getSortLetter(getSortName(item), getName(item));
-    (map[letter] ??= []).add(item);
-  }
-  // 排序 key：字母 A-Z 在前，# 在最后
-  final sortedKeys = map.keys.toList()
-    ..sort((a, b) {
-      if (a == '#') return 1;
-      if (b == '#') return -1;
-      return a.compareTo(b);
-    });
-  return {for (final k in sortedKeys) k: map[k]!};
-}
 
 // ==================== 音乐媒体库页面 ====================
 
@@ -126,9 +87,9 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _ArtistsTab(client: widget.client, libraryId: widget.libraryId, viewMode: _viewModeConfig.viewMode),
-                _AlbumsTab(client: widget.client, libraryId: widget.libraryId, viewMode: _viewModeConfig.viewMode),
-                _SongsTab(client: widget.client, libraryId: widget.libraryId, viewMode: _viewModeConfig.viewMode),
+                _ArtistsTab(client: widget.client, libraryId: widget.libraryId, config: _viewModeConfig),
+                _AlbumsTab(client: widget.client, libraryId: widget.libraryId, config: _viewModeConfig),
+                _SongsTab(client: widget.client, libraryId: widget.libraryId, config: _viewModeConfig),
               ],
             ),
           ),
@@ -145,86 +106,13 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
   }
 }
 
-// ==================== 字母索引条 Widget ====================
-
-class _AlphabetIndexBar extends StatefulWidget {
-  final List<String> letters;
-  final String activeLetter;
-  final ValueChanged<String> onLetterTap;
-
-  const _AlphabetIndexBar({
-    required this.letters,
-    required this.activeLetter,
-    required this.onLetterTap,
-  });
-
-  @override
-  State<_AlphabetIndexBar> createState() => _AlphabetIndexBarState();
-}
-
-class _AlphabetIndexBarState extends State<_AlphabetIndexBar> {
-  bool _isDragging = false;
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.letters.isEmpty) return const SizedBox.shrink();
-    return GestureDetector(
-      onVerticalDragStart: (_) => setState(() => _isDragging = true),
-      onVerticalDragEnd: (_) => setState(() => _isDragging = false),
-      onVerticalDragUpdate: (details) => _handleDrag(details.localPosition.dy),
-      onTapUp: (details) => _handleTap(details.localPosition.dy),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: _isDragging ? 36 : 28,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: _isDragging ? 0.3 : 0.1),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          children: widget.letters.map((letter) {
-            final isActive = letter == widget.activeLetter;
-            return Expanded(
-              child: Center(
-                child: Text(
-                  letter,
-                  style: TextStyle(
-                    fontSize: _isDragging ? 12 : 10,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    color: isActive
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade600,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  void _handleTap(double dy) {
-    final index = (dy / (context.size!.height / widget.letters.length))
-        .floor()
-        .clamp(0, widget.letters.length - 1);
-    widget.onLetterTap(widget.letters[index]);
-  }
-
-  void _handleDrag(double dy) {
-    final index = (dy / (context.size!.height / widget.letters.length))
-        .floor()
-        .clamp(0, widget.letters.length - 1);
-    widget.onLetterTap(widget.letters[index]);
-  }
-}
-
 // ==================== 艺术家 Tab ====================
 
 class _ArtistsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
-  final ViewMode viewMode;
-  const _ArtistsTab({required this.client, required this.libraryId, required this.viewMode});
+  final ViewModeConfig config;
+  const _ArtistsTab({required this.client, required this.libraryId, required this.config});
   @override
   State<_ArtistsTab> createState() => _ArtistsTabState();
 }
@@ -233,84 +121,18 @@ class _ArtistsTabState extends State<_ArtistsTab> {
   List<MusicArtist> _artists = [];
   bool _isLoading = true;
   String? _error;
-  late ScrollController _scrollController;
-  String _activeLetter = '';
-  Map<String, List<MusicArtist>> _grouped = {};
-  List<String> _letters = [];
-  final Map<String, GlobalKey> _headerKeys = {};
-  static const double _headerHeight = 40.0;
-
-  bool get _useIndex => widget.viewMode == ViewMode.poster || widget.viewMode == ViewMode.card;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
     _load();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _rebuildGroups() {
-    _grouped = groupByFirstLetter(
-      _artists,
-      (a) => a.sortName,
-      (a) => a.name,
-    );
-    _letters = _grouped.keys.toList();
-    _headerKeys.clear();
-    for (final letter in _letters) {
-      _headerKeys[letter] = GlobalKey();
-    }
-    if (_letters.isNotEmpty) _activeLetter = _letters.first;
-  }
-
-  void _onScroll() {
-    for (final letter in _letters) {
-      final key = _headerKeys[letter];
-      if (key?.currentContext != null) {
-        final box = key!.currentContext!.findRenderObject() as RenderBox?;
-        if (box != null) {
-          final pos = box.localToGlobal(Offset.zero, ancestor: null);
-          if (pos.dy <= _headerHeight) {
-            if (_activeLetter != letter && mounted) {
-              setState(() => _activeLetter = letter);
-            }
-            return;
-          }
-        }
-      }
-    }
-  }
-
-  void _scrollToLetter(String letter) {
-    final key = _headerKeys[letter];
-    if (key?.currentContext != null) {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        alignment: 0.0,
-      );
-    }
   }
 
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
       final result = await widget.client.music.getAlbumArtists(parentId: widget.libraryId, limit: 100);
-      if (mounted) {
-        setState(() {
-          _artists = result.artists;
-          _isLoading = false;
-        });
-        _rebuildGroups();
-      }
+      if (mounted) setState(() { _artists = result.artists; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
     }
@@ -322,150 +144,34 @@ class _ArtistsTabState extends State<_ArtistsTab> {
     if (_error != null) return _buildError(_error!, _load);
     if (_artists.isEmpty) return const Center(child: Text('暂无艺术家'));
 
-    // list / banner 视图：无字母分组，扁平列表
-    if (!_useIndex) return _buildFlatList();
-
-    // poster / card 视图：带字母索引分组
-    return Stack(children: [
-      RefreshIndicator(
-        onRefresh: _load,
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            for (final letter in _letters) ...[
-              SliverToBoxAdapter(
-                child: Container(
-                  key: _headerKeys[letter],
-                  padding: const EdgeInsets.fromLTRB(16, 12, 40, 4),
-                  child: Text(
-                    letter,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 40, 8),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3, childAspectRatio: 0.75,
-                    crossAxisSpacing: 12, mainAxisSpacing: 12,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final artist = _grouped[letter]![index];
-                      return _AvatarCard(
-                        imageUrl: artist.getPrimaryImageUrl(fillWidth: 200, fillHeight: 200),
-                        hasImage: artist.hasImage,
-                        title: artist.name,
-                        subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
-                        placeholderIcon: Icons.person,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
-                        )),
-                      );
-                    },
-                    childCount: _grouped[letter]!.length,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      Positioned(
-        right: 2,
-        top: 0,
-        bottom: 0,
-        width: 28,
-        child: _AlphabetIndexBar(
-          letters: _letters,
-          activeLetter: _activeLetter,
-          onLetterTap: _scrollToLetter,
-        ),
-      ),
-    ]);
-  }
-
-  Widget _buildFlatList() {
-    return RefreshIndicator(
+    return MediaGroupedScrollView<MusicArtist>(
+      config: widget.config,
+      items: _artists,
       onRefresh: _load,
-      child: widget.viewMode == ViewMode.list
-          ? ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(12),
-              itemCount: _artists.length,
-              itemBuilder: (context, index) {
-                final artist = _artists[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: artist.hasImage && artist.getPrimaryImageUrl() != null
-                          ? NetworkImage(artist.getPrimaryImageUrl()!)
-                          : null,
-                      child: artist.hasImage ? null : const Icon(Icons.person),
-                    ),
-                    title: Text(artist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: artist.albumCount != null ? Text('${artist.albumCount} 张专辑') : null,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
-                    )),
-                  ),
-                );
-              },
-            )
-          : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(12),
-              itemCount: _artists.length,
-              itemBuilder: (context, index) {
-                final artist = _artists[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: InkWell(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
-                    )),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox(
-                            width: 72, height: 72,
-                            child: artist.hasImage && artist.getPrimaryImageUrl() != null
-                                ? Image.network(artist.getPrimaryImageUrl()!, fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _iconPlaceholder())
-                                : _iconPlaceholder(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(artist.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              if (artist.albumCount != null)
-                                Text('${artist.albumCount} 张专辑', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+      getSortName: (a) => a.sortName,
+      getName: (a) => a.name,
+      gridItemBuilder: (context, artist) => _AvatarCard(
+        imageUrl: artist.getPrimaryImageUrl(fillWidth: 200, fillHeight: 200),
+        hasImage: artist.hasImage,
+        title: artist.name,
+        subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
+        placeholderIcon: Icons.person,
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
+        )),
+      ),
+      flatItemBuilder: (context, artist, index) => _MusicFlatItem(
+        coverUrl: artist.getPrimaryImageUrl(fillWidth: 144, fillHeight: 144),
+        hasImage: artist.hasImage,
+        title: artist.name,
+        subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
+        placeholderIcon: Icons.person,
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
+        )),
+      ),
     );
   }
-
-  Widget _iconPlaceholder() => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
-    child: const Center(child: Icon(Icons.person, color: Colors.white54)),
-  );
 }
 
 // ==================== 专辑 Tab ====================
@@ -473,8 +179,8 @@ class _ArtistsTabState extends State<_ArtistsTab> {
 class _AlbumsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
-  final ViewMode viewMode;
-  const _AlbumsTab({required this.client, required this.libraryId, required this.viewMode});
+  final ViewModeConfig config;
+  const _AlbumsTab({required this.client, required this.libraryId, required this.config});
   @override
   State<_AlbumsTab> createState() => _AlbumsTabState();
 }
@@ -483,84 +189,18 @@ class _AlbumsTabState extends State<_AlbumsTab> {
   List<MusicAlbum> _albums = [];
   bool _isLoading = true;
   String? _error;
-  late ScrollController _scrollController;
-  String _activeLetter = '';
-  Map<String, List<MusicAlbum>> _grouped = {};
-  List<String> _letters = [];
-  final Map<String, GlobalKey> _headerKeys = {};
-  static const double _headerHeight = 40.0;
-
-  bool get _useIndex => widget.viewMode == ViewMode.poster || widget.viewMode == ViewMode.card;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
     _load();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _rebuildGroups() {
-    _grouped = groupByFirstLetter(
-      _albums,
-      (a) => a.sortName,
-      (a) => a.name,
-    );
-    _letters = _grouped.keys.toList();
-    _headerKeys.clear();
-    for (final letter in _letters) {
-      _headerKeys[letter] = GlobalKey();
-    }
-    if (_letters.isNotEmpty) _activeLetter = _letters.first;
-  }
-
-  void _onScroll() {
-    for (final letter in _letters) {
-      final key = _headerKeys[letter];
-      if (key?.currentContext != null) {
-        final box = key!.currentContext!.findRenderObject() as RenderBox?;
-        if (box != null) {
-          final pos = box.localToGlobal(Offset.zero, ancestor: null);
-          if (pos.dy <= _headerHeight) {
-            if (_activeLetter != letter && mounted) {
-              setState(() => _activeLetter = letter);
-            }
-            return;
-          }
-        }
-      }
-    }
-  }
-
-  void _scrollToLetter(String letter) {
-    final key = _headerKeys[letter];
-    if (key?.currentContext != null) {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        alignment: 0.0,
-      );
-    }
   }
 
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
       final result = await widget.client.music.getAlbums(parentId: widget.libraryId, limit: 100);
-      if (mounted) {
-        setState(() {
-          _albums = result.albums;
-          _isLoading = false;
-        });
-        _rebuildGroups();
-      }
+      if (mounted) setState(() { _albums = result.albums; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
     }
@@ -572,151 +212,35 @@ class _AlbumsTabState extends State<_AlbumsTab> {
     if (_error != null) return _buildError(_error!, _load);
     if (_albums.isEmpty) return const Center(child: Text('暂无专辑'));
 
-    if (!_useIndex) return _buildFlatList();
-
-    return Stack(children: [
-      RefreshIndicator(
-        onRefresh: _load,
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            for (final letter in _letters) ...[
-              SliverToBoxAdapter(
-                child: Container(
-                  key: _headerKeys[letter],
-                  padding: const EdgeInsets.fromLTRB(16, 12, 40, 4),
-                  child: Text(
-                    letter,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 40, 8),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3, childAspectRatio: 0.7,
-                    crossAxisSpacing: 12, mainAxisSpacing: 12,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final album = _grouped[letter]![index];
-                      return _AvatarCard(
-                        imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200),
-                        hasImage: album.hasCoverImage,
-                        title: album.name,
-                        subtitle: album.artistText,
-                        placeholderIcon: Icons.album,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => AlbumDetailPage(client: widget.client, album: album),
-                        )),
-                      );
-                    },
-                    childCount: _grouped[letter]!.length,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      Positioned(
-        right: 2,
-        top: 0,
-        bottom: 0,
-        width: 28,
-        child: _AlphabetIndexBar(
-          letters: _letters,
-          activeLetter: _activeLetter,
-          onLetterTap: _scrollToLetter,
-        ),
-      ),
-    ]);
-  }
-
-  Widget _buildFlatList() {
-    return RefreshIndicator(
+    return MediaGroupedScrollView<MusicAlbum>(
+      config: widget.config,
+      items: _albums,
       onRefresh: _load,
-      child: widget.viewMode == ViewMode.list
-          ? ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(12),
-              itemCount: _albums.length,
-              itemBuilder: (context, index) {
-                final album = _albums[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: SizedBox(
-                        width: 50, height: 50,
-                        child: album.hasCoverImage && album.getCoverImageUrl() != null
-                            ? Image.network(album.getCoverImageUrl()!, fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _albumPlaceholder())
-                            : _albumPlaceholder(),
-                      ),
-                    ),
-                    title: Text(album.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(album.artistText, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => AlbumDetailPage(client: widget.client, album: album),
-                    )),
-                  ),
-                );
-              },
-            )
-          : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(12),
-              itemCount: _albums.length,
-              itemBuilder: (context, index) {
-                final album = _albums[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: InkWell(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => AlbumDetailPage(client: widget.client, album: album),
-                    )),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox(
-                            width: 72, height: 72,
-                            child: album.hasCoverImage && album.getCoverImageUrl() != null
-                                ? Image.network(album.getCoverImageUrl()!, fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _albumPlaceholder())
-                                : _albumPlaceholder(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(album.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              Text(album.artistText, style: TextStyle(color: Colors.grey.shade600, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+      getSortName: (a) => a.sortName,
+      getName: (a) => a.name,
+      gridChildAspectRatio: 0.7,
+      gridItemBuilder: (context, album) => _AvatarCard(
+        imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200),
+        hasImage: album.hasCoverImage,
+        title: album.name,
+        subtitle: album.artistText,
+        placeholderIcon: Icons.album,
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => AlbumDetailPage(client: widget.client, album: album),
+        )),
+      ),
+      flatItemBuilder: (context, album, index) => _MusicFlatItem(
+        coverUrl: album.getCoverImageUrl(fillWidth: 144, fillHeight: 144),
+        hasImage: album.hasCoverImage,
+        title: album.name,
+        subtitle: album.artistText,
+        placeholderIcon: Icons.album,
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => AlbumDetailPage(client: widget.client, album: album),
+        )),
+      ),
     );
   }
-
-  Widget _albumPlaceholder() => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
-    child: const Center(child: Icon(Icons.album, color: Colors.white54)),
-  );
 }
 
 // ==================== 歌曲 Tab ====================
@@ -724,8 +248,8 @@ class _AlbumsTabState extends State<_AlbumsTab> {
 class _SongsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
-  final ViewMode viewMode;
-  const _SongsTab({required this.client, required this.libraryId, required this.viewMode});
+  final ViewModeConfig config;
+  const _SongsTab({required this.client, required this.libraryId, required this.config});
   @override
   State<_SongsTab> createState() => _SongsTabState();
 }
@@ -734,84 +258,18 @@ class _SongsTabState extends State<_SongsTab> {
   List<MusicSong> _songs = [];
   bool _isLoading = true;
   String? _error;
-  late ScrollController _scrollController;
-  String _activeLetter = '';
-  Map<String, List<MusicSong>> _grouped = {};
-  List<String> _letters = [];
-  final Map<String, GlobalKey> _headerKeys = {};
-  static const double _headerHeight = 48.0;
-
-  bool get _useIndex => widget.viewMode == ViewMode.poster || widget.viewMode == ViewMode.card;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
     _load();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _rebuildGroups() {
-    _grouped = groupByFirstLetter(
-      _songs,
-      (s) => s.sortName,
-      (s) => s.name,
-    );
-    _letters = _grouped.keys.toList();
-    _headerKeys.clear();
-    for (final letter in _letters) {
-      _headerKeys[letter] = GlobalKey();
-    }
-    if (_letters.isNotEmpty) _activeLetter = _letters.first;
-  }
-
-  void _onScroll() {
-    for (final letter in _letters) {
-      final key = _headerKeys[letter];
-      if (key?.currentContext != null) {
-        final box = key!.currentContext!.findRenderObject() as RenderBox?;
-        if (box != null) {
-          final pos = box.localToGlobal(Offset.zero, ancestor: null);
-          if (pos.dy <= _headerHeight) {
-            if (_activeLetter != letter && mounted) {
-              setState(() => _activeLetter = letter);
-            }
-            return;
-          }
-        }
-      }
-    }
-  }
-
-  void _scrollToLetter(String letter) {
-    final key = _headerKeys[letter];
-    if (key?.currentContext != null) {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        alignment: 0.0,
-      );
-    }
   }
 
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
       final result = await widget.client.music.getLatestSongs(parentId: widget.libraryId, limit: 100);
-      if (mounted) {
-        setState(() {
-          _songs = result.songs;
-          _isLoading = false;
-        });
-        _rebuildGroups();
-      }
+      if (mounted) setState(() { _songs = result.songs; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
     }
@@ -823,164 +281,50 @@ class _SongsTabState extends State<_SongsTab> {
     if (_error != null) return _buildError(_error!, _load);
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
 
-    if (!_useIndex) return _buildFlatList();
-
-    return Stack(children: [
-      RefreshIndicator(
-        onRefresh: _load,
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            for (final letter in _letters) ...[
-              SliverToBoxAdapter(
-                child: Container(
-                  key: _headerKeys[letter],
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  child: Text(
-                    letter,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final song = _grouped[letter]![index];
-                    final songIndex = _songs.indexOf(song);
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: song.trackNumber != null
-                            ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
-                            : const Icon(Icons.music_note, size: 20),
-                      ),
-                      title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(
-                        '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                      trailing: Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                      onTap: () => Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => AudioPlayerPage(
-                          client: widget.client, song: song, playlist: _songs, initialIndex: songIndex,
-                        ),
-                      )),
-                    );
-                  },
-                  childCount: _grouped[letter]!.length,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      Positioned(
-        right: 2,
-        top: 0,
-        bottom: 0,
-        width: 28,
-        child: _AlphabetIndexBar(
-          letters: _letters,
-          activeLetter: _activeLetter,
-          onLetterTap: _scrollToLetter,
-        ),
-      ),
-    ]);
-  }
-
-  Widget _buildFlatList() {
-    return RefreshIndicator(
+    return MediaGroupedScrollView<MusicSong>(
+      config: widget.config,
+      items: _songs,
       onRefresh: _load,
-      child: widget.viewMode == ViewMode.list
-          ? ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(12),
-              itemCount: _songs.length,
-              itemBuilder: (context, index) {
-                final song = _songs[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  child: ListTile(
-                    dense: true,
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: song.trackNumber != null
-                          ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
-                          : const Icon(Icons.music_note, size: 20),
-                    ),
-                    title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(
-                      '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                    trailing: Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => AudioPlayerPage(
-                        client: widget.client, song: song, playlist: _songs, initialIndex: index,
-                      ),
-                    )),
-                  ),
-                );
-              },
-            )
-          : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              itemCount: _songs.length,
-              itemBuilder: (context, index) {
-                final song = _songs[index];
-                final coverUrl = song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100);
-                return InkWell(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => AudioPlayerPage(
-                      client: widget.client, song: song, playlist: _songs, initialIndex: index,
-                    ),
-                  )),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: SizedBox(
-                            width: 48, height: 48,
-                            child: coverUrl != null
-                                ? Image.network(coverUrl, fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _songPlaceholder())
-                                : _songPlaceholder(),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(song.name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              Text('${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                        Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                      ],
-                    ),
-                  ),
-                );
-              },
+      getSortName: (s) => s.sortName,
+      getName: (s) => s.name,
+      gridItemBuilder: (context, song) {
+        final songIndex = _songs.indexOf(song);
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: song.trackNumber != null
+                ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
+                : const Icon(Icons.music_note, size: 20),
+          ),
+          title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          trailing: Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => AudioPlayerPage(
+              client: widget.client, song: song, playlist: _songs, initialIndex: songIndex,
             ),
+          )),
+        );
+      },
+      flatItemBuilder: (context, song, index) => _MusicFlatItem(
+        coverUrl: song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100),
+        hasImage: song.getAlbumCoverUrl() != null,
+        title: song.name,
+        subtitle: '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+        placeholderIcon: Icons.music_note,
+        trailingText: song.durationText,
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => AudioPlayerPage(
+            client: widget.client, song: song, playlist: _songs, initialIndex: index,
+          ),
+        )),
+      ),
     );
   }
-
-  Widget _songPlaceholder() => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
-    child: const Center(child: Icon(Icons.music_note, size: 24, color: Colors.white54)),
-  );
 }
 
 // ==================== 音频播放页 ====================
@@ -1228,6 +572,65 @@ class _AvatarCard extends StatelessWidget {
   Widget _ph(BuildContext context) => Container(
     color: Theme.of(context).colorScheme.primaryContainer,
     child: Center(child: Icon(placeholderIcon, size: 48, color: Colors.white54)),
+  );
+}
+
+/// 扁平列表/横幅的单行组件
+class _MusicFlatItem extends StatelessWidget {
+  final String? coverUrl;
+  final bool hasImage;
+  final String title;
+  final String? subtitle;
+  final IconData placeholderIcon;
+  final VoidCallback onTap;
+  final String? trailingText;
+
+  const _MusicFlatItem({
+    required this.coverUrl,
+    required this.hasImage,
+    required this.title,
+    this.subtitle,
+    required this.placeholderIcon,
+    required this.onTap,
+    this.trailingText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: ListTile(
+        dense: trailingText != null,
+        leading: _buildCover(context, 50, 50, 6),
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: subtitle != null
+            ? Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600))
+            : null,
+        trailing: trailingText != null
+            ? Text(trailingText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500))
+            : null,
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildCover(BuildContext context, double w, double h, double radius) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(
+        width: w, height: h,
+        child: hasImage && coverUrl != null
+            ? Image.network(coverUrl!, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _placeholder(context))
+            : _placeholder(context),
+      ),
+    );
+  }
+
+  Widget _placeholder(BuildContext context) => Container(
+    color: Theme.of(context).colorScheme.primaryContainer,
+    child: Center(child: Icon(placeholderIcon, color: Colors.white54)),
   );
 }
 
