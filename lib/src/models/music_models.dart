@@ -246,6 +246,9 @@ class MusicSong extends Equatable {
     final runTimeSeconds = dto.runTimeTicks != null
         ? (dto.runTimeTicks! / 10000000).round()
         : null;
+    if (dto.runTimeTicks != null) {
+      print('🔔 Jellyfin API: ${dto.name} runTimeTicks=${dto.runTimeTicks} → ${runTimeSeconds}s');
+    }
 
     final userData = dto.userData;
 

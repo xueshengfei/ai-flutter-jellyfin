@@ -429,14 +429,14 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(children: [
                       Slider(
-                        value: _manager.duration.inMilliseconds > 0
-                            ? (_manager.position.inMilliseconds / _manager.duration.inMilliseconds).clamp(0, 1)
+                        value: _manager.displayDuration.inMilliseconds > 0
+                            ? (_manager.position.inMilliseconds / _manager.displayDuration.inMilliseconds).clamp(0, 1)
                             : 0,
-                        onChanged: (v) => _manager.seek(Duration(milliseconds: (_manager.duration.inMilliseconds * v).round())),
+                        onChanged: (v) => _manager.seek(Duration(milliseconds: (_manager.displayDuration.inMilliseconds * v).round())),
                       ),
                       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                         Text(_fmt(_manager.position), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                        Text(_fmt(_manager.duration), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                        Text(_fmt(_manager.displayDuration), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                       ]),
                     ]),
                   ),

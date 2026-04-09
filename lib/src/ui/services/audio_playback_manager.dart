@@ -60,6 +60,23 @@ class AudioPlaybackManager extends ChangeNotifier {
 
   FlutterSoundPlayer get player => _player;
 
+  /// 用于UI显示和进度条的可靠时长
+  ///
+  /// 优先使用歌曲模型的 runTimeSeconds（来自 Jellyfin API，准确），
+  /// 回退到播放器报告的 duration（鸿蒙平台部分音频流可能不准确）。
+  Duration get displayDuration {
+    final songSeconds = currentSong?.runTimeSeconds;
+    if (songSeconds != null && songSeconds > 0) {
+      final modelMs = songSeconds * 1000;
+      // 播放器时长偏差超过 50% 或超过 1 小时 → 使用模型时长
+      if (_duration.inMilliseconds > modelMs * 1.5 ||
+          _duration.inSeconds > 3600) {
+        return Duration(milliseconds: modelMs);
+      }
+    }
+    return _duration;
+  }
+
   // ==================== 核心方法 ====================
 
   Future<void> play(
@@ -220,6 +237,7 @@ class AudioPlaybackManager extends ChangeNotifier {
   void _setupListeners() {
     _player.onProgress!.listen((event) {
       if (event.duration != null) {
+        print('🔔 flutter_sound duration: ${event.duration} (inSeconds=${event.duration!.inSeconds}, inMilliseconds=${event.duration!.inMilliseconds})');
         _duration = event.duration!;
       }
       if (event.position != null) {

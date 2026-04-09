@@ -19,7 +19,7 @@ class MiniPlayerCard extends StatelessWidget {
         final song = manager.currentSong;
         if (song == null) return const SizedBox.shrink();
 
-        final durationMs = manager.duration.inMilliseconds;
+        final durationMs = manager.displayDuration.inMilliseconds;
         final positionMs = manager.position.inMilliseconds;
         final progress =
             durationMs > 0 ? (positionMs / durationMs).clamp(0.0, 1.0) : 0.0;
