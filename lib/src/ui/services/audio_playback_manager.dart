@@ -224,10 +224,10 @@ class AudioPlaybackManager extends ChangeNotifier {
         audioCodec: 'mp3',
       );
       await _player.setUrl(url);
-      await _player.play();
-      _isPlaying = true;
       _isLoading = false;
       notifyListeners();
+      // play() 的 Future 在播放结束才完成，不能 await
+      unawaited(_player.play());
     } catch (e) {
       _error = '播放失败: $e';
       _isLoading = false;
