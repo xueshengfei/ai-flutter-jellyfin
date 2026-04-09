@@ -457,7 +457,20 @@ Error: The signedApp is not available
 2. 打开 `example/ohos/` 目录在 DevEco Studio 中，会自动生成签名
 3. 检查 `build-profile.json5` 中的路径是否正确
 
-### 7.7 设备检测不到
+### 7.7 DevEco Studio 签名界面一直转圈
+
+**症状**：DevEco Studio 中 File → Project Structure → Signing Configs 界面持续加载，无法完成签名配置。
+
+**解决**：直接通过命令行构建 release HAP，会自动触发签名流程：
+
+```bash
+cd example
+fvm flutter build hap --release
+```
+
+命令行构建会自动处理签名，无需在 DevEco Studio 中手动配置。
+
+### 7.8 设备检测不到
 
 **排查**：
 ```bash
