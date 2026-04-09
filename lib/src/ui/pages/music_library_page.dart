@@ -442,15 +442,8 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 控制: [Shuffle] [Prev] [Play/Pause] [Next] [Repeat] [Lyrics]
+                  // 控制: [Prev] [Play/Pause] [Next] [PlayMode] [Lyrics]
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    // Shuffle
-                    IconButton(
-                      onPressed: () => _manager.toggleShuffle(),
-                      icon: const Icon(Icons.shuffle, size: 28),
-                      color: _manager.shuffleMode ? Theme.of(context).colorScheme.primary : null,
-                    ),
-                    const SizedBox(width: 8),
                     // Previous
                     IconButton(
                       onPressed: () => _manager.playPrevious(),
@@ -471,16 +464,24 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                       icon: const Icon(Icons.skip_next, size: 40),
                     ),
                     const SizedBox(width: 8),
-                    // Repeat
+                    // PlayMode: 顺序 → 随机 → 单曲循环
                     IconButton(
-                      onPressed: () => _manager.cycleRepeatMode(),
-                      icon: Icon(
-                        _manager.repeatMode == RepeatMode.repeatOne ? Icons.repeat_one : Icons.repeat,
-                        size: 28,
-                      ),
-                      color: _manager.repeatMode != RepeatMode.off ? Theme.of(context).colorScheme.primary : null,
+                      onPressed: () => _manager.cyclePlayMode(),
+                      icon: Icon(switch (_manager.playMode) {
+                        PlayMode.sequential => Icons.trending_flat,
+                        PlayMode.shuffle => Icons.shuffle,
+                        PlayMode.repeatOne => Icons.repeat_one,
+                      }, size: 28),
+                      color: _manager.playMode != PlayMode.sequential
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                      tooltip: switch (_manager.playMode) {
+                        PlayMode.sequential => '顺序播放',
+                        PlayMode.shuffle => '随机播放',
+                        PlayMode.repeatOne => '单曲循环',
+                      },
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 8),
                     // Lyrics
                     IconButton(
                       onPressed: () => Navigator.push(context, MaterialPageRoute(

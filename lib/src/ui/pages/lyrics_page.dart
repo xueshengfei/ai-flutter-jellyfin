@@ -97,8 +97,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      final viewportHeight = _scrollController.position.viewportDimension;
-      final targetOffset = (index * _itemHeight) - (viewportHeight / 2) + (_itemHeight / 2);
+      final targetOffset = (index * _itemHeight) + (_itemHeight / 2);
       final maxOffset = _scrollController.position.maxScrollExtent;
       final clampedOffset = targetOffset.clamp(0.0, maxOffset);
 

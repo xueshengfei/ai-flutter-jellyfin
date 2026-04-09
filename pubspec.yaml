@@ -30,7 +30,7 @@ dependencies:
   chewie: ^1.7.5
 
   # 音频播放
-  flutter_sound: ^9.10.5
+  just_audio: ^0.9.42
 
   # 本地存储（视图模式偏好等）
   shared_preferences: ^2.2.2
