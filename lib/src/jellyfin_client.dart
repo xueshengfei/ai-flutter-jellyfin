@@ -5,6 +5,7 @@ import 'services/media_library_service.dart';
 import 'services/image_service.dart';
 import 'services/user_service.dart';
 import 'services/music_service.dart';
+import 'services/book_service.dart';
 
 /// Jellyfin客户端 - 简化版
 ///
@@ -31,6 +32,9 @@ class JellyfinClient {
   /// 音乐服务
   late final MusicService music;
 
+  /// 书籍服务
+  late final BookService book;
+
   /// 私有构造函数
   JellyfinClient._internal(this.configuration) {
     _apiClient = ApiClient(configuration);
@@ -39,6 +43,7 @@ class JellyfinClient {
     image = ImageService(apiClient: _apiClient);
     user = UserService(apiClient: _apiClient);
     music = MusicService(apiClient: _apiClient);
+    book = BookService(apiClient: _apiClient);
   }
 
   /// 工厂构造函数 - 创建客户端实例

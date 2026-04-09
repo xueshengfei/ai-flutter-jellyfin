@@ -35,6 +35,12 @@ dependencies:
   # 本地存储（视图模式偏好等）
   shared_preferences: ^2.2.2
 
+  # EPUB 电子书解析
+  epubx: ^4.0.0
+
+  # 路径获取
+  path_provider: ^2.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

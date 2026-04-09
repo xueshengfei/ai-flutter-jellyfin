@@ -47,6 +47,7 @@ export 'src/services/image_service.dart';
 export 'src/services/user_service.dart';
 export 'src/services/music_service.dart';
 export 'src/services/server_discovery_service.dart';
+export 'src/services/book_service.dart';
 
 // 业务模型（业务SDK的核心价值）
 export 'src/models/user_models.dart';
@@ -57,6 +58,7 @@ export 'src/models/movie_filter_models.dart';
 export 'src/models/music_models.dart';
 export 'src/models/lyrics_models.dart';
 export 'src/models/server_discovery_models.dart';
+export 'src/models/book_models.dart';
 
 // 异常
 export 'src/exceptions/jellyfin_exception.dart';
@@ -87,8 +89,12 @@ export 'src/ui/widgets/view_mode_selector.dart';
 export 'src/ui/widgets/mini_player_card.dart';
 export 'src/ui/widgets/alphabet_index_bar.dart';
 export 'src/ui/widgets/media_grouped_scroll_view.dart';
+export 'src/ui/widgets/library_card.dart';
+export 'src/ui/widgets/continue_watching_card.dart';
 
 // UI 页面
+export 'src/ui/pages/login_page.dart';
+export 'src/ui/pages/media_libraries_page.dart';
 export 'src/ui/pages/video_player_page.dart';
 export 'src/ui/pages/media_item_detail_page.dart';
 export 'src/ui/pages/media_items_page.dart';
@@ -104,3 +110,5 @@ export 'src/ui/pages/artist_detail_page.dart';
 export 'src/ui/pages/album_detail_page.dart';
 export 'src/ui/pages/test_api_page.dart';
 export 'src/ui/pages/lyrics_page.dart';
+export 'src/ui/pages/book_library_page.dart';
+export 'src/ui/pages/epub_reader_page.dart';
