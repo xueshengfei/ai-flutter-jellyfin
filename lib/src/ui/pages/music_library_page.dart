@@ -281,47 +281,28 @@ class _SongsTabState extends State<_SongsTab> {
     if (_error != null) return _buildError(_error!, _load);
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
 
-    return MediaGroupedScrollView<MusicSong>(
-      config: widget.config,
-      items: _songs,
+    // 歌曲始终使用列表布局，带专辑封面
+    return RefreshIndicator(
       onRefresh: _load,
-      getSortName: (s) => s.sortName,
-      getName: (s) => s.name,
-      gridItemBuilder: (context, song) {
-        final songIndex = _songs.indexOf(song);
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            child: song.trackNumber != null
-                ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
-                : const Icon(Icons.music_note, size: 20),
-          ),
-          title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text(
-            '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
-          trailing: Text(song.durationText, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => AudioPlayerPage(
-              client: widget.client, song: song, playlist: _songs, initialIndex: songIndex,
-            ),
-          )),
-        );
-      },
-      flatItemBuilder: (context, song, index) => _MusicFlatItem(
-        coverUrl: song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100),
-        hasImage: song.getAlbumCoverUrl() != null,
-        title: song.name,
-        subtitle: '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-        placeholderIcon: Icons.music_note,
-        trailingText: song.durationText,
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => AudioPlayerPage(
-            client: widget.client, song: song, playlist: _songs, initialIndex: index,
-          ),
-        )),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: _songs.length,
+        itemBuilder: (context, index) {
+          final song = _songs[index];
+          return _MusicFlatItem(
+            coverUrl: song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100),
+            hasImage: song.getAlbumCoverUrl() != null,
+            title: song.name,
+            subtitle: '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+            placeholderIcon: Icons.music_note,
+            trailingText: song.durationText,
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => AudioPlayerPage(
+                client: widget.client, song: song, playlist: _songs, initialIndex: index,
+              ),
+            )),
+          );
+        },
       ),
     );
   }

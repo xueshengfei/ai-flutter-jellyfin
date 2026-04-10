@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
 
 /// 艺术家详情页
 ///
@@ -22,6 +21,7 @@ class ArtistDetailPage extends StatefulWidget {
 class _ArtistDetailPageState extends State<ArtistDetailPage> {
   late Future<MusicArtist> _artistFuture;
   late Future<MusicAlbumListResult> _albumsFuture;
+  MusicArtist? _loadedArtist; // API 返回的完整艺术家信息（含图片）
 
   @override
   void initState() {
@@ -30,9 +30,10 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
   }
 
   void _loadData() {
-    setState(() {
-      _artistFuture = widget.client.music.getArtistDetail(widget.artist.id);
-      _albumsFuture = widget.client.music.getArtistAlbums(widget.artist.id);
+    _artistFuture = widget.client.music.getArtistDetail(widget.artist.id);
+    _albumsFuture = widget.client.music.getArtistAlbums(widget.artist.id);
+    _artistFuture.then((artist) {
+      if (mounted) setState(() => _loadedArtist = artist);
     });
   }
 
@@ -70,7 +71,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                   );
                 }
 
-                final artist = snapshot.data ?? widget.artist;
+                final artist = snapshot.data ?? _loadedArtist ?? widget.artist;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,12 +200,13 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
   }
 
   Widget _buildHeader() {
+    final artist = _loadedArtist ?? widget.artist;
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (widget.artist.hasImage)
+        if (artist.hasImage)
           Image.network(
-            widget.artist.getPrimaryImageUrl(fillWidth: 500, fillHeight: 300)!,
+            artist.getPrimaryImageUrl(fillWidth: 500, fillHeight: 300)!,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(color: Theme.of(context).colorScheme.primaryContainer),
           )
