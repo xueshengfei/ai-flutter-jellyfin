@@ -225,18 +225,21 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
   }
 
   Widget _buildAvatar(MusicArtist artist) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: SizedBox(
-        width: 240,
-        height: 240,
-        child: artist.hasImage
-            ? Image.network(
-                artist.getPrimaryImageUrl(fillWidth: 480, fillHeight: 480)!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _avatarPlaceholder(),
-              )
-            : _avatarPlaceholder(),
+    return Hero(
+      tag: 'artist_${artist.id}',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: SizedBox(
+          width: 240,
+          height: 240,
+          child: artist.hasImage
+              ? Image.network(
+                  artist.getPrimaryImageUrl(fillWidth: 480, fillHeight: 480)!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _avatarPlaceholder(),
+                )
+              : _avatarPlaceholder(),
+        ),
       ),
     );
   }
@@ -291,15 +294,18 @@ class _AlbumCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: album.hasCoverImage
-                  ? Image.network(
-                      album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholder(context),
-                    )
-                  : _placeholder(context),
+            child: Hero(
+              tag: 'album_${album.id}',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: album.hasCoverImage
+                    ? Image.network(
+                        album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholder(context),
+                      )
+                    : _placeholder(context),
+              ),
             ),
           ),
           const SizedBox(height: 6),

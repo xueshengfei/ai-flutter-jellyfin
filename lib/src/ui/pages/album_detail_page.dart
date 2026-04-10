@@ -183,18 +183,21 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
   }
 
   Widget _buildCover(MusicAlbum album) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 130,
-        height: 130,
-        child: album.hasCoverImage
-            ? Image.network(
-                album.getCoverImageUrl(fillWidth: 260, fillHeight: 260)!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _coverPlaceholder(),
-              )
-            : _coverPlaceholder(),
+    return Hero(
+      tag: 'album_${album.id}',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: 130,
+          height: 130,
+          child: album.hasCoverImage
+              ? Image.network(
+                  album.getCoverImageUrl(fillWidth: 260, fillHeight: 260)!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _coverPlaceholder(),
+                )
+              : _coverPlaceholder(),
+        ),
       ),
     );
   }
