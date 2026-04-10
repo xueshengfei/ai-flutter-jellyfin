@@ -290,7 +290,7 @@ class BookDetailPage extends StatelessWidget {
                   height: 170,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: Theme.of(context).colorScheme.primaryContainer,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: book.hasCoverImage
@@ -407,7 +407,7 @@ class AudioBookDetailPage extends StatelessWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: Theme.of(context).colorScheme.primaryContainer,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: audioBook.hasCoverImage
@@ -633,7 +633,7 @@ class _BookCard extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: const Center(child: Icon(Icons.menu_book, size: 48, color: Colors.white54)),
   );
 }
@@ -688,7 +688,7 @@ class _AudioBookCard extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: const Center(child: Icon(Icons.headphones, size: 48, color: Colors.white54)),
   );
 }
@@ -739,7 +739,7 @@ class _SeriesCard extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: const Center(child: Icon(Icons.collections_bookmark, size: 48, color: Colors.white54)),
   );
 }
@@ -755,6 +755,6 @@ Widget _buildError(String error, VoidCallback onRetry) => Center(
 );
 
 Widget _placeholder(BuildContext context, IconData icon) => Container(
-  color: Theme.of(context).colorScheme.primaryContainer,
+  color: Theme.of(context).colorScheme.surfaceContainerHighest,
   child: Center(child: Icon(icon, size: 56, color: Colors.white54)),
 );

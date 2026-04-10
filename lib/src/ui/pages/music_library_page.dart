@@ -651,7 +651,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                     width: 240, height: 240,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
                     ),
                     clipBehavior: Clip.antiAlias,
@@ -792,7 +792,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
   }
 
   Widget _placeholder() => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: const Center(child: Icon(Icons.music_note, size: 80, color: Colors.white54)),
   );
 
