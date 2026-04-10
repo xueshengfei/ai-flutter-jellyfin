@@ -643,7 +643,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
   bool _isUserScrolling = false;
   Timer? _scrollResumeTimer;
   final ScrollController _lyricsScrollController = ScrollController();
-  static const double _lyricItemHeight = 56.0;
+  static const double _lyricItemHeight = 40.0;
   StreamSubscription<Duration>? _positionSub;
 
   @override
@@ -793,7 +793,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   // 非唱片区域固定高度约 220（歌名50 + 间距76 + 进度条50 + 控制64 + 底部~16）
-                  final fixedHeight = 230.0;
+                  final fixedHeight = 200.0;
                   final maxVinyl = (constraints.maxHeight - fixedHeight).clamp(120.0, 240.0);
                   return isWide
                       ? _buildWideLayout(context, song, maxVinyl)
@@ -834,7 +834,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     final screenWidth = MediaQuery.of(context).size.width;
     final lyricsWidth = (screenWidth - vinylSize - 32 - 32).clamp(200.0, 600.0);
     // 歌词面板高度 = 唱片大小（不超出）
-    final lyricsHeight = vinylSize * 1.6;
+    final lyricsHeight = vinylSize * 1.3;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -928,7 +928,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 300),
                         style: TextStyle(
-                          fontSize: isCurrent ? 20 : 15,
+                          fontSize: isCurrent ? 17 : 13,
                           fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                           color: isCurrent
                               ? Theme.of(context).colorScheme.primary
@@ -994,51 +994,56 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     );
   }
 
-  /// 歌曲信息行 — 歌名一行 + 歌手·专辑 歌词按钮 同一行
+  /// 歌曲信息行 — 歌名 + 歌手 + 歌词按钮 全部同一行
   Widget _buildSongInfo(BuildContext context, MusicSong song, {required bool isWide}) {
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(song.name,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 4),
-        // 歌手 + 歌词按钮 同一行
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: GestureDetector(
-                onTap: () {
-                  if (song.artistRefs?.isNotEmpty == true) {
-                    final ref = song.artistRefs!.first;
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ArtistDetailPage(
-                        client: widget.client,
-                        artist: MusicArtist(
-                          id: ref.id, name: ref.name,
-                          serverUrl: widget.client.configuration.serverUrl,
-                          accessToken: widget.client.configuration.accessToken,
-                        ),
-                      ),
-                    ));
-                  }
-                },
-                child: Text('${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: song.artistRefs?.isNotEmpty == true
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade600,
+        // 歌名
+        Flexible(
+          child: Text(song.name,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+        // 分隔
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Text('·', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+        ),
+        // 歌手
+        Flexible(
+          child: GestureDetector(
+            onTap: () {
+              if (song.artistRefs?.isNotEmpty == true) {
+                final ref = song.artistRefs!.first;
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => ArtistDetailPage(
+                    client: widget.client,
+                    artist: MusicArtist(
+                      id: ref.id, name: ref.name,
+                      serverUrl: widget.client.configuration.serverUrl,
+                      accessToken: widget.client.configuration.accessToken,
+                    ),
                   ),
-                  textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ));
+              }
+            },
+            child: Text(song.artistText,
+              style: TextStyle(
+                fontSize: 14,
+                color: song.artistRefs?.isNotEmpty == true
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey.shade600,
               ),
-            ),
-            const SizedBox(width: 6),
-            _LyricsChip(
-              isActive: _showWebLyrics,
-              onTap: _onLyricsTap,
-            ),
-          ],
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+        ),
+        const SizedBox(width: 6),
+        // 歌词按钮
+        _LyricsChip(
+          isActive: _showWebLyrics,
+          onTap: _onLyricsTap,
         ),
       ],
     );
