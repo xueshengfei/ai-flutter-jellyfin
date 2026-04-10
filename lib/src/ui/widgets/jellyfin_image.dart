@@ -95,7 +95,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
           Container(
             color: Colors.grey[300],
             child: const Center(
-              child: Icon(Icons.error, color: Colors.red),
+              child: Icon(Icons.broken_image, color: Colors.white54),
             ),
           );
     }
@@ -205,7 +205,7 @@ class _JellyfinImageWithClientState extends State<JellyfinImageWithClient> {
           Container(
             color: Colors.grey[300],
             child: const Center(
-              child: Icon(Icons.error, color: Colors.red),
+              child: Icon(Icons.broken_image, color: Colors.white54),
             ),
           );
     }
