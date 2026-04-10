@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 // ==================== 音乐媒体库页面 ====================
@@ -144,7 +146,7 @@ class _ArtistsTabState extends State<_ArtistsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) return _buildGridShimmer(context);
     if (_error != null) return _buildError(_error!, () => _load());
     if (_artists.isEmpty) return const Center(child: Text('暂无艺术家'));
 
@@ -162,6 +164,7 @@ class _ArtistsTabState extends State<_ArtistsTab> {
         subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
         isCircle: false,
         placeholderIcon: Icons.person,
+        heroTag: 'artist_${artist.id}',
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
         )),
@@ -172,6 +175,7 @@ class _ArtistsTabState extends State<_ArtistsTab> {
         title: artist.name,
         subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
         placeholderIcon: Icons.person,
+        heroTag: 'artist_${artist.id}',
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
         )),
@@ -218,7 +222,7 @@ class _AlbumsTabState extends State<_AlbumsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) return _buildGridShimmer(context);
     if (_error != null) return _buildError(_error!, () => _load());
     if (_albums.isEmpty) return const Center(child: Text('暂无专辑'));
 
@@ -236,6 +240,7 @@ class _AlbumsTabState extends State<_AlbumsTab> {
         title: album.name,
         subtitle: album.artistText,
         placeholderIcon: Icons.album,
+        heroTag: 'album_${album.id}',
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => AlbumDetailPage(client: widget.client, album: album),
         )),
@@ -246,6 +251,7 @@ class _AlbumsTabState extends State<_AlbumsTab> {
         title: album.name,
         subtitle: album.artistText,
         placeholderIcon: Icons.album,
+        heroTag: 'album_${album.id}',
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => AlbumDetailPage(client: widget.client, album: album),
         )),
@@ -454,7 +460,7 @@ class _SongsTabState extends State<_SongsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) return _buildListShimmer(context);
     if (_error != null) return _buildError(_error!, () => _load());
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
 
@@ -540,7 +546,10 @@ class _SongsTabState extends State<_SongsTab> {
                       client: widget.client, song: song, playlist: sorted, initialIndex: index,
                     ),
                   )),
-                );
+                )
+                .animate()
+                .fadeIn(duration: 200.ms, delay: (20 * (index % 20)).ms)
+                .slideY(begin: 0.1, end: 0);
               },
             ),
           ),
@@ -618,12 +627,19 @@ class AudioPlayerPage extends StatefulWidget {
   State<AudioPlayerPage> createState() => _AudioPlayerPageState();
 }
 
-class _AudioPlayerPageState extends State<AudioPlayerPage> {
+class _AudioPlayerPageState extends State<AudioPlayerPage>
+    with SingleTickerProviderStateMixin {
   final _manager = AudioPlaybackManager.instance;
+  late final AnimationController _vinylController;
+  double _vinylAngle = 0;
 
   @override
   void initState() {
     super.initState();
+    _vinylController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..addListener(() => setState(() => _vinylAngle = _vinylController.value * 2 * 3.14159265));
     final current = _manager.currentSong;
     if (current == null || current.id != widget.song.id) {
       _manager.play(widget.playlist, widget.initialIndex, widget.client);
@@ -631,10 +647,22 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
   }
 
   @override
+  void dispose() {
+    _vinylController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _manager,
       builder: (context, _) {
+        // 同步唱片旋转状态
+        if (_manager.isPlaying) {
+          if (!_vinylController.isAnimating) _vinylController.repeat();
+        } else {
+          _vinylController.stop();
+        }
         final song = _manager.currentSong;
         if (song == null) return const Scaffold(body: SizedBox.shrink());
 
@@ -646,19 +674,48 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 封面
-                  Container(
-                    width: 240, height: 240,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                  // 封面（黑胶唱片旋转）
+                  Transform.rotate(
+                    angle: _vinylAngle,
+                    child: Container(
+                      width: 240, height: 240,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                        gradient: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
+                            ? null
+                            : LinearGradient(
+                                colors: [Colors.grey.shade700, Colors.grey.shade900],
+                                stops: const [0.6, 1.0],
+                              ),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 封面图（圆形裁剪，留出唱片边缘）
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: ClipOval(
+                              child: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
+                                  ? Image.network(song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480)!, fit: BoxFit.cover,
+                                      width: 208, height: 208,
+                                      errorBuilder: (_, __, ___) => _placeholder())
+                                  : _placeholder(),
+                            ),
+                          ),
+                          // 中心圆点（唱片孔）
+                          Container(
+                            width: 20, height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              border: Border.all(color: Colors.grey.shade600, width: 2),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
-                        ? Image.network(song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480)!, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _placeholder())
-                        : _placeholder(),
                   ),
                   const SizedBox(height: 32),
 
@@ -811,6 +868,7 @@ class _MediaCard extends StatelessWidget {
   final bool isCircle;
   final IconData placeholderIcon;
   final VoidCallback onTap;
+  final String? heroTag;
 
   const _MediaCard({
     required this.imageUrl,
@@ -820,6 +878,7 @@ class _MediaCard extends StatelessWidget {
     this.isCircle = false,
     required this.placeholderIcon,
     required this.onTap,
+    this.heroTag,
   });
 
   @override
@@ -858,7 +917,7 @@ class _MediaCard extends StatelessWidget {
   }
 
   Widget _buildSquareCover(BuildContext context) {
-    return ClipRRect(
+    final child = ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Container(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -868,6 +927,10 @@ class _MediaCard extends StatelessWidget {
             : _ph(context),
       ),
     );
+    if (heroTag != null) {
+      return Hero(tag: heroTag!, child: child);
+    }
+    return child;
   }
 
   Widget _ph(BuildContext context) => Center(
@@ -888,6 +951,7 @@ class _MusicFlatItem extends StatelessWidget {
   final VoidCallback? onFavoriteTap;
   final int? playCount;
   final bool showPlayCount;
+  final String? heroTag;
 
   const _MusicFlatItem({
     required this.coverUrl,
@@ -901,6 +965,7 @@ class _MusicFlatItem extends StatelessWidget {
     this.onFavoriteTap,
     this.playCount,
     this.showPlayCount = false,
+    this.heroTag,
   });
 
   @override
@@ -949,18 +1014,11 @@ class _MusicFlatItem extends StatelessWidget {
                   child: Text(trailingText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                     overflow: TextOverflow.ellipsis),
               ),
-              // 收藏按钮
+              // 收藏按钮（弹跳动画）
               if (onFavoriteTap != null)
-                GestureDetector(
-                  onTap: onFavoriteTap,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Icon(
-                      isFavorite == true ? Icons.favorite : Icons.favorite_border,
-                      size: 20,
-                      color: isFavorite == true ? Colors.red.shade400 : Colors.grey.shade400,
-                    ),
-                  ),
+                _FavoriteButton(
+                  isFavorite: isFavorite == true,
+                  onTap: onFavoriteTap!,
                 ),
             ],
           ),
@@ -970,7 +1028,7 @@ class _MusicFlatItem extends StatelessWidget {
   }
 
   Widget _buildCover(BuildContext context, double w, double h, double radius) {
-    return ClipRRect(
+    final child = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
         width: w, height: h,
@@ -980,6 +1038,10 @@ class _MusicFlatItem extends StatelessWidget {
             : _placeholder(context),
       ),
     );
+    if (heroTag != null) {
+      return Hero(tag: heroTag!, child: child);
+    }
+    return child;
   }
 
   Widget _placeholder(BuildContext context) => Container(
@@ -997,3 +1059,113 @@ Widget _buildError(String error, VoidCallback onRetry) => Center(
     FilledButton(onPressed: onRetry, child: const Text('重试')),
   ]),
 );
+
+/// 网格骨架屏（用于艺术家/专辑 Tab）
+Widget _buildGridShimmer(BuildContext context) {
+  return Shimmer.fromColors(
+    baseColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+    highlightColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+    child: GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: 9,
+      itemBuilder: (_, __) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)))),
+          const SizedBox(height: 6),
+          Container(height: 12, width: 60, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+          const SizedBox(height: 4),
+          Container(height: 10, width: 40, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+        ],
+      ),
+    ),
+  );
+}
+
+/// 列表骨架屏（用于歌曲 Tab）
+Widget _buildListShimmer(BuildContext context) {
+  return Shimmer.fromColors(
+    baseColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+    highlightColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+    child: ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      itemCount: 10,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: 14, width: 160, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                const SizedBox(height: 6),
+                Container(height: 10, width: 100, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+              ],
+            )),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// 收藏按钮 — 点击时弹跳缩放动画
+class _FavoriteButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback onTap;
+  const _FavoriteButton({required this.isFavorite, required this.onTap});
+
+  @override
+  State<_FavoriteButton> createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends State<_FavoriteButton> {
+  bool _animating = false;
+
+  void _handleTap() {
+    setState(() => _animating = true);
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _handleTap,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Icon(
+          widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+          size: 20,
+          color: widget.isFavorite ? Colors.red.shade400 : Colors.grey.shade400,
+        ),
+      ),
+    )
+    .animate(target: _animating ? 1.0 : 0.0)
+    .scale(
+      begin: const Offset(1.0, 1.0),
+      end: const Offset(1.4, 1.4),
+      duration: 100.ms,
+    )
+    .then()
+    .scale(
+      begin: const Offset(1.4, 1.4),
+      end: const Offset(0.9, 0.9),
+      duration: 80.ms,
+    )
+    .then()
+    .scale(
+      begin: const Offset(0.9, 0.9),
+      end: const Offset(1.0, 1.0),
+      duration: 60.ms,
+    )
+    .callback(callback: (_) => setState(() => _animating = false));
+  }
+}

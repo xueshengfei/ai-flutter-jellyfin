@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
-import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
-import 'package:jellyfin_service/src/ui/pages/music_library_page.dart' show AudioPlayerPage;
 
 /// 音乐搜索页面
 ///
@@ -174,6 +172,7 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                 final artist = _artists[index];
                 return _ArtistChip(
                   artist: artist,
+                  heroTag: 'artist_${artist.id}',
                   onTap: () => Navigator.push(context, MaterialPageRoute(
                     builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
                   )),
@@ -198,6 +197,7 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                 final album = _albums[index];
                 return _AlbumChip(
                   album: album,
+                  heroTag: 'album_${album.id}',
                   onTap: () => Navigator.push(context, MaterialPageRoute(
                     builder: (_) => AlbumDetailPage(client: widget.client, album: album),
                   )),
@@ -216,7 +216,7 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
             final song = entry.value;
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: song.trackNumber != null
                     ? Text('${song.trackNumber}', style: const TextStyle(fontSize: 12))
                     : const Icon(Icons.music_note, size: 20),
@@ -233,7 +233,10 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                   client: widget.client, song: song, playlist: _songs, initialIndex: index,
                 ),
               )),
-            );
+            )
+            .animate()
+            .fadeIn(duration: 200.ms, delay: (20 * (index % 20)).ms)
+            .slideY(begin: 0.1, end: 0);
           }),
         ],
       ],
@@ -266,8 +269,9 @@ class _SectionHeader extends StatelessWidget {
 class _ArtistChip extends StatelessWidget {
   final MusicArtist artist;
   final VoidCallback onTap;
+  final String? heroTag;
 
-  const _ArtistChip({required this.artist, required this.onTap});
+  const _ArtistChip({required this.artist, required this.onTap, this.heroTag});
 
   @override
   Widget build(BuildContext context) {
@@ -278,15 +282,18 @@ class _ArtistChip extends StatelessWidget {
         width: 100,
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              backgroundImage: artist.hasImage && artist.getPrimaryImageUrl() != null
-                  ? NetworkImage(artist.getPrimaryImageUrl()!)
-                  : null,
-              child: artist.hasImage
-                  ? null
-                  : const Icon(Icons.person, size: 36, color: Colors.white54),
+            Hero(
+              tag: heroTag ?? 'search_artist_${artist.id}',
+              child: CircleAvatar(
+                radius: 36,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                backgroundImage: artist.hasImage && artist.getPrimaryImageUrl() != null
+                    ? NetworkImage(artist.getPrimaryImageUrl()!)
+                    : null,
+                child: artist.hasImage
+                    ? null
+                    : const Icon(Icons.person, size: 36, color: Colors.white54),
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -305,8 +312,9 @@ class _ArtistChip extends StatelessWidget {
 class _AlbumChip extends StatelessWidget {
   final MusicAlbum album;
   final VoidCallback onTap;
+  final String? heroTag;
 
-  const _AlbumChip({required this.album, required this.onTap});
+  const _AlbumChip({required this.album, required this.onTap, this.heroTag});
 
   @override
   Widget build(BuildContext context) {
@@ -318,17 +326,20 @@ class _AlbumChip extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: album.hasCoverImage && album.getCoverImageUrl(fillWidth: 200, fillHeight: 200) != null
-                    ? Image.network(
-                        album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholder(context),
-                      )
-                    : _placeholder(context),
+            Hero(
+              tag: heroTag ?? 'search_album_${album.id}',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: album.hasCoverImage && album.getCoverImageUrl(fillWidth: 200, fillHeight: 200) != null
+                      ? Image.network(
+                          album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _placeholder(context),
+                        )
+                      : _placeholder(context),
+                ),
               ),
             ),
             const SizedBox(height: 4),
