@@ -351,7 +351,7 @@ class _AlbumChip extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: const Center(child: Icon(Icons.album, size: 36, color: Colors.white54)),
   );
 }

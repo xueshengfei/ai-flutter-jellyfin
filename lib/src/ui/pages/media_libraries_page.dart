@@ -111,7 +111,6 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: _loadAll, tooltip: '刷新', child: const Icon(Icons.refresh)),
     );
   }
 

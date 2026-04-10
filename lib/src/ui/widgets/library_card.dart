@@ -36,7 +36,7 @@ class LibraryCard extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               clipBehavior: Clip.antiAlias,
               child: library.hasCoverImage
