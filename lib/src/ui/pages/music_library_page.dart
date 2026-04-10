@@ -824,36 +824,39 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
 
   /// Web/桌面端布局（宽屏）— 支持歌词分栏
   Widget _buildWideLayout(BuildContext context, MusicSong song) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // 歌词面板目标宽度：屏幕宽度 - 唱片240 - 间距32 - 两侧padding 64
+    final lyricsWidth = (screenWidth - 240 - 32 - 64).clamp(200.0, 600.0);
+    const vinylSize = 240.0;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // 歌词分栏区
-        AnimatedSize(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
-            child: _showWebLyrics
-                ? Row(
-                    key: const ValueKey('split'),
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _buildVinyl(context, song, 200),
-                      const SizedBox(width: 32),
-                      _buildWebLyricsPanel(context),
-                    ],
-                  )
-                : Padding(
-                    key: const ValueKey('single'),
-                    padding: const EdgeInsets.only(bottom: 0),
-                    child: _buildVinyl(context, song, 280),
-                  ),
-          ),
+        // 唱片 + 歌词分栏区
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // 唱片（固定大小，不缩放不消失）
+            _buildVinyl(context, song, vinylSize),
+            // 歌词面板：宽度从 0 动画展开到 lyricsWidth
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
+              width: _showWebLyrics ? lyricsWidth : 0,
+              height: 420,
+              clipBehavior: Clip.hardEdge,
+              decoration: const BoxDecoration(),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _showWebLyrics ? 1.0 : 0.0,
+                curve: Curves.easeIn,
+                child: _showWebLyrics
+                    ? _buildWebLyricsContent(context, lyricsWidth, 420)
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 32),
         _buildSongInfo(context, song, isWide: true),
@@ -871,18 +874,18 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     );
   }
 
-  /// Web 端歌词面板
-  Widget _buildWebLyricsPanel(BuildContext context) {
+  /// Web 端歌词内容（不含外层尺寸限制）
+  Widget _buildWebLyricsContent(BuildContext context, double width, double height) {
     if (_lyricsLoading) {
-      return const SizedBox(
-        width: 300, height: 400,
-        child: Center(child: CircularProgressIndicator()),
+      return SizedBox(
+        width: width, height: height,
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
     final lines = _lyricsData?.lines;
     if (lines == null || lines.isEmpty) {
       return SizedBox(
-        width: 300, height: 400,
+        width: width, height: height,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -896,44 +899,47 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
       );
     }
     return SizedBox(
-      width: 300, height: 400,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (n) { if (n is UserScrollNotification) _onUserScroll(); return false; },
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final vPadding = constraints.maxHeight / 2;
-            return ListView.builder(
-              controller: _lyricsScrollController,
-              padding: EdgeInsets.symmetric(vertical: vPadding),
-              itemCount: lines.length,
-              itemExtent: _lyricItemHeight,
-              itemBuilder: (context, index) {
-                final line = lines[index];
-                final isCurrent = index == _currentLineIndex;
-                final isPast = _currentLineIndex >= 0 && index < _currentLineIndex;
-                return GestureDetector(
-                  onTap: () => _onLineTap(index),
-                  behavior: HitTestBehavior.translucent,
-                  child: Center(
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 300),
-                      style: TextStyle(
-                        fontSize: isCurrent ? 18 : 14,
-                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                        color: isCurrent
-                            ? Theme.of(context).colorScheme.primary
-                            : isPast
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade600,
-                        height: 1.4,
+      width: width, height: height,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 32),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) { if (n is UserScrollNotification) _onUserScroll(); return false; },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final vPadding = constraints.maxHeight / 2;
+              return ListView.builder(
+                controller: _lyricsScrollController,
+                padding: EdgeInsets.symmetric(vertical: vPadding),
+                itemCount: lines.length,
+                itemExtent: _lyricItemHeight,
+                itemBuilder: (context, index) {
+                  final line = lines[index];
+                  final isCurrent = index == _currentLineIndex;
+                  final isPast = _currentLineIndex >= 0 && index < _currentLineIndex;
+                  return GestureDetector(
+                    onTap: () => _onLineTap(index),
+                    behavior: HitTestBehavior.translucent,
+                    child: Center(
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 300),
+                        style: TextStyle(
+                          fontSize: isCurrent ? 20 : 15,
+                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          color: isCurrent
+                              ? Theme.of(context).colorScheme.primary
+                              : isPast
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600,
+                          height: 1.4,
+                        ),
+                        child: Text(line.text ?? '', textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
                       ),
-                      child: Text(line.text ?? '', textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
                     ),
-                  ),
-                );
-              },
-            );
-          },
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
