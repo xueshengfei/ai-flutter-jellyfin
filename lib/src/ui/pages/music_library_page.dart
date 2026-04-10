@@ -787,9 +787,9 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
 
         return Scaffold(
           appBar: AppBar(title: const Text('正在播放')),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: isWide
                   ? _buildWideLayout(context, song)
                   : _buildNarrowLayout(context, song),
@@ -800,22 +800,22 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     );
   }
 
-  /// 移动端布局（窄屏）
+  /// 移动端布局（窄屏）— 紧凑一屏展示
   Widget _buildNarrowLayout(BuildContext context, MusicSong song) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildVinyl(context, song, 240),
-        const SizedBox(height: 32),
+        _buildVinyl(context, song, 200),
+        const SizedBox(height: 16),
         _buildSongInfo(context, song, isWide: false),
-        const SizedBox(height: 32),
+        const SizedBox(height: 20),
         _buildProgressBar(context),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildControls(context, song),
-        const SizedBox(height: 16),
         if (_manager.error != null)
-          Padding(padding: const EdgeInsets.all(16),
+          Padding(padding: const EdgeInsets.all(8),
             child: Text(_manager.error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center)),
+        const SizedBox(height: 4),
         Text('${_manager.currentIndex + 1} / ${_manager.playlistLength}',
           style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
       ],
@@ -825,9 +825,8 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
   /// Web/桌面端布局（宽屏）— 支持歌词分栏
   Widget _buildWideLayout(BuildContext context, MusicSong song) {
     final screenWidth = MediaQuery.of(context).size.width;
-    // 歌词面板目标宽度：屏幕宽度 - 唱片240 - 间距32 - 两侧padding 64
-    final lyricsWidth = (screenWidth - 240 - 32 - 64).clamp(200.0, 600.0);
-    const vinylSize = 240.0;
+    final lyricsWidth = (screenWidth - 200 - 32 - 32).clamp(200.0, 600.0);
+    const vinylSize = 200.0;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -844,7 +843,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
               duration: const Duration(milliseconds: 400),
               curve: Curves.easeOutCubic,
               width: _showWebLyrics ? lyricsWidth : 0,
-              height: 420,
+              height: 400,
               clipBehavior: Clip.hardEdge,
               decoration: const BoxDecoration(),
               child: AnimatedOpacity(
@@ -852,22 +851,22 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
                 opacity: _showWebLyrics ? 1.0 : 0.0,
                 curve: Curves.easeIn,
                 child: _showWebLyrics
-                    ? _buildWebLyricsContent(context, lyricsWidth, 420)
+                    ? _buildWebLyricsContent(context, lyricsWidth, 400)
                     : const SizedBox.shrink(),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 12),
         _buildSongInfo(context, song, isWide: true),
-        const SizedBox(height: 32),
+        const SizedBox(height: 20),
         _buildProgressBar(context),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildControls(context, song),
-        const SizedBox(height: 16),
         if (_manager.error != null)
-          Padding(padding: const EdgeInsets.all(16),
+          Padding(padding: const EdgeInsets.all(8),
             child: Text(_manager.error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center)),
+        const SizedBox(height: 4),
         Text('${_manager.currentIndex + 1} / ${_manager.playlistLength}',
           style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
       ],
@@ -989,15 +988,15 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     );
   }
 
-  /// 歌曲信息行（歌名 + 歌手行带歌词按钮）
+  /// 歌曲信息行 — 歌名一行 + 歌手·专辑 歌词按钮 同一行
   Widget _buildSongInfo(BuildContext context, MusicSong song, {required bool isWide}) {
     return Column(
       children: [
         Text(song.name,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 8),
-        // 歌手行 + 歌词按钮
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 4),
+        // 歌手 + 歌词按钮 同一行
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -1020,7 +1019,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
                   }
                 },
                 child: Text('${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: song.artistRefs?.isNotEmpty == true
                         ? Theme.of(context).colorScheme.primary
                         : Colors.grey.shade600,
@@ -1028,8 +1027,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
                   textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ),
-            const SizedBox(width: 8),
-            // 歌词按钮
+            const SizedBox(width: 6),
             _LyricsChip(
               isActive: _showWebLyrics,
               onTap: _onLyricsTap,
