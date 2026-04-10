@@ -160,7 +160,7 @@ class _ArtistsTabState extends State<_ArtistsTab> {
         hasImage: artist.hasImage,
         title: artist.name,
         subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
-        isCircle: true,
+        isCircle: false,
         placeholderIcon: Icons.person,
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
@@ -284,6 +284,10 @@ class _SongsTabState extends State<_SongsTab> {
   String? _error;
   SongSortField _sortField = SongSortField.name;
   bool _sortAscending = true;
+  int _startIndex = 0;
+  int _pageSize = 100;
+  bool _hasMore = true;
+  bool _isRandom = false;
 
   @override
   void initState() {
@@ -291,11 +295,45 @@ class _SongsTabState extends State<_SongsTab> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({int? startIndex, bool random = false}) async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final result = await widget.client.music.getLatestSongs(parentId: widget.libraryId, limit: 100);
-      if (mounted) setState(() { _songs = result.songs; _isLoading = false; });
+      final si = startIndex ?? 0;
+      final result = await widget.client.music.getLatestSongs(
+        parentId: widget.libraryId,
+        limit: _pageSize,
+        nameStartsWith: random ? null : null,
+      );
+      if (mounted) setState(() {
+        if (random) {
+          _songs = List.from(result.songs)..shuffle();
+        } else {
+          _songs = result.songs;
+        }
+        _startIndex = si;
+        _isRandom = random;
+        _hasMore = result.songs.length >= _pageSize;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() { _error = '$e'; _isLoading = false; });
+    }
+  }
+
+  Future<void> _loadRandom() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final result = await widget.client.music.getLatestSongs(
+        parentId: widget.libraryId,
+        limit: _pageSize,
+      );
+      if (mounted) setState(() {
+        _songs = List.from(result.songs)..shuffle();
+        _startIndex = 0;
+        _isRandom = true;
+        _hasMore = false;
+        _isLoading = false;
+      });
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
     }
@@ -329,88 +367,86 @@ class _SongsTabState extends State<_SongsTab> {
     return list;
   }
 
-  void _showSortSheet() {
-    showModalBottomSheet(
+  void _showSortDialog() {
+    showDialog(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
             children: [
-              // 标题
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Text('排序方式', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(),
-              // 排序字段
-              ...SongSortField.values.map((field) => ListTile(
-                    leading: Icon(field.icon, size: 20,
-                        color: _sortField == field
-                            ? Theme.of(context).colorScheme.primary
-                            : null),
-                    title: Text(field.label),
-                    trailing: _sortField == field
-                        ? Icon(Icons.check, size: 20, color: Theme.of(context).colorScheme.primary)
-                        : null,
-                    onTap: () {
-                      setSheetState(() => _sortField = field);
-                      setState(() => _sortField = field);
-                    },
-                  )),
-              const Divider(),
-              // 排序方向
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Text('排序顺序', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              ListTile(
-                leading: Icon(Icons.arrow_upward, size: 20,
-                    color: _sortAscending
-                        ? Theme.of(context).colorScheme.primary
-                        : null),
-                title: const Text('升序'),
-                trailing: _sortAscending
-                    ? Icon(Icons.check, size: 20, color: Theme.of(context).colorScheme.primary)
-                    : null,
-                onTap: () {
-                  setSheetState(() => _sortAscending = true);
-                  setState(() => _sortAscending = true);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.arrow_downward, size: 20,
-                    color: !_sortAscending
-                        ? Theme.of(context).colorScheme.primary
-                        : null),
-                title: const Text('降序'),
-                trailing: !_sortAscending
-                    ? Icon(Icons.check, size: 20, color: Theme.of(context).colorScheme.primary)
-                    : null,
-                onTap: () {
-                  setSheetState(() => _sortAscending = false);
-                  setState(() => _sortAscending = false);
-                },
+              Text('排序方式', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
+          contentPadding: const EdgeInsets.only(top: 8),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 排序字段
+                ...SongSortField.values.map((field) => ListTile(
+                      dense: true,
+                      leading: Icon(field.icon, size: 20,
+                          color: _sortField == field
+                              ? Theme.of(context).colorScheme.primary
+                              : null),
+                      title: Text(field.label, style: const TextStyle(fontSize: 14)),
+                      trailing: _sortField == field
+                          ? Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                          : null,
+                      onTap: () {
+                        setDialogState(() => _sortField = field);
+                        setState(() => _sortField = field);
+                      },
+                    )),
+                const Divider(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text('排序顺序', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                ListTile(
+                  dense: true,
+                  leading: Icon(Icons.arrow_upward, size: 20,
+                      color: _sortAscending
+                          ? Theme.of(context).colorScheme.primary
+                          : null),
+                  title: const Text('升序', style: TextStyle(fontSize: 14)),
+                  trailing: _sortAscending
+                      ? Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                      : null,
+                  onTap: () {
+                    setDialogState(() => _sortAscending = true);
+                    setState(() => _sortAscending = true);
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  leading: Icon(Icons.arrow_downward, size: 20,
+                      color: !_sortAscending
+                          ? Theme.of(context).colorScheme.primary
+                          : null),
+                  title: const Text('降序', style: TextStyle(fontSize: 14)),
+                  trailing: !_sortAscending
+                      ? Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                      : null,
+                  onTap: () {
+                    setDialogState(() => _sortAscending = false);
+                    setState(() => _sortAscending = false);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
         ),
       ),
     );
@@ -419,37 +455,43 @@ class _SongsTabState extends State<_SongsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return _buildError(_error!, _load);
+    if (_error != null) return _buildError(_error!, () => _load());
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
 
     final sorted = _sortedSongs;
 
     return Column(
       children: [
-        // 排序工具栏
+        // 工具栏
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: Row(
             children: [
               Text('${_songs.length} 首', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
               const Spacer(),
-              Flexible(
-                child: TextButton.icon(
-                  onPressed: _showSortSheet,
-                  icon: Icon(Icons.sort, size: 18, color: Colors.grey.shade600),
-                  label: Flexible(child: Text(_sortField.label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis)),
-                ),
+              // 排序方式按钮（固定文字）
+              TextButton.icon(
+                onPressed: _showSortDialog,
+                icon: Icon(Icons.sort, size: 18, color: Colors.grey.shade600),
+                label: Text('排序方式', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
               ),
-              // 排序方向按钮
+              // 排序方向
               IconButton(
                 visualDensity: VisualDensity.compact,
                 onPressed: () => setState(() => _sortAscending = !_sortAscending),
                 icon: Icon(
                   _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                  size: 18,
-                  color: Colors.grey.shade600,
+                  size: 18, color: Colors.grey.shade600,
                 ),
                 tooltip: _sortAscending ? '升序' : '降序',
+              ),
+              // 随机按钮
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: _loadRandom,
+                icon: Icon(Icons.shuffle, size: 18,
+                    color: _isRandom ? Theme.of(context).colorScheme.primary : Colors.grey.shade600),
+                tooltip: '随机100首',
               ),
             ],
           ),
@@ -457,11 +499,15 @@ class _SongsTabState extends State<_SongsTab> {
         // 歌曲列表
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _load,
+            onRefresh: () => _load(),
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: sorted.length,
+              itemCount: sorted.length + 1, // +1 for bottom pagination
               itemBuilder: (context, index) {
+                if (index == sorted.length) {
+                  // 分页控制
+                  return _buildPagination();
+                }
                 final song = sorted[index];
                 return _MusicFlatItem(
                   coverUrl: song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100),
@@ -481,6 +527,38 @@ class _SongsTabState extends State<_SongsTab> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPagination() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 上一百首
+          OutlinedButton.icon(
+            onPressed: _startIndex > 0
+                ? () => _load(startIndex: _startIndex - _pageSize)
+                : null,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('上一百首'),
+          ),
+          const SizedBox(width: 16),
+          // 页码
+          Text('第 ${(_startIndex ~/ _pageSize) + 1} 页',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+          const SizedBox(width: 16),
+          // 下一百首
+          OutlinedButton.icon(
+            onPressed: _hasMore
+                ? () => _load(startIndex: _startIndex + _pageSize)
+                : null,
+            icon: const Icon(Icons.arrow_forward, size: 16),
+            label: const Text('下一百首'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -598,25 +676,9 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 控制
+                  // 控制: [PlayMode] [Prev] [Play/Pause] [Next] [Lyrics]
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    IconButton(
-                      onPressed: () => _manager.playPrevious(),
-                      icon: const Icon(Icons.skip_previous, size: 40),
-                    ),
-                    const SizedBox(width: 12),
-                    _manager.isLoading
-                        ? const SizedBox(width: 56, height: 56, child: CircularProgressIndicator())
-                        : IconButton.filled(
-                            onPressed: () => _manager.isPlaying ? _manager.pause() : _manager.resume(),
-                            icon: Icon(_manager.isPlaying ? Icons.pause : Icons.play_arrow, size: 40),
-                            style: IconButton.styleFrom(minimumSize: const Size(64, 64))),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      onPressed: () => _manager.playNext(),
-                      icon: const Icon(Icons.skip_next, size: 40),
-                    ),
-                    const SizedBox(width: 8),
+                    // 播放模式
                     IconButton(
                       onPressed: () => _manager.cyclePlayMode(),
                       icon: Icon(switch (_manager.playMode) {
@@ -634,16 +696,47 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                       },
                     ),
                     const SizedBox(width: 8),
+                    // Previous
                     IconButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => LyricsPage(
-                          client: widget.client,
-                          currentSong: song,
-                          albumCoverUrl: song.getAlbumCoverUrl(fillWidth: 600, fillHeight: 600),
+                      onPressed: () => _manager.playPrevious(),
+                      icon: const Icon(Icons.skip_previous, size: 40),
+                    ),
+                    const SizedBox(width: 12),
+                    // Play/Pause
+                    _manager.isLoading
+                        ? const SizedBox(width: 56, height: 56, child: CircularProgressIndicator())
+                        : IconButton.filled(
+                            onPressed: () => _manager.isPlaying ? _manager.pause() : _manager.resume(),
+                            icon: Icon(_manager.isPlaying ? Icons.pause : Icons.play_arrow, size: 40),
+                            style: IconButton.styleFrom(minimumSize: const Size(64, 64))),
+                    const SizedBox(width: 12),
+                    // Next
+                    IconButton(
+                      onPressed: () => _manager.playNext(),
+                      icon: const Icon(Icons.skip_next, size: 40),
+                    ),
+                    const SizedBox(width: 8),
+                    // 歌词按钮（图标+词字）
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(24),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => LyricsPage(
+                            client: widget.client,
+                            currentSong: song,
+                            albumCoverUrl: song.getAlbumCoverUrl(fillWidth: 600, fillHeight: 600),
+                          ),
+                        )),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.lyrics_outlined, size: 22),
+                            Text('词', style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                          ],
                         ),
-                      )),
-                      icon: const Icon(Icons.lyrics_outlined, size: 28),
-                      tooltip: '歌词',
+                      ),
                     ),
                   ]),
                   const SizedBox(height: 16),
