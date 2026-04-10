@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// 专辑详情页
@@ -191,10 +192,11 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
           width: 130,
           height: 130,
           child: album.hasCoverImage
-              ? Image.network(
-                  album.getCoverImageUrl(fillWidth: 260, fillHeight: 260)!,
+              ? CachedNetworkImage(
+                  imageUrl: album.getCoverImageUrl(fillWidth: 260, fillHeight: 260)!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _coverPlaceholder(),
+                  placeholder: (_, __) => _coverPlaceholder(),
+                  errorWidget: (_, __, ___) => _coverPlaceholder(),
                 )
               : _coverPlaceholder(),
         ),

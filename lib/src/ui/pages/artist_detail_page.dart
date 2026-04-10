@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// 艺术家详情页
@@ -233,10 +234,11 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
           width: 240,
           height: 240,
           child: artist.hasImage
-              ? Image.network(
-                  artist.getPrimaryImageUrl(fillWidth: 480, fillHeight: 480)!,
+              ? CachedNetworkImage(
+                  imageUrl: artist.getPrimaryImageUrl(fillWidth: 480, fillHeight: 480)!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _avatarPlaceholder(),
+                  placeholder: (_, __) => _avatarPlaceholder(),
+                  errorWidget: (_, __, ___) => _avatarPlaceholder(),
                 )
               : _avatarPlaceholder(),
         ),
@@ -299,10 +301,11 @@ class _AlbumCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: album.hasCoverImage
-                    ? Image.network(
-                        album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
+                    ? CachedNetworkImage(
+                        imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholder(context),
+                        placeholder: (_, __) => _placeholder(context),
+                        errorWidget: (_, __, ___) => _placeholder(context),
                       )
                     : _placeholder(context),
               ),
