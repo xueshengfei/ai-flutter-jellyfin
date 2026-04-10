@@ -73,7 +73,7 @@ class _BannerListItem extends StatelessWidget {
                 errorWidget: Container(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: const Center(
-                    child: Icon(Icons.error_outline, size: 64),
+                    child: Icon(Icons.broken_image_outlined, size: 64, color: Colors.white54),
                   ),
                 ),
               ),

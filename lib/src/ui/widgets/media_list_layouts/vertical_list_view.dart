@@ -75,7 +75,7 @@ class _VerticalListItem extends StatelessWidget {
                   errorWidget: Container(
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: const Center(
-                      child: Icon(Icons.error_outline),
+                      child: Icon(Icons.broken_image_outlined, color: Colors.white54),
                     ),
                   ),
                 ),
