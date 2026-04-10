@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
 
 /// 专辑详情页
 ///
-/// 显示专辑信息 + 歌曲列表，点击歌曲直接播放
+/// 移动端布局：顶部专辑封面+信息 → 歌曲列表
 class AlbumDetailPage extends StatefulWidget {
   final JellyfinClient client;
   final MusicAlbum album;
@@ -41,106 +40,9 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: 280,
-            floating: false,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                widget.album.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  shadows: [Shadow(blurRadius: 8, color: Colors.black87)],
-                ),
-              ),
-              background: _buildHeader(),
-            ),
-            actions: [
-              // 播放全部按钮
-              IconButton(
-                icon: const Icon(Icons.play_circle_filled),
-                onPressed: () => _playAll(),
-                tooltip: '播放全部',
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _loadData,
-              ),
-            ],
-          ),
-
-          // 专辑信息
+          // 顶部：封面 + 信息
           SliverToBoxAdapter(
-            child: FutureBuilder<MusicAlbum>(
-              future: _albumFuture,
-              builder: (context, snapshot) {
-                final album = snapshot.data ?? widget.album;
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 标题和艺术家
-                      Text(
-                        album.name,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        album.artistText,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 信息行
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          if (album.productionYear != null)
-                            Chip(label: Text('${album.productionYear}'), visualDensity: VisualDensity.compact),
-                          if (album.songCount != null)
-                            Chip(
-                              label: Text('${album.songCount} 首'),
-                              avatar: const Icon(Icons.music_note, size: 14),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          if (album.genres != null)
-                            ...album.genres!.map(
-                              (g) => Chip(label: Text(g), visualDensity: VisualDensity.compact),
-                            ),
-                        ],
-                      ),
-
-                      // 简介
-                      if (album.overview != null && album.overview!.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Text(album.overview!, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
-                      ],
-
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 8),
-
-                      // 歌曲列表标题
-                      Row(
-                        children: [
-                          Text('歌曲', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          FilledButton.tonalIcon(
-                            onPressed: () => _playAll(),
-                            icon: const Icon(Icons.play_arrow, size: 18),
-                            label: const Text('播放全部'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                );
-              },
-            ),
+            child: _buildAlbumHeader(context),
           ),
 
           // 歌曲列表
@@ -156,7 +58,8 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
               if (snapshot.hasError) {
                 return SliverFillRemaining(
                   child: Center(
-                    child: Text('加载失败: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                    child: Text('加载失败: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red)),
                   ),
                 );
               }
@@ -172,26 +75,9 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final song = songs[index];
-                    return ListTile(
-                      leading: SizedBox(
-                        width: 40,
-                        child: Center(
-                          child: Text(
-                            '${song.trackNumber ?? index + 1}',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                      title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: song.artistText != '未知艺术家'
-                          ? Text(song.artistText, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600))
-                          : null,
-                      trailing: Text(song.durationText,
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    return _SongRow(
+                      song: song,
+                      index: index,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -212,67 +98,129 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
               );
             },
           ),
+
+          // 底部留白给 MiniPlayer
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 80),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (widget.album.hasCoverImage)
-          Stack(
-            fit: StackFit.expand,
+  /// 专辑头部信息
+  Widget _buildAlbumHeader(BuildContext context) {
+    return FutureBuilder<MusicAlbum>(
+      future: _albumFuture,
+      builder: (context, snapshot) {
+        final album = snapshot.data ?? widget.album;
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 48, left: 20, right: 20, bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Image.network(
-                widget.album.getCoverImageUrl(fillWidth: 500, fillHeight: 500)!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: Theme.of(context).colorScheme.tertiaryContainer),
-              ),
-              // 毛玻璃模糊效果 - 用半透明遮罩代替
-              Container(color: Colors.black.withValues(alpha: 0.5)),
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    widget.album.getCoverImageUrl(fillWidth: 300, fillHeight: 300)!,
-                    width: 180,
-                    height: 180,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 180,
-                      height: 180,
-                      color: Theme.of(context).colorScheme.tertiaryContainer,
-                      child: const Icon(Icons.album, size: 60, color: Colors.white38),
+              // 封面
+              _buildCover(album),
+              const SizedBox(width: 16),
+              // 信息
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 专辑名
+                    Text(
+                      album.name,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    // 艺术家
+                    Text(
+                      album.artistText,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    // 信息行
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        if (album.productionYear != null)
+                          _infoChip('${album.productionYear}'),
+                        if (album.songCount != null)
+                          _infoChip('${album.songCount} 首'),
+                        if (album.genres != null)
+                          ...album.genres!.map((g) => _infoChip(g)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // 播放全部按钮
+                    FilledButton.tonalIcon(
+                      onPressed: () => _playAll(),
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: const Text('播放全部'),
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          )
-        else
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.tertiary,
-                  Theme.of(context).colorScheme.primaryContainer,
-                ],
-              ),
-            ),
-            child: const Center(child: Icon(Icons.album, size: 80, color: Colors.white38)),
           ),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
-            ),
-          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCover(MusicAlbum album) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 130,
+        height: 130,
+        child: album.hasCoverImage
+            ? Image.network(
+                album.getCoverImageUrl(fillWidth: 260, fillHeight: 260)!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _coverPlaceholder(),
+              )
+            : _coverPlaceholder(),
+      ),
+    );
+  }
+
+  Widget _coverPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primaryContainer,
+            Theme.of(context).colorScheme.tertiaryContainer,
+          ],
         ),
-      ],
+      ),
+      child: const Center(child: Icon(Icons.album, size: 48, color: Colors.white38)),
+    );
+  }
+
+  Widget _infoChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
     );
   }
 
@@ -287,6 +235,72 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
           client: widget.client,
           song: songsResult.songs.first,
           playlist: songsResult.songs,
+        ),
+      ),
+    );
+  }
+}
+
+/// 歌曲行 - 封面缩略图 + 序号 + 歌名 + 艺术家 + 时长
+class _SongRow extends StatelessWidget {
+  final MusicSong song;
+  final int index;
+  final VoidCallback onTap;
+
+  const _SongRow({
+    required this.song,
+    required this.index,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            // 序号或封面
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  '${song.trackNumber ?? index + 1}',
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 歌曲信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(song.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                  if (song.artistText != '未知艺术家')
+                    Text(song.artistText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                ],
+              ),
+            ),
+            // 时长
+            if (song.durationText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Text(song.durationText,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+              ),
+          ],
         ),
       ),
     );

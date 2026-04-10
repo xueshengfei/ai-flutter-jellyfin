@@ -150,11 +150,12 @@ class _ArtistsTabState extends State<_ArtistsTab> {
       onRefresh: _load,
       getSortName: (a) => a.sortName,
       getName: (a) => a.name,
-      gridItemBuilder: (context, artist) => _AvatarCard(
+      gridItemBuilder: (context, artist) => _MediaCard(
         imageUrl: artist.getPrimaryImageUrl(fillWidth: 200, fillHeight: 200),
         hasImage: artist.hasImage,
         title: artist.name,
         subtitle: artist.albumCount != null ? '${artist.albumCount} 张专辑' : null,
+        isCircle: true,
         placeholderIcon: Icons.person,
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => ArtistDetailPage(client: widget.client, artist: artist),
@@ -218,8 +219,8 @@ class _AlbumsTabState extends State<_AlbumsTab> {
       onRefresh: _load,
       getSortName: (a) => a.sortName,
       getName: (a) => a.name,
-      gridChildAspectRatio: 0.7,
-      gridItemBuilder: (context, album) => _AvatarCard(
+      gridChildAspectRatio: 0.68,
+      gridItemBuilder: (context, album) => _MediaCard(
         imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200),
         hasImage: album.hasCoverImage,
         title: album.name,
@@ -245,6 +246,19 @@ class _AlbumsTabState extends State<_AlbumsTab> {
 
 // ==================== 歌曲 Tab ====================
 
+enum SongSortField {
+  name('曲目名称', Icons.sort_by_alpha),
+  album('专辑', Icons.album),
+  artist('艺术家', Icons.person),
+  playCount('播放次数', Icons.play_circle_outline),
+  duration('时长', Icons.timer),
+  random('随机', Icons.shuffle);
+
+  final String label;
+  final IconData icon;
+  const SongSortField(this.label, this.icon);
+}
+
 class _SongsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
@@ -258,6 +272,8 @@ class _SongsTabState extends State<_SongsTab> {
   List<MusicSong> _songs = [];
   bool _isLoading = true;
   String? _error;
+  SongSortField _sortField = SongSortField.name;
+  bool _sortAscending = true;
 
   @override
   void initState() {
@@ -275,35 +291,184 @@ class _SongsTabState extends State<_SongsTab> {
     }
   }
 
+  List<MusicSong> get _sortedSongs {
+    final list = List<MusicSong>.from(_songs);
+    int compare(MusicSong a, MusicSong b) {
+      int cmp;
+      switch (_sortField) {
+        case SongSortField.name:
+          cmp = a.name.compareTo(b.name);
+        case SongSortField.album:
+          cmp = (a.albumName ?? '').compareTo(b.albumName ?? '');
+        case SongSortField.artist:
+          cmp = a.artistText.compareTo(b.artistText);
+        case SongSortField.playCount:
+          cmp = (b.playCount ?? 0).compareTo(a.playCount ?? 0);
+        case SongSortField.duration:
+          cmp = (a.runTimeTicks ?? 0).compareTo(b.runTimeTicks ?? 0);
+        case SongSortField.random:
+          return 0; // 随机不在这里处理
+      }
+      return _sortAscending ? cmp : -cmp;
+    }
+    if (_sortField == SongSortField.random) {
+      list.shuffle();
+    } else {
+      list.sort(compare);
+    }
+    return list;
+  }
+
+  void _showSortSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Text('排序方式', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              // 排序字段
+              ...SongSortField.values.map((field) => ListTile(
+                    leading: Icon(field.icon, size: 20,
+                        color: _sortField == field
+                            ? Theme.of(context).colorScheme.primary
+                            : null),
+                    title: Text(field.label),
+                    trailing: _sortField == field
+                        ? Icon(Icons.check, size: 20, color: Theme.of(context).colorScheme.primary)
+                        : null,
+                    onTap: () {
+                      setSheetState(() => _sortField = field);
+                      setState(() => _sortField = field);
+                    },
+                  )),
+              const Divider(),
+              // 排序方向
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Text('排序顺序', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.arrow_upward, size: 20,
+                    color: _sortAscending
+                        ? Theme.of(context).colorScheme.primary
+                        : null),
+                title: const Text('升序'),
+                trailing: _sortAscending
+                    ? Icon(Icons.check, size: 20, color: Theme.of(context).colorScheme.primary)
+                    : null,
+                onTap: () {
+                  setSheetState(() => _sortAscending = true);
+                  setState(() => _sortAscending = true);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.arrow_downward, size: 20,
+                    color: !_sortAscending
+                        ? Theme.of(context).colorScheme.primary
+                        : null),
+                title: const Text('降序'),
+                trailing: !_sortAscending
+                    ? Icon(Icons.check, size: 20, color: Theme.of(context).colorScheme.primary)
+                    : null,
+                onTap: () {
+                  setSheetState(() => _sortAscending = false);
+                  setState(() => _sortAscending = false);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return _buildError(_error!, _load);
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
 
-    // 歌曲始终使用列表布局，带专辑封面
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _songs.length,
-        itemBuilder: (context, index) {
-          final song = _songs[index];
-          return _MusicFlatItem(
-            coverUrl: song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100),
-            hasImage: song.getAlbumCoverUrl() != null,
-            title: song.name,
-            subtitle: '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
-            placeholderIcon: Icons.music_note,
-            trailingText: song.durationText,
-            onTap: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => AudioPlayerPage(
-                client: widget.client, song: song, playlist: _songs, initialIndex: index,
+    final sorted = _sortedSongs;
+
+    return Column(
+      children: [
+        // 排序工具栏
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: Row(
+            children: [
+              Text('${_songs.length} 首', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _showSortSheet,
+                icon: Icon(Icons.sort, size: 18, color: Colors.grey.shade600),
+                label: Text(_sortField.label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
               ),
-            )),
-          );
-        },
-      ),
+              // 排序方向按钮
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() => _sortAscending = !_sortAscending),
+                icon: Icon(
+                  _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                  size: 18,
+                  color: Colors.grey.shade600,
+                ),
+                tooltip: _sortAscending ? '升序' : '降序',
+              ),
+            ],
+          ),
+        ),
+        // 歌曲列表
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _load,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: sorted.length,
+              itemBuilder: (context, index) {
+                final song = sorted[index];
+                return _MusicFlatItem(
+                  coverUrl: song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100),
+                  hasImage: song.getAlbumCoverUrl() != null,
+                  title: song.name,
+                  subtitle: '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
+                  placeholderIcon: Icons.music_note,
+                  trailingText: song.durationText,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => AudioPlayerPage(
+                      client: widget.client, song: song, playlist: sorted, initialIndex: index,
+                    ),
+                  )),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -334,7 +499,6 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
   @override
   void initState() {
     super.initState();
-    // 仅当 manager 未在播放同一首歌时才启动新播放
     final current = _manager.currentSong;
     if (current == null || current.id != widget.song.id) {
       _manager.play(widget.playlist, widget.initialIndex, widget.client);
@@ -378,7 +542,6 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 8),
-                  // 歌手名可点击跳转
                   GestureDetector(
                     onTap: () {
                       if (song.artistRefs?.isNotEmpty == true) {
@@ -423,15 +586,13 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 控制: [Prev] [Play/Pause] [Next] [PlayMode] [Lyrics]
+                  // 控制
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    // Previous
                     IconButton(
                       onPressed: () => _manager.playPrevious(),
                       icon: const Icon(Icons.skip_previous, size: 40),
                     ),
                     const SizedBox(width: 12),
-                    // Play/Pause
                     _manager.isLoading
                         ? const SizedBox(width: 56, height: 56, child: CircularProgressIndicator())
                         : IconButton.filled(
@@ -439,13 +600,11 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                             icon: Icon(_manager.isPlaying ? Icons.pause : Icons.play_arrow, size: 40),
                             style: IconButton.styleFrom(minimumSize: const Size(64, 64))),
                     const SizedBox(width: 12),
-                    // Next
                     IconButton(
                       onPressed: () => _manager.playNext(),
                       icon: const Icon(Icons.skip_next, size: 40),
                     ),
                     const SizedBox(width: 8),
-                    // PlayMode: 顺序 → 随机 → 单曲循环
                     IconButton(
                       onPressed: () => _manager.cyclePlayMode(),
                       icon: Icon(switch (_manager.playMode) {
@@ -463,7 +622,6 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
                       },
                     ),
                     const SizedBox(width: 8),
-                    // Lyrics
                     IconButton(
                       onPressed: () => Navigator.push(context, MaterialPageRoute(
                         builder: (_) => LyricsPage(
@@ -503,61 +661,81 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
 
 // ==================== 通用组件 ====================
 
-class _AvatarCard extends StatelessWidget {
+/// 网格模式卡片 - 正方形封面 + 标题 + 副标题
+/// 支持圆形模式（艺术家头像）和方形模式（专辑封面）
+class _MediaCard extends StatelessWidget {
   final String? imageUrl;
   final bool hasImage;
   final String title;
   final String? subtitle;
+  final bool isCircle;
   final IconData placeholderIcon;
   final VoidCallback onTap;
 
-  const _AvatarCard({
+  const _MediaCard({
     required this.imageUrl,
     required this.hasImage,
     required this.title,
     this.subtitle,
+    this.isCircle = false,
     required this.placeholderIcon,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: hasImage && imageUrl != null
-                  ? Image.network(imageUrl!, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _ph(context))
-                  : _ph(context),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                if (subtitle != null)
-                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-              ]),
-            ),
-          ],
-        ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: isCircle
+                ? _buildCircleAvatar(context)
+                : _buildSquareCover(context),
+          ),
+          const SizedBox(height: 6),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          if (subtitle != null)
+            Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+        ],
       ),
     );
   }
 
-  Widget _ph(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
-    child: Center(child: Icon(placeholderIcon, size: 48, color: Colors.white54)),
+  Widget _buildCircleAvatar(BuildContext context) {
+    return ClipOval(
+      child: Container(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: hasImage && imageUrl != null
+            ? Image.network(imageUrl!, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _ph(context))
+            : _ph(context),
+      ),
+    );
+  }
+
+  Widget _buildSquareCover(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: hasImage && imageUrl != null
+            ? Image.network(imageUrl!, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _ph(context))
+            : _ph(context),
+      ),
+    );
+  }
+
+  Widget _ph(BuildContext context) => Center(
+    child: Icon(placeholderIcon, size: 36, color: Colors.white.withValues(alpha: 0.3)),
   );
 }
 
-/// 扁平列表/横幅的单行组件
+/// 扁平列表单行组件
 class _MusicFlatItem extends StatelessWidget {
   final String? coverUrl;
   final bool hasImage;
@@ -579,20 +757,40 @@ class _MusicFlatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: ListTile(
-        dense: trailingText != null,
-        leading: _buildCover(context, 50, 50, 6),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: subtitle != null
-            ? Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600))
-            : null,
-        trailing: trailingText != null
-            ? Text(trailingText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500))
-            : null,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            children: [
+              // 封面缩略图
+              _buildCover(context, 48, 48, 6),
+              const SizedBox(width: 12),
+              // 文字信息
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    if (subtitle != null)
+                      Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                  ],
+                ),
+              ),
+              // 时长/尾部文字
+              if (trailingText != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(trailingText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -611,8 +809,8 @@ class _MusicFlatItem extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.primaryContainer,
-    child: Center(child: Icon(placeholderIcon, color: Colors.white54)),
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: Center(child: Icon(placeholderIcon, size: 20, color: Colors.white.withValues(alpha: 0.3))),
   );
 }
 
