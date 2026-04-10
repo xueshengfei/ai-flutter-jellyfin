@@ -459,6 +459,7 @@ class _SongsTabState extends State<_SongsTab> {
     if (_songs.isEmpty) return const Center(child: Text('暂无歌曲'));
 
     final sorted = _sortedSongs;
+    final showPlayCount = _sortField == SongSortField.playCount;
 
     return Column(
       children: [
@@ -467,9 +468,27 @@ class _SongsTabState extends State<_SongsTab> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: Row(
             children: [
-              Text('${_songs.length} 首', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+              // 上一百首
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: _startIndex > 0
+                    ? () => _load(startIndex: _startIndex - _pageSize)
+                    : null,
+                icon: const Icon(Icons.chevron_left, size: 20),
+                tooltip: '上一百首',
+              ),
+              Text('${_songs.length} 首', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              // 下一百首
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: _hasMore
+                    ? () => _load(startIndex: _startIndex + _pageSize)
+                    : null,
+                icon: const Icon(Icons.chevron_right, size: 20),
+                tooltip: '下一百首',
+              ),
               const Spacer(),
-              // 排序方式按钮（固定文字）
+              // 排序方式
               TextButton.icon(
                 onPressed: _showSortDialog,
                 icon: Icon(Icons.sort, size: 18, color: Colors.grey.shade600),
@@ -485,7 +504,7 @@ class _SongsTabState extends State<_SongsTab> {
                 ),
                 tooltip: _sortAscending ? '升序' : '降序',
               ),
-              // 随机按钮
+              // 随机
               IconButton(
                 visualDensity: VisualDensity.compact,
                 onPressed: _loadRandom,
@@ -502,12 +521,8 @@ class _SongsTabState extends State<_SongsTab> {
             onRefresh: () => _load(),
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: sorted.length + 1, // +1 for bottom pagination
+              itemCount: sorted.length,
               itemBuilder: (context, index) {
-                if (index == sorted.length) {
-                  // 分页控制
-                  return _buildPagination();
-                }
                 final song = sorted[index];
                 return _MusicFlatItem(
                   coverUrl: song.getAlbumCoverUrl(fillWidth: 100, fillHeight: 100),
@@ -516,6 +531,10 @@ class _SongsTabState extends State<_SongsTab> {
                   subtitle: '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
                   placeholderIcon: Icons.music_note,
                   trailingText: song.durationText,
+                  isFavorite: song.isFavorite,
+                  onFavoriteTap: () => _toggleFavorite(song),
+                  playCount: song.playCount,
+                  showPlayCount: showPlayCount,
                   onTap: () => Navigator.push(context, MaterialPageRoute(
                     builder: (_) => AudioPlayerPage(
                       client: widget.client, song: song, playlist: sorted, initialIndex: index,
@@ -530,37 +549,53 @@ class _SongsTabState extends State<_SongsTab> {
     );
   }
 
-  Widget _buildPagination() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // 上一百首
-          OutlinedButton.icon(
-            onPressed: _startIndex > 0
-                ? () => _load(startIndex: _startIndex - _pageSize)
-                : null,
-            icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('上一百首'),
-          ),
-          const SizedBox(width: 16),
-          // 页码
-          Text('第 ${(_startIndex ~/ _pageSize) + 1} 页',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-          const SizedBox(width: 16),
-          // 下一百首
-          OutlinedButton.icon(
-            onPressed: _hasMore
-                ? () => _load(startIndex: _startIndex + _pageSize)
-                : null,
-            icon: const Icon(Icons.arrow_forward, size: 16),
-            label: const Text('下一百首'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _toggleFavorite(MusicSong song) async {
+    final newState = !(song.isFavorite ?? false);
+    // 立即更新 UI
+    setState(() {
+      final idx = _songs.indexWhere((s) => s.id == song.id);
+      if (idx >= 0) {
+        _songs[idx] = MusicSong(
+          id: song.id, name: song.name, serverUrl: song.serverUrl,
+          sortName: song.sortName, albumId: song.albumId, albumName: song.albumName,
+          albumPrimaryImageTag: song.albumPrimaryImageTag, artists: song.artists,
+          artistRefs: song.artistRefs, trackNumber: song.trackNumber,
+          discNumber: song.discNumber, runTimeTicks: song.runTimeTicks,
+          runTimeSeconds: song.runTimeSeconds, genres: song.genres,
+          communityRating: song.communityRating, parentId: song.parentId,
+          isFavorite: newState, played: song.played, playCount: song.playCount,
+          accessToken: song.accessToken,
+        );
+      }
+    });
+    try {
+      await widget.client.user.markFavorite(itemId: song.id, isFavorite: newState);
+    } catch (e) {
+      // 失败时恢复
+      if (mounted) {
+        setState(() {
+          final idx = _songs.indexWhere((s) => s.id == song.id);
+          if (idx >= 0) {
+            _songs[idx] = MusicSong(
+              id: song.id, name: song.name, serverUrl: song.serverUrl,
+              sortName: song.sortName, albumId: song.albumId, albumName: song.albumName,
+              albumPrimaryImageTag: song.albumPrimaryImageTag, artists: song.artists,
+              artistRefs: song.artistRefs, trackNumber: song.trackNumber,
+              discNumber: song.discNumber, runTimeTicks: song.runTimeTicks,
+              runTimeSeconds: song.runTimeSeconds, genres: song.genres,
+              communityRating: song.communityRating, parentId: song.parentId,
+              isFavorite: song.isFavorite, played: song.played, playCount: song.playCount,
+              accessToken: song.accessToken,
+            );
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败: $e'), duration: const Duration(seconds: 2)),
+        );
+      }
+    }
   }
+
 }
 
 // ==================== 音频播放页 ====================
@@ -849,6 +884,10 @@ class _MusicFlatItem extends StatelessWidget {
   final IconData placeholderIcon;
   final VoidCallback onTap;
   final String? trailingText;
+  final bool? isFavorite;
+  final VoidCallback? onFavoriteTap;
+  final int? playCount;
+  final bool showPlayCount;
 
   const _MusicFlatItem({
     required this.coverUrl,
@@ -858,6 +897,10 @@ class _MusicFlatItem extends StatelessWidget {
     required this.placeholderIcon,
     required this.onTap,
     this.trailingText,
+    this.isFavorite,
+    this.onFavoriteTap,
+    this.playCount,
+    this.showPlayCount = false,
   });
 
   @override
@@ -887,12 +930,37 @@ class _MusicFlatItem extends StatelessWidget {
                   ],
                 ),
               ),
+              // 播放次数
+              if (showPlayCount && playCount != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.play_arrow, size: 14, color: Colors.grey.shade400),
+                      Text('$playCount', style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+                    ],
+                  ),
+                ),
               // 时长/尾部文字
               if (trailingText != null)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(trailingText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                     overflow: TextOverflow.ellipsis),
+              ),
+              // 收藏按钮
+              if (onFavoriteTap != null)
+                GestureDetector(
+                  onTap: onFavoriteTap,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      isFavorite == true ? Icons.favorite : Icons.favorite_border,
+                      size: 20,
+                      color: isFavorite == true ? Colors.red.shade400 : Colors.grey.shade400,
+                    ),
+                  ),
                 ),
             ],
           ),
