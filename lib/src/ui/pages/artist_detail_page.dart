@@ -3,8 +3,8 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// 艺术家详情页
 ///
-/// 移动端布局：顶部艺术家头像+信息 → 专辑网格
-/// 参考 NetEase Cloud Music 风格
+/// 布局：居中头像（大）→ 居中名字 → 信息chips → 专辑网格
+/// 专辑网格：Web/宽屏 4 列，移动端 2 列
 class ArtistDetailPage extends StatefulWidget {
   final JellyfinClient client;
   final MusicArtist artist;
@@ -43,7 +43,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // 顶部艺术家信息区
+          // 顶部艺术家信息区（居中布局）
           SliverToBoxAdapter(
             child: _buildArtistHeader(context),
           ),
@@ -81,7 +81,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
             ),
           ),
 
-          // 专辑网格
+          // 专辑网格（响应式列数）
           FutureBuilder<MusicAlbumListResult>(
             future: _albumsFuture,
             builder: (context, snapshot) {
@@ -114,37 +114,42 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                 );
               }
 
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 0.68,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final album = albums[index];
-                      return _AlbumCard(
-                        album: album,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AlbumDetailPage(
-                                client: widget.client,
-                                album: album,
-                              ),
-                            ),
+              return SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  // 根据宽度决定列数：>600 用 4 列，否则 2 列
+                  final crossAxisCount = constraints.crossAxisExtent > 600 ? 4 : 2;
+                  return SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: 0.68,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final album = albums[index];
+                          return _AlbumCard(
+                            album: album,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AlbumDetailPage(
+                                    client: widget.client,
+                                    album: album,
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                    childCount: albums.length,
-                  ),
-                ),
+                        childCount: albums.length,
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -158,7 +163,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
     );
   }
 
-  /// 艺术家头部信息区
+  /// 艺术家头部信息区 — 居中布局：大头像 + 居中名字
   Widget _buildArtistHeader(BuildContext context) {
     return FutureBuilder<MusicArtist>(
       future: _artistFuture,
@@ -167,56 +172,51 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
 
         return Container(
           padding: const EdgeInsets.only(top: 48, left: 20, right: 20, bottom: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            // 居中对齐
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 头像
+              // 大头像（240x240）
               _buildAvatar(artist),
-              const SizedBox(width: 20),
-              // 信息
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 艺术家名
-                    Text(
-                      artist.name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+              const SizedBox(height: 16),
+              // 艺术家名（居中）
+              Text(
+                artist.name,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 8),
-                    // 统计 chips
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        if (artist.albumCount != null)
-                          _infoChip(Icons.album, '${artist.albumCount} 张专辑'),
-                        if (artist.songCount != null)
-                          _infoChip(Icons.music_note, '${artist.songCount} 首歌曲'),
-                      ],
-                    ),
-                    // 类型标签
-                    if (artist.genres != null && artist.genres!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: artist.genres!.map((g) => Chip(
-                              label: Text(g, style: const TextStyle(fontSize: 11)),
-                              visualDensity: VisualDensity.compact,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              padding: EdgeInsets.zero,
-                            )).toList(),
-                      ),
-                    ],
-                  ],
-                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
+              const SizedBox(height: 8),
+              // 统计 chips（居中）
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (artist.albumCount != null)
+                    _infoChip(Icons.album, '${artist.albumCount} 张专辑'),
+                  if (artist.songCount != null)
+                    _infoChip(Icons.music_note, '${artist.songCount} 首歌曲'),
+                ],
+              ),
+              // 类型标签（居中）
+              if (artist.genres != null && artist.genres!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.center,
+                  children: artist.genres!.map((g) => Chip(
+                        label: Text(g, style: const TextStyle(fontSize: 11)),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: EdgeInsets.zero,
+                      )).toList(),
+                ),
+              ],
             ],
           ),
         );
@@ -226,14 +226,13 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
 
   Widget _buildAvatar(MusicArtist artist) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        width: 120,
-        height: 120,
+        width: 240,
+        height: 240,
         child: artist.hasImage
             ? Image.network(
-                artist.getPrimaryImageUrl(
-                    fillWidth: 240, fillHeight: 240)!,
+                artist.getPrimaryImageUrl(fillWidth: 480, fillHeight: 480)!,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _avatarPlaceholder(),
               )
@@ -253,7 +252,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
         ),
       ),
       child: const Center(
-        child: Icon(Icons.person, size: 48, color: Colors.white38),
+        child: Icon(Icons.person, size: 80, color: Colors.white38),
       ),
     );
   }
@@ -291,14 +290,12 @@ class _AlbumCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 正方形封面
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: album.hasCoverImage
                   ? Image.network(
-                      album.getCoverImageUrl(
-                          fillWidth: 200, fillHeight: 200)!,
+                      album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => _placeholder(context),
                     )
@@ -306,20 +303,10 @@ class _AlbumCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          // 专辑名
-          Text(
-            album.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-          ),
-          // 艺术家
-          Text(
-            album.artistText,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-          ),
+          Text(album.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          Text(album.artistText, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
         ],
       ),
     );

@@ -128,10 +128,14 @@ class _ArtistsTabState extends State<_ArtistsTab> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({String? nameStartsWith}) async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final result = await widget.client.music.getAlbumArtists(parentId: widget.libraryId, limit: 100);
+      final result = await widget.client.music.getAlbumArtists(
+        parentId: widget.libraryId,
+        limit: 100,
+        nameStartsWith: nameStartsWith,
+      );
       if (mounted) setState(() { _artists = result.artists; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
@@ -141,15 +145,16 @@ class _ArtistsTabState extends State<_ArtistsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return _buildError(_error!, _load);
+    if (_error != null) return _buildError(_error!, () => _load());
     if (_artists.isEmpty) return const Center(child: Text('暂无艺术家'));
 
     return MediaGroupedScrollView<MusicArtist>(
       config: widget.config,
       items: _artists,
-      onRefresh: _load,
+      onRefresh: () => _load(),
       getSortName: (a) => a.sortName,
       getName: (a) => a.name,
+      onLetterFilter: (letter) => _load(nameStartsWith: letter == '#' ? null : letter),
       gridItemBuilder: (context, artist) => _MediaCard(
         imageUrl: artist.getPrimaryImageUrl(fillWidth: 200, fillHeight: 200),
         hasImage: artist.hasImage,
@@ -197,10 +202,14 @@ class _AlbumsTabState extends State<_AlbumsTab> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({String? nameStartsWith}) async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final result = await widget.client.music.getAlbums(parentId: widget.libraryId, limit: 100);
+      final result = await widget.client.music.getAlbums(
+        parentId: widget.libraryId,
+        limit: 100,
+        nameStartsWith: nameStartsWith,
+      );
       if (mounted) setState(() { _albums = result.albums; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = '$e'; _isLoading = false; });
@@ -210,15 +219,16 @@ class _AlbumsTabState extends State<_AlbumsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return _buildError(_error!, _load);
+    if (_error != null) return _buildError(_error!, () => _load());
     if (_albums.isEmpty) return const Center(child: Text('暂无专辑'));
 
     return MediaGroupedScrollView<MusicAlbum>(
       config: widget.config,
       items: _albums,
-      onRefresh: _load,
+      onRefresh: () => _load(),
       getSortName: (a) => a.sortName,
       getName: (a) => a.name,
+      onLetterFilter: (letter) => _load(nameStartsWith: letter == '#' ? null : letter),
       gridChildAspectRatio: 0.68,
       gridItemBuilder: (context, album) => _MediaCard(
         imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200),
@@ -423,10 +433,12 @@ class _SongsTabState extends State<_SongsTab> {
             children: [
               Text('${_songs.length} 首', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
               const Spacer(),
-              TextButton.icon(
-                onPressed: _showSortSheet,
-                icon: Icon(Icons.sort, size: 18, color: Colors.grey.shade600),
-                label: Text(_sortField.label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+              Flexible(
+                child: TextButton.icon(
+                  onPressed: _showSortSheet,
+                  icon: Icon(Icons.sort, size: 18, color: Colors.grey.shade600),
+                  label: Flexible(child: Text(_sortField.label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis)),
+                ),
               ),
               // 排序方向按钮
               IconButton(
@@ -786,7 +798,8 @@ class _MusicFlatItem extends StatelessWidget {
               if (trailingText != null)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: Text(trailingText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                  child: Text(trailingText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    overflow: TextOverflow.ellipsis),
                 ),
             ],
           ),
