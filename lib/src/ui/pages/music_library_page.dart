@@ -634,10 +634,10 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     with SingleTickerProviderStateMixin {
   final _manager = AudioPlaybackManager.instance;
   late final AnimationController _vinylController;
-  double _vinylAngle = 0;
 
   // 动态取色
   ColorScheme? _dynamicColorScheme;
+  String? _extractedSongId;
 
   // Web 端歌词展开状态
   bool _showWebLyrics = false;
@@ -657,14 +657,15 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     _vinylController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
-    )..addListener(() => setState(() => _vinylAngle = _vinylController.value * 2 * 3.14159265));
+    );
     final current = _manager.currentSong;
     if (current == null || current.id != widget.song.id) {
       _manager.play(widget.playlist, widget.initialIndex, widget.client);
     }
     // 初始取色
-    final coverUrl = _manager.currentSong?.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
-    if (coverUrl != null) _extractColors(coverUrl);
+    final song = _manager.currentSong;
+    final coverUrl = song?.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
+    if (coverUrl != null && song != null) _extractColors(coverUrl, song.id);
   }
 
   @override
@@ -676,8 +677,10 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     super.dispose();
   }
 
-  /// 从封面图片提取主色并生成 ColorScheme
-  Future<void> _extractColors(String imageUrl) async {
+  /// 从封面图片提取主色并生成 ColorScheme（带防重入）
+  Future<void> _extractColors(String imageUrl, String songId) async {
+    if (_extractedSongId == songId) return;
+    _extractedSongId = songId;
     try {
       final palette = await PaletteGenerator.fromImageProvider(
         NetworkImage(imageUrl),
@@ -767,11 +770,13 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     final song = _manager.currentSong;
     if (song == null) return;
     final newState = !(song.isFavorite ?? false);
-    // 乐观更新
-    setState(() {});
+    // 乐观更新：替换 playlist 中的歌曲对象以更新 isFavorite
+    _manager.updateSongFavorite(song.id, newState);
     try {
       await widget.client.user.markFavorite(itemId: song.id, isFavorite: newState);
     } catch (e) {
+      // 失败时回滚
+      _manager.updateSongFavorite(song.id, !newState);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('操作失败: $e'), duration: const Duration(seconds: 2)),
@@ -812,10 +817,20 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
         final song = _manager.currentSong;
         if (song == null) return const Scaffold(body: SizedBox.shrink());
 
-        // 歌曲切换时取色
-        final coverUrl = song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
-        if (coverUrl != null && (song.id != widget.song.id || _dynamicColorScheme == null)) {
-          _extractColors(coverUrl);
+        // 检测歌曲切换：重置歌词 + 停动画 + 取色
+        final songChanged = song.id != _extractedSongId;
+        if (songChanged) {
+          _vinylController.stop();
+          _lyricsData = null;
+          _lyricsLoading = false;
+          _currentLineIndex = -1;
+          _positionSub?.cancel();
+          if (_showWebLyrics) _loadLyrics();
+
+          final coverUrl = song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
+          if (coverUrl != null) _extractColors(coverUrl, song.id);
+
+          _preloadAdjacentSongs();
         }
 
         final isWide = MediaQuery.of(context).size.width > 700;
@@ -1005,42 +1020,64 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
 
   /// 黑胶唱片
   Widget _buildVinyl(BuildContext context, MusicSong song, double size) {
-    return Transform.rotate(
-      angle: _vinylAngle,
-      child: Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
-          gradient: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
-              ? null
-              : LinearGradient(
-                  colors: [Colors.grey.shade700, Colors.grey.shade900],
-                  stops: const [0.6, 1.0],
-                ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Padding(
-              padding: EdgeInsets.all(size * 0.067),
-              child: ClipOval(
-                child: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
-                    ? CachedNetworkImage(
-                        imageUrl: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480)!,
-                        fit: BoxFit.cover,
-                        width: size * 0.867, height: size * 0.867,
-                        placeholder: (_, __) => _placeholder(),
-                        errorWidget: (_, __, ___) => _placeholder(),
-                      )
-                    : _placeholder(),
+    final coverUrl = song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
+    final vinylContent = Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+        gradient: coverUrl != null
+            ? null
+            : LinearGradient(
+                colors: [Colors.grey.shade700, Colors.grey.shade900],
+                stops: const [0.6, 1.0],
               ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Padding(
+            padding: EdgeInsets.all(size * 0.067),
+            child: ClipOval(
+              child: coverUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      width: size * 0.867, height: size * 0.867,
+                      placeholder: (_, __) => _placeholder(),
+                      errorWidget: (_, __, ___) => _placeholder(),
+                    )
+                  : _placeholder(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+
+    return AnimatedBuilder(
+      animation: _vinylController,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _vinylController.value * 2 * 3.14159265,
+          child: child,
+        );
+      },
+      child: vinylContent,
+    );
+  }
+
+  /// 预加载相邻歌曲封面到 CachedNetworkImage 缓存
+  void _preloadAdjacentSongs() {
+    final playlist = _manager.playlist;
+    final idx = _manager.currentIndex;
+    for (final i in [idx - 1, idx + 1]) {
+      if (i < 0 || i >= playlist.length) continue;
+      final url = playlist[i].getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
+      if (url != null) {
+        precacheImage(NetworkImage(url), context);
+      }
+    }
   }
 
   /// 歌曲信息行 — 歌名 + 歌手 + 歌词按钮 全部同一行

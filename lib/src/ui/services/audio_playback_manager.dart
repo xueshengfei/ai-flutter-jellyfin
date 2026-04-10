@@ -199,6 +199,36 @@ class AudioPlaybackManager extends ChangeNotifier {
 
   // ==================== 内部方法 ====================
 
+  /// 更新播放列表中指定歌曲的收藏状态（乐观更新用）
+  void updateSongFavorite(String songId, bool isFavorite) {
+    final idx = _playlist.indexWhere((s) => s.id == songId);
+    if (idx == -1) return;
+    final old = _playlist[idx];
+    _playlist[idx] = MusicSong(
+      id: old.id,
+      name: old.name,
+      serverUrl: old.serverUrl,
+      sortName: old.sortName,
+      albumId: old.albumId,
+      albumName: old.albumName,
+      albumPrimaryImageTag: old.albumPrimaryImageTag,
+      artists: old.artists,
+      artistRefs: old.artistRefs,
+      trackNumber: old.trackNumber,
+      discNumber: old.discNumber,
+      runTimeTicks: old.runTimeTicks,
+      runTimeSeconds: old.runTimeSeconds,
+      genres: old.genres,
+      communityRating: old.communityRating,
+      parentId: old.parentId,
+      isFavorite: isFavorite,
+      played: old.played,
+      playCount: old.playCount,
+      accessToken: old.accessToken,
+    );
+    notifyListeners();
+  }
+
   /// 从歌曲元数据获取时长（ticks → Duration）
   Duration _durationFromSong(MusicSong song) {
     if (song.runTimeTicks != null && song.runTimeTicks! > 0) {
