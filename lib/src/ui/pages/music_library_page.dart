@@ -2,6 +2,8 @@ import 'dart:async' show Timer, StreamSubscription;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:palette_generator/palette_generator.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 // ==================== 音乐媒体库页面 ====================
@@ -309,7 +311,7 @@ class _SongsTabState extends State<_SongsTab> {
       final result = await widget.client.music.getLatestSongs(
         parentId: widget.libraryId,
         limit: _pageSize,
-        nameStartsWith: random ? null : null,
+        startIndex: si,
       );
       if (mounted) setState(() {
         if (random) {
@@ -634,6 +636,9 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
   late final AnimationController _vinylController;
   double _vinylAngle = 0;
 
+  // 动态取色
+  ColorScheme? _dynamicColorScheme;
+
   // Web 端歌词展开状态
   bool _showWebLyrics = false;
   // 歌词相关
@@ -657,6 +662,9 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     if (current == null || current.id != widget.song.id) {
       _manager.play(widget.playlist, widget.initialIndex, widget.client);
     }
+    // 初始取色
+    final coverUrl = _manager.currentSong?.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
+    if (coverUrl != null) _extractColors(coverUrl);
   }
 
   @override
@@ -666,6 +674,27 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
     _positionSub?.cancel();
     _scrollResumeTimer?.cancel();
     super.dispose();
+  }
+
+  /// 从封面图片提取主色并生成 ColorScheme
+  Future<void> _extractColors(String imageUrl) async {
+    try {
+      final palette = await PaletteGenerator.fromImageProvider(
+        NetworkImage(imageUrl),
+        maximumColorCount: 10,
+      );
+      final color = palette.dominantColor?.color ??
+          palette.vibrantColor?.color ??
+          palette.mutedColor?.color;
+      if (color != null && mounted) {
+        setState(() {
+          _dynamicColorScheme = ColorScheme.fromSeed(
+            seedColor: color,
+            brightness: Brightness.dark,
+          );
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadLyrics() async {
@@ -783,22 +812,46 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
         final song = _manager.currentSong;
         if (song == null) return const Scaffold(body: SizedBox.shrink());
 
+        // 歌曲切换时取色
+        final coverUrl = song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480);
+        if (coverUrl != null && (song.id != widget.song.id || _dynamicColorScheme == null)) {
+          _extractColors(coverUrl);
+        }
+
         final isWide = MediaQuery.of(context).size.width > 700;
 
-        return Scaffold(
-          appBar: AppBar(title: const Text('正在播放')),
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // 非唱片区域固定高度约 220（歌名50 + 间距76 + 进度条50 + 控制64 + 底部~16）
-                  final fixedHeight = 200.0;
-                  final maxVinyl = (constraints.maxHeight - fixedHeight).clamp(120.0, 240.0);
-                  return isWide
-                      ? _buildWideLayout(context, song, maxVinyl)
-                      : _buildNarrowLayout(context, song, maxVinyl);
-                },
+        return Theme(
+          data: _dynamicColorScheme != null
+              ? ThemeData(colorScheme: _dynamicColorScheme)
+              : Theme.of(context),
+          child: Scaffold(
+            body: Container(
+              decoration: _dynamicColorScheme != null
+                  ? BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          _dynamicColorScheme!.surface,
+                          _dynamicColorScheme!.surfaceContainerHighest,
+                        ],
+                      ),
+                    )
+                  : null,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // 非唱片区域固定高度约 220（歌名50 + 间距76 + 进度条50 + 控制64 + 底部~16）
+                      final fixedHeight = 200.0;
+                      final maxVinyl = (constraints.maxHeight - fixedHeight).clamp(120.0, 240.0);
+                      return isWide
+                          ? _buildWideLayout(context, song, maxVinyl)
+                          : _buildNarrowLayout(context, song, maxVinyl);
+                    },
+                  ),
+                ),
               ),
             ),
           ),
@@ -974,18 +1027,14 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
               padding: EdgeInsets.all(size * 0.067),
               child: ClipOval(
                 child: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480) != null
-                    ? Image.network(song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480)!, fit: BoxFit.cover,
+                    ? CachedNetworkImage(
+                        imageUrl: song.getAlbumCoverUrl(fillWidth: 480, fillHeight: 480)!,
+                        fit: BoxFit.cover,
                         width: size * 0.867, height: size * 0.867,
-                        errorBuilder: (_, __, ___) => _placeholder())
+                        placeholder: (_, __) => _placeholder(),
+                        errorWidget: (_, __, ___) => _placeholder(),
+                      )
                     : _placeholder(),
-              ),
-            ),
-            Container(
-              width: size * 0.083, height: size * 0.083,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).scaffoldBackgroundColor,
-                border: Border.all(color: Colors.grey.shade600, width: 2),
               ),
             ),
           ],
@@ -1192,8 +1241,12 @@ class _MediaCard extends StatelessWidget {
       child: Container(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: hasImage && imageUrl != null
-            ? Image.network(imageUrl!, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _ph(context))
+            ? CachedNetworkImage(
+                imageUrl: imageUrl!,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _ph(context),
+                errorWidget: (_, __, ___) => _ph(context),
+              )
             : _ph(context),
       ),
     );
@@ -1205,8 +1258,12 @@ class _MediaCard extends StatelessWidget {
       child: Container(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: hasImage && imageUrl != null
-            ? Image.network(imageUrl!, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _ph(context))
+            ? CachedNetworkImage(
+                imageUrl: imageUrl!,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _ph(context),
+                errorWidget: (_, __, ___) => _ph(context),
+              )
             : _ph(context),
       ),
     );
@@ -1316,8 +1373,12 @@ class _MusicFlatItem extends StatelessWidget {
       child: SizedBox(
         width: w, height: h,
         child: hasImage && coverUrl != null
-            ? Image.network(coverUrl!, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _placeholder(context))
+            ? CachedNetworkImage(
+                imageUrl: coverUrl!,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _placeholder(context),
+                errorWidget: (_, __, ___) => _placeholder(context),
+              )
             : _placeholder(context),
       ),
     );

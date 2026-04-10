@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// 音乐搜索页面
@@ -333,10 +334,11 @@ class _AlbumChip extends StatelessWidget {
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: album.hasCoverImage && album.getCoverImageUrl(fillWidth: 200, fillHeight: 200) != null
-                      ? Image.network(
-                          album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
+                      ? CachedNetworkImage(
+                          imageUrl: album.getCoverImageUrl(fillWidth: 200, fillHeight: 200)!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _placeholder(context),
+                          placeholder: (_, __) => _placeholder(context),
+                          errorWidget: (_, __, ___) => _placeholder(context),
                         )
                       : _placeholder(context),
                 ),
