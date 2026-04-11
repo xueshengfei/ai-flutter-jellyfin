@@ -28,8 +28,8 @@ dependencies:
     path: ../packages/ohos/fluttertpc_chewie
 
   # 音频播放 - 鸿蒙适配
-  flutter_sound:
-    path: ../packages/ohos/flutter_sound/flutter_sound
+  just_audio:
+    path: ../packages/ohos/fluttertpc_just_audio/just_audio
 
   # 文件路径 - 鸿蒙适配
   path_provider:
@@ -45,6 +45,11 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   build_runner: ^2.4.8
   json_serializable: ^6.9.3
+
+# 鸿蒙适配：强制子依赖也使用本地 ohos 路径
+dependency_overrides:
+  path_provider:
+    path: ../packages/ohos/path_provider/path_provider
 
 flutter:
   uses-material-design: true
