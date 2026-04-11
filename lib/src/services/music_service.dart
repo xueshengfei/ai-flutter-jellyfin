@@ -405,9 +405,10 @@ class MusicService {
   Future<MusicSongListResult> getLatestSongs({
     String? parentId,
     int? limit = 50,
+    int? startIndex,
     String? nameStartsWith,
   }) async {
-    _logger.i('Fetching latest songs');
+    _logger.i('Fetching latest songs (startIndex: $startIndex, limit: $limit)');
 
     try {
       final itemsApi = _apiClient.jellyfinClient.getItemsApi();
@@ -416,6 +417,7 @@ class MusicService {
         userId: _userId,
         parentId: parentId,
         limit: limit,
+        startIndex: startIndex,
         includeItemTypes: const [jellyfin_dart.BaseItemKind.audio],
         recursive: true,
         sortBy: const [jellyfin_dart.ItemSortBy.dateCreated],
