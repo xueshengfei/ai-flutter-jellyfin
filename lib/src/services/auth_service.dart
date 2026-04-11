@@ -63,7 +63,13 @@ class AuthService {
       final authResult = response.data!;
 
       // 更新API客户端的访问令牌
-      _apiClient.updateAccessToken(authResult.accessToken ?? '');
+      // 优先使用 body 中的 token，若为空则从响应头获取
+      // Jellyfin 10.10+ 不在 body 中返回 AccessToken，改为响应头返回
+      final token = authResult.accessToken
+          ?? response.headers.value('access-token')
+          ?? response.headers.value('x-emby-authorization')
+          ?? '';
+      _apiClient.updateAccessToken(token);
 
       // 保存用户ID到配置，UserService 等服务依赖此字段
       _apiClient.config.userId = authResult.user?.id;
@@ -99,6 +105,124 @@ class AuthService {
 
       throw AuthenticationException(
         'Authentication failed: ${e.toString()}',
+        cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 使用管理员权限注册新用户
+  ///
+  /// 内部创建独立的临时管理员客户端，不修改当前 _apiClient 的认证状态。
+  /// 仅完成：管理员登录 → 创建用户 → 更新策略。
+  /// 调用方需自行用新用户凭据调用 [authenticate] 完成登录。
+  Future<void> registerWithAdmin({
+    required String serverUrl,
+    required String adminUsername,
+    required String adminPassword,
+    required String username,
+    required String password,
+  }) async {
+    _logger.i('Registering user $username with admin $adminUsername');
+
+    try {
+      // 创建独立的管理员 Dio，不影响当前 _apiClient
+      final adminDio = Dio(BaseOptions(
+        baseUrl: serverUrl,
+        connectTimeout: const Duration(milliseconds: 5000),
+        receiveTimeout: const Duration(milliseconds: 3000),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      ));
+
+      final adminJellyfin = jellyfin_dart.JellyfinDart(
+        dio: adminDio,
+        basePathOverride: serverUrl,
+      );
+      final userApi = adminJellyfin.getUserApi();
+
+      // 1. 管理员登录
+      final adminAuth = await userApi.authenticateUserByName(
+        authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
+          username: adminUsername,
+          pw: adminPassword,
+        ),
+      );
+
+      if (adminAuth.data == null) {
+        throw AuthenticationException(
+          '管理员登录失败: 服务器未返回数据',
+          errorCode: 'NO_RESPONSE_DATA',
+        );
+      }
+
+      // 设置管理员 token 到 adminDio（body 可能为空，需要从响应头获取）
+      final adminToken = adminAuth.data!.accessToken
+          ?? adminAuth.headers.value('access-token')
+          ?? adminAuth.headers.value('x-emby-authorization')
+          ?? '';
+      final config = _apiClient.config;
+      final authHeader = 'MediaBrowser Client="${config.applicationName}", '
+          'Device="${config.deviceName ?? 'Unknown'}", '
+          'DeviceId="${config.deviceId ?? 'Unknown'}", '
+          'Version="${config.applicationVersion}", '
+          'Token="$adminToken"';
+      adminDio.options.headers['X-Emby-Authorization'] = authHeader;
+
+      // 2. 创建新用户
+      final createResponse = await userApi.createUserByName(
+        createUserByName: jellyfin_dart.CreateUserByName(
+          name: username,
+          password: password,
+        ),
+      );
+
+      if (createResponse.data == null) {
+        throw AuthenticationException(
+          '注册失败: 服务器未返回数据',
+          errorCode: 'NO_RESPONSE_DATA',
+        );
+      }
+
+      // 3. 更新新用户策略 — 开启所有媒体库访问权限
+      final newUserDto = createResponse.data!;
+      final defaultPolicy = newUserDto.policy;
+      if (defaultPolicy != null) {
+        final updatedPolicy = defaultPolicy.copyWith(
+          enableAllFolders: true,
+          enableAllChannels: true,
+          enableMediaPlayback: true,
+          enableAudioPlaybackTranscoding: true,
+          enableVideoPlaybackTranscoding: true,
+          enablePlaybackRemuxing: true,
+          enableContentDownloading: true,
+          enableRemoteAccess: true,
+          enableUserPreferenceAccess: true,
+        );
+        await userApi.updateUserPolicy(
+          userId: newUserDto.id ?? '',
+          userPolicy: updatedPolicy,
+        );
+        _logger.i('User $username policy updated');
+      }
+
+      _logger.i('Registration successful for user: $username');
+
+      // 关闭临时管理员 Dio
+      adminDio.close();
+    } on AuthenticationException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Registration error', error: e, stackTrace: stackTrace);
+
+      if (e is DioException) {
+        throw AuthenticationException.fromDioError(e);
+      }
+
+      throw AuthenticationException(
+        '注册失败: ${e.toString()}',
         cause: e,
         stackTrace: stackTrace,
       );
