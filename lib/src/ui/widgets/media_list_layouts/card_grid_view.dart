@@ -78,8 +78,9 @@ class _MediaItemCard extends StatelessWidget {
                 ),
                 errorWidget: Container(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Center(
-                    child: Icon(Icons.error_outline, size: 48),
+                  child: Center(
+                    child: Icon(item.typeIcon != '' ? null : Icons.broken_image_outlined,
+                        size: 48, color: Colors.white54),
                   ),
                 ),
               ),

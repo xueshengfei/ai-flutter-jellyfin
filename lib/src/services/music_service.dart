@@ -46,6 +46,7 @@ class MusicService {
     List<String>? artistIds,
     List<jellyfin_dart.ItemSortBy>? sortBy,
     List<jellyfin_dart.SortOrder>? sortOrder,
+    String? nameStartsWith,
   }) async {
     _logger.i('Fetching music albums');
 
@@ -63,6 +64,7 @@ class MusicService {
         recursive: true,
         sortBy: sortBy ?? const [jellyfin_dart.ItemSortBy.sortName],
         sortOrder: sortOrder ?? const [jellyfin_dart.SortOrder.ascending],
+        nameStartsWith: nameStartsWith,
         fields: const [
           jellyfin_dart.ItemFields.genres,
           jellyfin_dart.ItemFields.overview,
@@ -182,6 +184,7 @@ class MusicService {
     List<String>? genres,
     List<jellyfin_dart.ItemSortBy>? sortBy,
     List<jellyfin_dart.SortOrder>? sortOrder,
+    String? nameStartsWith,
   }) async {
     _logger.i('Fetching album artists');
 
@@ -197,6 +200,7 @@ class MusicService {
         genres: genres,
         sortBy: sortBy ?? const [jellyfin_dart.ItemSortBy.sortName],
         sortOrder: sortOrder ?? const [jellyfin_dart.SortOrder.ascending],
+        nameStartsWith: nameStartsWith,
         fields: const [
           jellyfin_dart.ItemFields.genres,
           jellyfin_dart.ItemFields.overview,
@@ -401,8 +405,10 @@ class MusicService {
   Future<MusicSongListResult> getLatestSongs({
     String? parentId,
     int? limit = 50,
+    int? startIndex,
+    String? nameStartsWith,
   }) async {
-    _logger.i('Fetching latest songs');
+    _logger.i('Fetching latest songs (startIndex: $startIndex, limit: $limit)');
 
     try {
       final itemsApi = _apiClient.jellyfinClient.getItemsApi();
@@ -411,10 +417,12 @@ class MusicService {
         userId: _userId,
         parentId: parentId,
         limit: limit,
+        startIndex: startIndex,
         includeItemTypes: const [jellyfin_dart.BaseItemKind.audio],
         recursive: true,
         sortBy: const [jellyfin_dart.ItemSortBy.dateCreated],
         sortOrder: const [jellyfin_dart.SortOrder.descending],
+        nameStartsWith: nameStartsWith,
         fields: const [
           jellyfin_dart.ItemFields.genres,
           jellyfin_dart.ItemFields.primaryImageAspectRatio,

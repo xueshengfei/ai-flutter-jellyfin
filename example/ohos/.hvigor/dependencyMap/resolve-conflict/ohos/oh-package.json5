@@ -1,0 +1,14 @@
+{
+  "name": "video_player_ohos",
+  "version": "1.0.0",
+  "description": "Please describe the basic information.",
+  "main": "Index.ets",
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@ohos/flutter_ohos": "C:\\Users\\xue13\\fvm\\versions\\flutter_flutter\\bin\\cache\\artifacts\\engine\\ohos-arm64\\flutter_embedding_debug.har",
+    "flutter_native_arm64_v8a": "C:\\Users\\xue13\\fvm\\versions\\flutter_flutter\\bin\\cache\\artifacts\\engine\\ohos-arm64\\arm64_v8a_debug.har"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
+}

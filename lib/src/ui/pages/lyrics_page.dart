@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
 
@@ -97,8 +98,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      final viewportHeight = _scrollController.position.viewportDimension;
-      final targetOffset = (index * _itemHeight) - (viewportHeight / 2) + (_itemHeight / 2);
+      final targetOffset = (index * _itemHeight) + (_itemHeight / 2);
       final maxOffset = _scrollController.position.maxScrollExtent;
       final clampedOffset = targetOffset.clamp(0.0, maxOffset);
 
@@ -239,10 +239,11 @@ class _LyricsPageState extends State<LyricsPage> {
           ? Stack(
               fit: StackFit.expand,
               children: [
-                Image.network(
-                  coverUrl,
+                CachedNetworkImage(
+                  imageUrl: coverUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(color: Colors.black87),
+                  placeholder: (_, __) => Container(color: Colors.black87),
+                  errorWidget: (_, __, ___) => Container(color: Colors.black87),
                 ),
                 ClipRect(
                   child: BackdropFilter(
