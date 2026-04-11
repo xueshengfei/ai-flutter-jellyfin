@@ -1,0 +1,506 @@
+import 'package:flutter/material.dart';
+import 'package:jellyfin_service/src/jellyfin_client.dart';
+import 'package:jellyfin_service/src/exceptions/authentication_exception.dart';
+import 'package:jellyfin_service/src/services/server_discovery_service.dart';
+import 'package:jellyfin_service/src/models/server_discovery_models.dart';
+import 'package:jellyfin_service/src/ui/pages/media_libraries_page.dart';
+import 'package:jellyfin_service/src/debug/network_simulator.dart';
+
+/// 登录页面 - 演示 SDK 的最小接入方式
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _serverController = TextEditingController(text: 'http://localhost:8096');
+  final _usernameController = TextEditingController(text: 'xue13');
+  final _passwordController = TextEditingController(text: '123456');
+
+  String _status = '请登录';
+  bool _isLoading = false;
+
+  // 服务器发现
+  final _discoveryService = ServerDiscoveryService();
+  List<DiscoveredServer> _discoveredServers = [];
+  bool _isDiscovering = false;
+  String? _verifyingAddress;
+
+  @override
+  void initState() {
+    super.initState();
+    _discoverServers();
+  }
+
+  @override
+  void dispose() {
+    _serverController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _discoverServers() async {
+    setState(() {
+      _isDiscovering = true;
+      _discoveredServers = [];
+    });
+    try {
+      final servers = await _discoveryService.discoverServers();
+      if (mounted) {
+        setState(() {
+          _discoveredServers = servers;
+          _isDiscovering = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isDiscovering = false);
+    }
+  }
+
+  Future<void> _selectServer(DiscoveredServer server) async {
+    _serverController.text = server.address;
+    setState(() {
+      _verifyingAddress = server.address;
+      _status = '正在验证服务器...';
+    });
+    final verified = await _discoveryService.verifyServer(server.address);
+    if (!mounted) return;
+
+    // 用 PublicInfo 详情更新列表中的条目
+    final updated = verified != null ? server.mergeWith(verified) : server;
+    setState(() {
+      _verifyingAddress = null;
+      final idx = _discoveredServers.indexWhere((s) => s.id == server.id);
+      if (idx >= 0) _discoveredServers[idx] = updated;
+      if (verified != null) {
+        _status = '服务器已验证: ${updated.name}';
+      } else {
+        _status = '服务器验证失败，请确认地址是否正确';
+      }
+    });
+  }
+
+  Future<void> _login() async {
+    if (_serverController.text.isEmpty) {
+      setState(() => _status = '请输入服务器地址');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _status = '正在登录...';
+    });
+
+    try {
+      final client = JellyfinClient(
+        serverUrl: _serverController.text,
+        enableLogging: true,
+        interceptors: [SlowNetSimulator.instance],
+      );
+
+      final result = await client.auth.authenticate(
+        username: _usernameController.text,
+        password: _passwordController.text,
+      );
+
+      setState(() {
+        _status = '登录成功! 正在跳转...';
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MediaLibrariesPage(
+              client: client,
+              user: result.user,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _status = '登录失败: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _register() async {
+    final server = _serverController.text.trim();
+    if (server.isEmpty) {
+      setState(() => _status = '请先输入服务器地址');
+      return;
+    }
+
+    // 弹出注册对话框
+    final result = await showDialog<_RegisterResult>(
+      context: context,
+      builder: (ctx) => const _RegisterDialog(),
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _status = '正在注册...';
+    });
+
+    try {
+      // 1. 用管理员身份创建用户（内部使用独立的临时客户端，不污染 userClient）
+      final tempClient = JellyfinClient(
+        serverUrl: server,
+        enableLogging: true,
+      );
+      await tempClient.auth.registerWithAdmin(
+        serverUrl: server,
+        adminUsername: result.adminUsername,
+        adminPassword: result.adminPassword,
+        username: result.username,
+        password: result.password,
+      );
+
+      // 2. 用新用户的 client 登录
+      final client = JellyfinClient(
+        serverUrl: server,
+        enableLogging: true,
+        interceptors: [SlowNetSimulator.instance],
+      );
+      final authResult = await client.auth.authenticate(
+        username: result.username,
+        password: result.password,
+      );
+
+      setState(() {
+        _status = '注册成功! 正在跳转...';
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MediaLibrariesPage(
+              client: client,
+              user: authResult.user,
+            ),
+          ),
+        );
+      }
+    } on AuthenticationException catch (e) {
+      setState(() {
+        _status = '注册失败: ${e.message}';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _status = '注册失败: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Widget _buildDiscoverySection(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Text('局域网服务器', style: Theme.of(context).textTheme.titleSmall),
+            const Spacer(),
+            if (_isDiscovering)
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              TextButton.icon(
+                onPressed: _discoverServers,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('扫描'),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_isDiscovering)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('正在扫描局域网...', style: TextStyle(color: Colors.grey)),
+          ))
+        else if (_discoveredServers.isEmpty)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('未发现局域网服务器，请手动输入', style: TextStyle(color: Colors.grey)),
+          ))
+        else
+          Column(
+            children: _discoveredServers.map((server) {
+              final isVerifying = _verifyingAddress == server.address;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: isVerifying ? null : () => _selectServer(server),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: _verifyingAddress == server.address
+                          ? Border.all(color: colorScheme.primary, width: 1.5)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        // 服务器图标
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: colorScheme.primaryContainer,
+                          ),
+                          child: isVerifying
+                              ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+                              : const Icon(Icons.dns, size: 22, color: Colors.white70),
+                        ),
+                        const SizedBox(width: 12),
+                        // 名称 + 地址 + 版本
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(server.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 2),
+                              Text(server.address, style: TextStyle(fontSize: 12, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              if (server.version != null)
+                                Text('v${server.version}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                            ],
+                          ),
+                        ),
+                        // 点击连接箭头
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer,
+              Theme.of(context).colorScheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Card(
+                  elevation: 8,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Icon(Icons.movie, size: 64, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(height: 16),
+                        Text('Jellyfin Example', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                        const SizedBox(height: 8),
+                        Text(_status, style: TextStyle(color: _status.contains('失败') ? Colors.red : Colors.grey), textAlign: TextAlign.center),
+                        const SizedBox(height: 32),
+                        // 服务器发现区域
+                        _buildDiscoverySection(context),
+                        const SizedBox(height: 12),
+                        TextField(controller: _serverController, decoration: const InputDecoration(labelText: '服务器地址', prefixIcon: Icon(Icons.dns), border: OutlineInputBorder())),
+                        const SizedBox(height: 16),
+                        TextField(controller: _usernameController, decoration: const InputDecoration(labelText: '用户名', prefixIcon: Icon(Icons.person), border: OutlineInputBorder()), textInputAction: TextInputAction.next),
+                        const SizedBox(height: 16),
+                        TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: '密码', prefixIcon: Icon(Icons.lock), border: OutlineInputBorder()), textInputAction: TextInputAction.done, onSubmitted: (_) => _login()),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: _isLoading ? null : _login,
+                                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                                child: _isLoading
+                                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : const Text('登录', style: TextStyle(fontSize: 16)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _isLoading ? null : _register,
+                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                                child: const Text('注册', style: TextStyle(fontSize: 16)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 注册对话框提交的结果
+class _RegisterResult {
+  final String adminUsername;
+  final String adminPassword;
+  final String username;
+  final String password;
+
+  const _RegisterResult({
+    required this.adminUsername,
+    required this.adminPassword,
+    required this.username,
+    required this.password,
+  });
+}
+
+/// 注册对话框
+class _RegisterDialog extends StatefulWidget {
+  const _RegisterDialog();
+
+  @override
+  State<_RegisterDialog> createState() => _RegisterDialogState();
+}
+
+class _RegisterDialogState extends State<_RegisterDialog> {
+  final _adminUserCtrl = TextEditingController();
+  final _adminPwdCtrl = TextEditingController();
+  final _newUserCtrl = TextEditingController();
+  final _newPwdCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _adminUserCtrl.dispose();
+    _adminPwdCtrl.dispose();
+    _newUserCtrl.dispose();
+    _newPwdCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final adminUser = _adminUserCtrl.text.trim();
+    final adminPwd = _adminPwdCtrl.text;
+    final newUser = _newUserCtrl.text.trim();
+    final newPwd = _newPwdCtrl.text;
+
+    if (adminUser.isEmpty || newUser.isEmpty || newPwd.isEmpty) {
+      return; // 必填项为空，不提交
+    }
+
+    Navigator.pop(
+      context,
+      _RegisterResult(
+        adminUsername: adminUser,
+        adminPassword: adminPwd,
+        username: newUser,
+        password: newPwd,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('注册新用户'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('管理员账号', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _adminUserCtrl,
+              decoration: const InputDecoration(
+                labelText: '管理员用户名',
+                prefixIcon: Icon(Icons.admin_panel_settings),
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _adminPwdCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '管理员密码',
+                prefixIcon: Icon(Icons.lock_outline),
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 20),
+            Text('新用户', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _newUserCtrl,
+              decoration: const InputDecoration(
+                labelText: '新用户名',
+                prefixIcon: Icon(Icons.person_add),
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _newPwdCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '新用户密码',
+                prefixIcon: Icon(Icons.lock),
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('注册'),
+        ),
+      ],
+    );
+  }
+}

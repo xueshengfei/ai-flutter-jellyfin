@@ -156,6 +156,9 @@ enum MediaLibraryType {
   /// 电影合集
   boxSets,
 
+  /// 书籍
+  books,
+
   /// 其他/未知
   unknown;
 
@@ -178,6 +181,8 @@ enum MediaLibraryType {
         return MediaLibraryType.homeVideos;
       case jellyfin_dart.CollectionType.boxsets:
         return MediaLibraryType.boxSets;
+      case jellyfin_dart.CollectionType.books:
+        return MediaLibraryType.books;
       default:
         return MediaLibraryType.unknown;
     }
@@ -198,6 +203,8 @@ enum MediaLibraryType {
         return '家庭视频';
       case MediaLibraryType.boxSets:
         return '电影合集';
+      case MediaLibraryType.books:
+        return '书籍';
       case MediaLibraryType.unknown:
         return '其他';
     }
@@ -218,6 +225,8 @@ enum MediaLibraryType {
         return '📹';
       case MediaLibraryType.boxSets:
         return '📦';
+      case MediaLibraryType.books:
+        return '📖';
       case MediaLibraryType.unknown:
         return '📁';
     }
@@ -238,6 +247,8 @@ enum MediaLibraryType {
         return '#8E24AA'; // 紫色
       case MediaLibraryType.boxSets:
         return '#F4511E'; // 深橙色
+      case MediaLibraryType.books:
+        return '#5C6BC0'; // 靛蓝色
       case MediaLibraryType.unknown:
         return '#757575'; // 灰色
     }

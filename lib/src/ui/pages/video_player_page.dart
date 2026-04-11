@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -6,7 +7,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// 视频播放页面
 ///
-/// 支持嵌入和全屏模式切换，提供自定义控制栏
+/// 支持嵌入和全屏模式切换，提供自定义控制栏、画质选择
 class VideoPlayerPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaItem item;
@@ -39,6 +40,32 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   // 倍速选项
   final List<double> _playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
   double _currentSpeed = 1.0;
+
+  // ============ 画质相关 ============
+
+  /// 当前画质
+  VideoQuality _currentQuality = VideoQuality.auto;
+
+  /// 正在切换画质
+  bool _isQualitySwitching = false;
+
+  /// 网速监测器
+  final NetworkQualityMonitor _networkMonitor = NetworkQualityMonitor();
+
+  /// 自动画质决策器
+  final AutoQualityDecider _autoDecider = AutoQualityDecider();
+
+  /// 上次自动检查画质的时间
+  DateTime? _lastAutoCheckTime;
+
+  /// 上次 buffering 开始时间（用于估算带宽）
+  DateTime? _bufferingStartTime;
+
+  /// 自动检查间隔
+  static const Duration _autoCheckInterval = Duration(seconds: 15);
+
+  /// 当前播放信息（用于保存恢复）
+  PlaybackInfo? _currentPlaybackInfo;
 
   @override
   void initState() {
@@ -99,34 +126,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         itemId: widget.item.id,
         startTimeTicks: resumeTicks,
       );
+      _currentPlaybackInfo = playbackInfo;
 
-      // 初始化视频控制器
-      print('🎞️ 初始化视频控制器...');
-      _videoController = VideoPlayerController.networkUrl(
-        Uri.parse(playbackInfo.url),
-      );
-
-      // 等待控制器初始化
-      await _videoController!.initialize();
-
-      // 续播：跳转到上次播放位置
-      if (resumeTicks != null && resumeTicks > 0) {
-        final resumeSeconds = resumeTicks / 10000000; // ticks → seconds
-        await _videoController!.seekTo(Duration(seconds: resumeSeconds.round()));
-      }
-
-      // 创建 Chewie 控制器
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
-        autoPlay: true,
-        looping: false,
-        showControls: true,
-        aspectRatio: _videoController!.value.aspectRatio,
-        allowFullScreen: true,
-        allowMuting: true,
-        allowPlaybackSpeedChanging: true,
-        playbackSpeeds: _playbackSpeeds,
-      );
+      await _setupVideoController(playbackInfo, resumeTicks: resumeTicks);
 
       // 开始播放会话
       await _playbackService.startPlaybackSession(
@@ -141,6 +143,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         _isLoading = false;
       });
 
+      _lastAutoCheckTime = DateTime.now();
+
       print('✅ 播放器初始化成功');
     } catch (e, stackTrace) {
       print('❌ 播放器初始化失败: $e');
@@ -153,12 +157,254 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     }
   }
 
-  /// 监听视频播放进度
-  void _onVideoProgressChanged() {
+  /// 创建视频控制器并绑定 Chewie
+  Future<void> _setupVideoController(
+    PlaybackInfo playbackInfo, {
+    int? resumeTicks,
+    Duration? seekPosition,
+  }) async {
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(playbackInfo.url),
+    );
+
+    await _videoController!.initialize();
+
+    // 续播或跳转到指定位置
+    if (seekPosition != null) {
+      await _videoController!.seekTo(seekPosition);
+    } else if (resumeTicks != null && resumeTicks > 0) {
+      final resumeSeconds = resumeTicks / 10000000;
+      await _videoController!.seekTo(Duration(seconds: resumeSeconds.round()));
+    }
+
+    // 恢复倍速
+    if (_currentSpeed != 1.0) {
+      await _videoController!.setPlaybackSpeed(_currentSpeed);
+    }
+
+    _chewieController = ChewieController(
+      videoPlayerController: _videoController!,
+      autoPlay: true,
+      looping: false,
+      showControls: true,
+      aspectRatio: _videoController!.value.aspectRatio,
+      allowFullScreen: true,
+      allowMuting: true,
+      allowPlaybackSpeedChanging: true,
+      playbackSpeeds: _playbackSpeeds,
+    );
+  }
+
+  /// 切换画质
+  Future<void> _switchQuality(VideoQuality quality) async {
+    if (_isQualitySwitching || quality == _currentQuality) return;
     if (_videoController == null) return;
 
-    // 每 10 秒上报一次进度（在 PlaybackService 中通过定时器实现）
-    // 这里可以添加其他逻辑，比如更新 UI 显示的当前时间
+    // 保存当前位置和状态
+    final currentPosition = _videoController!.value.position;
+    final wasPlaying = _videoController!.value.isPlaying;
+
+    setState(() {
+      _isQualitySwitching = true;
+    });
+
+    try {
+      print('🔄 切换画质至 ${quality.label}...');
+
+      final newPlaybackInfo = await _playbackService.switchQuality(
+        itemId: widget.item.id,
+        quality: quality,
+        currentPosition: currentPosition,
+        monitor: _networkMonitor,
+      );
+
+      // 释放旧控制器
+      _videoController!.removeListener(_onVideoProgressChanged);
+      _chewieController?.dispose();
+      _videoController?.dispose();
+      _chewieController = null;
+      _videoController = null;
+
+      _currentPlaybackInfo = newPlaybackInfo;
+
+      // 创建新控制器
+      await _setupVideoController(
+        newPlaybackInfo,
+        seekPosition: currentPosition,
+      );
+
+      _videoController!.addListener(_onVideoProgressChanged);
+
+      if (!wasPlaying) {
+        await _videoController!.pause();
+      }
+
+      // 确保旧转码彻底停止（对齐 jellyfin-web 步骤 F）
+      _playbackService.stopActiveEncodings(
+        newPlaybackInfo.playSessionId,
+      );
+
+      setState(() {
+        _currentQuality = quality;
+        _isQualitySwitching = false;
+      });
+
+      // 更新网速监测器中的当前码率
+      if (newPlaybackInfo.actualBitrate != null) {
+        _networkMonitor.currentBitrate = newPlaybackInfo.actualBitrate!;
+      }
+
+      print('✅ 画质切换成功: ${quality.label}');
+    } catch (e) {
+      print('❌ 画质切换失败: $e');
+
+      setState(() {
+        _isQualitySwitching = false;
+      });
+
+      // 回退：保持当前画质继续播放
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('切换画质失败，保持当前播放'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 监听视频播放进度
+  void _onVideoProgressChanged() {
+    if (_videoController == null || _isQualitySwitching) return;
+
+    final value = _videoController!.value;
+
+    // 监测 buffering 状态变化，用于网速估算
+    _handleBufferingState(value);
+
+    // 自动模式：定期检查是否需要切换画质
+    if (_currentQuality == VideoQuality.auto) {
+      _checkAutoQuality();
+    }
+  }
+
+  /// 处理 buffering 状态变化，采集网速样本
+  void _handleBufferingState(VideoPlayerValue value) {
+    if (value.isBuffering) {
+      // buffering 开始
+      _bufferingStartTime = DateTime.now();
+    } else if (_bufferingStartTime != null) {
+      // buffering 结束，估算带宽
+      final bufferDuration = DateTime.now().difference(_bufferingStartTime!);
+      _bufferingStartTime = null;
+
+      if (bufferDuration.inMilliseconds > 100) {
+        // 粗略估算：假设缓冲期间下载了 2 秒的视频数据
+        // 码率 × 2 秒 ≈ 下载字节数 × 8
+        final currentBitrate = _currentPlaybackInfo?.actualBitrate ?? 5000000;
+        final estimatedBytes = (currentBitrate * 2 / 8).round();
+
+        _networkMonitor.recordFromBuffering(
+          bufferedBytes: estimatedBytes,
+          bufferDuration: bufferDuration,
+        );
+
+        print('📊 带宽估算: ${_networkMonitor.estimatedBandwidth} bps');
+      }
+    }
+  }
+
+  /// 自动画质检查
+  void _checkAutoQuality() {
+    final now = DateTime.now();
+    if (_lastAutoCheckTime != null &&
+        now.difference(_lastAutoCheckTime!) < _autoCheckInterval) {
+      return;
+    }
+    _lastAutoCheckTime = now;
+
+    final recommended = _networkMonitor.recommendQuality();
+    final target = _autoDecider.shouldSwitch(recommended, _currentQuality);
+
+    if (target != null) {
+      print('🤖 自动切换画质: ${_currentQuality.label} → ${target.label}');
+      _autoDecider.reset();
+      _switchQuality(target);
+    }
+  }
+
+  /// 显示画质选择面板
+  void _showQualitySelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                '画质选择',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Divider(color: Colors.white12, height: 1),
+            ...VideoQuality.values.map((q) => _buildQualityOption(q)),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建画质选项
+  Widget _buildQualityOption(VideoQuality quality) {
+    final isSelected = quality == _currentQuality;
+    final bitrateText = quality.bitrate != null
+        ? ' (${(quality.bitrate! / 1000000).toStringAsFixed(1)} Mbps)'
+        : '';
+
+    return ListTile(
+      leading: Icon(
+        isSelected ? Icons.check_circle : Icons.circle_outlined,
+        color: isSelected ? Colors.blue : Colors.white38,
+        size: 22,
+      ),
+      title: Text(
+        '${quality.label}$bitrateText',
+        style: TextStyle(
+          color: isSelected ? Colors.blue : Colors.white,
+          fontSize: 15,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      onTap: () {
+        Navigator.pop(context);
+        if (!isSelected) {
+          _switchQuality(quality);
+        }
+      },
+    );
   }
 
   @override
@@ -176,7 +422,31 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                     : _buildPlayerWidget(),
           ),
 
-          // 顶部返回按钮（始终显示）
+          // 画质切换遮罩
+          if (_isQualitySwitching)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '正在切换至 ${_currentQuality == VideoQuality.auto ? "自动" : "更高"}画质...',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // 顶部栏（返回 + 标题）
           Positioned(
             top: 0,
             left: 0,
@@ -218,7 +488,35 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
               ),
             ),
           ),
+
+          // 底部画质按钮（和设置/全屏按钮同一行）
+          if (!_isLoading && _errorMessage == null)
+            Positioned(
+              bottom: 0,
+              right: 96,
+              child: _buildQualityBadge(),
+            ),
         ],
+      ),
+    );
+  }
+
+  /// 画质标签按钮（与控制栏图标按钮等高）
+  Widget _buildQualityBadge() {
+    return SizedBox(
+      height: 48, // IconButton 默认高度
+      child: IconButton(
+        onPressed: _showQualitySelector,
+        icon: Text(
+          _currentQuality.label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 48),
       ),
     );
   }
@@ -233,9 +531,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         ),
         const SizedBox(height: 24),
         Text(
-          '正在加载视频...',
+          _isQualitySwitching ? '正在切换画质...' : '正在加载视频...',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
             fontSize: 16,
           ),
         ),
@@ -245,7 +543,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           child: Text(
             widget.item.name,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
@@ -271,7 +569,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           Text(
             '播放失败',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -280,7 +578,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           Text(
             _errorMessage!,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 14,
             ),
             textAlign: TextAlign.center,

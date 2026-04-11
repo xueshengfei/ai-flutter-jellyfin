@@ -1,23 +1,26 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_sound/flutter_sound.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
-/// 循环模式
+/// 循环模式（内部使用）
 enum RepeatMode { off, repeatAll, repeatOne }
+
+/// 播放模式（UI 展示）
+enum PlayMode { sequential, shuffle, repeatOne }
 
 /// 全局音频播放管理器（ChangeNotifier 单例）
 ///
-/// 持有 [FlutterSoundPlayer] + 播放列表 + 当前索引 + shuffle/repeat 状态，
+/// 持有 [AudioPlayer] + 播放列表 + 当前索引 + shuffle/repeat 状态，
 /// 生命周期与应用一致，退出歌曲详情页后音乐继续播放。
 class AudioPlaybackManager extends ChangeNotifier {
   AudioPlaybackManager._() {
-    _init();
+    _setupListeners();
   }
 
   static final AudioPlaybackManager instance = AudioPlaybackManager._();
 
-  final FlutterSoundPlayer _player = FlutterSoundPlayer();
+  final AudioPlayer _player = AudioPlayer();
 
   List<MusicSong> _playlist = [];
   int _currentIndex = 0;
@@ -39,6 +42,12 @@ class AudioPlaybackManager extends ChangeNotifier {
   // 位置流（供外部订阅实时位置更新）
   final _positionController = StreamController<Duration>.broadcast();
 
+  // Stream 订阅
+  StreamSubscription? _positionSub;
+  StreamSubscription? _durationSub;
+  StreamSubscription? _playerStateSub;
+  StreamSubscription? _processingStateSub;
+
   // ==================== 公开 getter ====================
 
   MusicSong? get currentSong =>
@@ -55,27 +64,15 @@ class AudioPlaybackManager extends ChangeNotifier {
   String? get error => _error;
   List<MusicSong> get playlist => List.unmodifiable(_playlist);
 
+  /// 当前播放模式
+  PlayMode get playMode {
+    if (_shuffleMode) return PlayMode.shuffle;
+    if (_repeatMode == RepeatMode.repeatOne) return PlayMode.repeatOne;
+    return PlayMode.sequential;
+  }
+
   /// 位置变化流（替代原 audioplayers 的 onPositionChanged）
   Stream<Duration> get onPositionChanged => _positionController.stream;
-
-  FlutterSoundPlayer get player => _player;
-
-  /// 用于UI显示和进度条的可靠时长
-  ///
-  /// 优先使用歌曲模型的 runTimeSeconds（来自 Jellyfin API，准确），
-  /// 回退到播放器报告的 duration（鸿蒙平台部分音频流可能不准确）。
-  Duration get displayDuration {
-    final songSeconds = currentSong?.runTimeSeconds;
-    if (songSeconds != null && songSeconds > 0) {
-      final modelMs = songSeconds * 1000;
-      // 播放器时长偏差超过 50% 或超过 1 小时 → 使用模型时长
-      if (_duration.inMilliseconds > modelMs * 1.5 ||
-          _duration.inSeconds > 3600) {
-        return Duration(milliseconds: modelMs);
-      }
-    }
-    return _duration;
-  }
 
   // ==================== 核心方法 ====================
 
@@ -92,15 +89,19 @@ class AudioPlaybackManager extends ChangeNotifier {
   }
 
   Future<void> pause() async {
-    await _player.pausePlayer();
+    _isPlaying = false;
+    notifyListeners();
+    await _player.pause();
   }
 
   Future<void> resume() async {
-    await _player.resumePlayer();
+    _isPlaying = true;
+    notifyListeners();
+    await _player.play();
   }
 
   Future<void> seek(Duration position) async {
-    await _player.seekToPlayer(position);
+    await _player.seek(position);
   }
 
   Future<void> playNext() async {
@@ -133,13 +134,13 @@ class AudioPlaybackManager extends ChangeNotifier {
   Future<void> playPrevious() async {
     // 播放超过 3 秒先回到开头
     if (_position.inSeconds >= 3) {
-      await _player.seekToPlayer(Duration.zero);
+      await _player.seek(Duration.zero);
       return;
     }
 
     final len = _playlist.length;
     if (len <= 1) {
-      await _player.seekToPlayer(Duration.zero);
+      await _player.seek(Duration.zero);
       return;
     }
 
@@ -179,12 +180,64 @@ class AudioPlaybackManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 循环切换播放模式：顺序 → 随机 → 单曲循环 → 顺序
+  void cyclePlayMode() {
+    switch (playMode) {
+      case PlayMode.sequential:
+        _shuffleMode = true;
+        _repeatMode = RepeatMode.off;
+        _initShuffleOrder();
+      case PlayMode.shuffle:
+        _shuffleMode = false;
+        _repeatMode = RepeatMode.repeatOne;
+      case PlayMode.repeatOne:
+        _shuffleMode = false;
+        _repeatMode = RepeatMode.off;
+    }
+    notifyListeners();
+  }
+
   // ==================== 内部方法 ====================
 
-  Future<void> _init() async {
-    await _player.openPlayer();
-    _player.setSubscriptionDuration(const Duration(milliseconds: 200));
-    _setupListeners();
+  /// 更新播放列表中指定歌曲的收藏状态（乐观更新用）
+  void updateSongFavorite(String songId, bool isFavorite) {
+    final idx = _playlist.indexWhere((s) => s.id == songId);
+    if (idx == -1) return;
+    final old = _playlist[idx];
+    _playlist[idx] = MusicSong(
+      id: old.id,
+      name: old.name,
+      serverUrl: old.serverUrl,
+      sortName: old.sortName,
+      albumId: old.albumId,
+      albumName: old.albumName,
+      albumPrimaryImageTag: old.albumPrimaryImageTag,
+      artists: old.artists,
+      artistRefs: old.artistRefs,
+      trackNumber: old.trackNumber,
+      discNumber: old.discNumber,
+      runTimeTicks: old.runTimeTicks,
+      runTimeSeconds: old.runTimeSeconds,
+      genres: old.genres,
+      communityRating: old.communityRating,
+      parentId: old.parentId,
+      isFavorite: isFavorite,
+      played: old.played,
+      playCount: old.playCount,
+      accessToken: old.accessToken,
+    );
+    notifyListeners();
+  }
+
+  /// 从歌曲元数据获取时长（ticks → Duration）
+  Duration _durationFromSong(MusicSong song) {
+    if (song.runTimeTicks != null && song.runTimeTicks! > 0) {
+      return Duration(microseconds: song.runTimeTicks! ~/ 10);
+    }
+    if (song.runTimeSeconds != null && song.runTimeSeconds! > 0) {
+      return Duration(seconds: song.runTimeSeconds!);
+    }
+    return Duration.zero;
   }
 
   void _initShuffleOrder() {
@@ -201,7 +254,8 @@ class AudioPlaybackManager extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     _position = Duration.zero;
-    _duration = Duration.zero;
+    // 优先用歌曲元数据的时长（FLAC 等格式流播放时 just_audio 可能获取不到 duration）
+    _duration = _durationFromSong(currentSong!);
     notifyListeners();
 
     try {
@@ -211,41 +265,62 @@ class AudioPlaybackManager extends ChangeNotifier {
         container: const ['mp3', 'aac'],
         audioCodec: 'mp3',
       );
-      await _player.startPlayer(
-        fromURI: url,
-        whenFinished: _onPlaybackComplete,
-      );
-      _isPlaying = true;
+      await _player.setUrl(url);
       _isLoading = false;
       notifyListeners();
+      // play() 的 Future 在播放结束才完成，不能 await
+      unawaited(_player.play());
     } catch (e) {
       _error = '播放失败: $e';
       _isLoading = false;
+      _isPlaying = false;
       notifyListeners();
     }
   }
 
   void _onPlaybackComplete() {
     if (_repeatMode == RepeatMode.repeatOne) {
-      _player.seekToPlayer(Duration.zero);
-      _player.resumePlayer();
+      _player.seek(Duration.zero);
+      _player.play();
     } else {
       playNext();
     }
   }
 
   void _setupListeners() {
-    _player.onProgress!.listen((event) {
-      if (event.duration != null) {
-        print('🔔 flutter_sound duration: ${event.duration} (inSeconds=${event.duration!.inSeconds}, inMilliseconds=${event.duration!.inMilliseconds})');
-        _duration = event.duration!;
-      }
-      if (event.position != null) {
-        _position = event.position!;
-        _positionController.add(_position);
-      }
-      _isPlaying = _player.isPlaying;
+    _positionSub = _player.positionStream.listen((pos) {
+      _position = pos;
+      _positionController.add(_position);
       notifyListeners();
     });
+
+    _durationSub = _player.durationStream.listen((dur) {
+      if (dur != null) {
+        _duration = dur;
+        notifyListeners();
+      }
+    });
+
+    _playerStateSub = _player.playerStateStream.listen((state) {
+      _isPlaying = state.playing;
+      notifyListeners();
+    });
+
+    _processingStateSub = _player.processingStateStream.listen((state) {
+      if (state == ProcessingState.completed) {
+        _onPlaybackComplete();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+    _playerStateSub?.cancel();
+    _processingStateSub?.cancel();
+    _positionController.close();
+    _player.dispose();
+    super.dispose();
   }
 }

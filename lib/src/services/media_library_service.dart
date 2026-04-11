@@ -25,6 +25,8 @@ class MediaLibraryService {
   /// 获取所有媒体库
   ///
   /// 返回用户可访问的所有媒体库（电影、电视剧、音乐等）
+  /// 使用 UserViews API（对所有认证用户可用），
+  /// 而非 getMediaFolders（Jellyfin 10.10+ 需要管理员权限）。
   ///
   /// 返回：[MediaLibraryListResult] 包含媒体库列表
   ///
@@ -34,10 +36,13 @@ class MediaLibraryService {
     _logger.i('Fetching media libraries');
 
     try {
-      final libraryApi = _apiClient.jellyfinClient.getLibraryApi();
+      final userViewsApi = _apiClient.jellyfinClient.getUserViewsApi();
 
-      // 调用接口SDK获取媒体文件夹
-      final response = await libraryApi.getMediaFolders();
+      // 使用 UserViews API，对所有认证用户可用
+      final response = await userViewsApi.getUserViews(
+        userId: _apiClient.config.userId,
+        includeHidden: false,
+      );
 
       if (response.data == null) {
         throw ApiException(

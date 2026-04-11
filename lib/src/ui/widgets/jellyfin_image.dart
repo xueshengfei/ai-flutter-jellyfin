@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// Jellyfin认证图片Widget
@@ -82,11 +83,10 @@ class _JellyfinImageState extends State<JellyfinImage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return widget.placeholder ??
-          Container(
-            color: Colors.grey[300],
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+          Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(color: Colors.white),
           );
     }
 
@@ -95,7 +95,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
           Container(
             color: Colors.grey[300],
             child: const Center(
-              child: Icon(Icons.error, color: Colors.red),
+              child: Icon(Icons.broken_image, color: Colors.white54),
             ),
           );
     }
@@ -192,11 +192,10 @@ class _JellyfinImageWithClientState extends State<JellyfinImageWithClient> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return widget.placeholder ??
-          Container(
-            color: Colors.grey[300],
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+          Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(color: Colors.white),
           );
     }
 
@@ -205,7 +204,7 @@ class _JellyfinImageWithClientState extends State<JellyfinImageWithClient> {
           Container(
             color: Colors.grey[300],
             child: const Center(
-              child: Icon(Icons.error, color: Colors.red),
+              child: Icon(Icons.broken_image, color: Colors.white54),
             ),
           );
     }
