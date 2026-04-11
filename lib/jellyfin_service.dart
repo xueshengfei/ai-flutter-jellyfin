@@ -59,6 +59,7 @@ export 'src/models/music_models.dart';
 export 'src/models/lyrics_models.dart';
 export 'src/models/server_discovery_models.dart';
 export 'src/models/book_models.dart';
+export 'src/models/video_quality_models.dart';
 
 // 异常
 export 'src/exceptions/jellyfin_exception.dart';
