@@ -9,7 +9,7 @@ enum SseEventType {
   thinking,
   tool,
   card,
-  text,
+  token,
   cardUpdate,
   session,
   done,
@@ -21,7 +21,7 @@ enum SseEventType {
       'thinking' => SseEventType.thinking,
       'tool' => SseEventType.tool,
       'card' => SseEventType.card,
-      'text' => SseEventType.text,
+      'token' => SseEventType.token,
       'card_update' => SseEventType.cardUpdate,
       'session' => SseEventType.session,
       'done' => SseEventType.done,
@@ -36,72 +36,86 @@ enum SseEventType {
 // ═══════════════════════════════════════════
 
 /// thinking 事件
+///
+/// 协议: `{"node": "llm"}` 或 `{"node": "reason"}`
 class SseThinkingEvent extends Equatable {
-  final String content;
+  /// 节点类型：llm（LLM 生成中）、reason（生成推荐理由）
+  final String node;
 
-  const SseThinkingEvent({required this.content});
+  const SseThinkingEvent({required this.node});
 
   factory SseThinkingEvent.fromJson(Map<String, dynamic> json) =>
-      SseThinkingEvent(content: json['content'] as String? ?? '');
+      SseThinkingEvent(node: json['node'] as String? ?? 'llm');
 
   @override
-  List<Object?> get props => [content];
+  List<Object?> get props => [node];
 }
 
 /// tool 事件
+///
+/// 协议: `{"tool": "search_media_json", "status": "calling", "args": {...}}`
 class SseToolEvent extends Equatable {
-  /// 工具名称（如 "search"）
-  final String name;
+  /// 工具名称（如 "search_media_json"）
+  final String tool;
 
-  /// 工具状态（如 "calling"、"result"）
+  /// 工具状态："calling" 或 "done"
   final String status;
 
-  /// 附加数据
-  final Map<String, dynamic>? extra;
+  /// 调用参数（status=calling 时存在）
+  final Map<String, dynamic>? args;
 
-  const SseToolEvent({required this.name, required this.status, this.extra});
+  /// 结果预览（status=done 时存在）
+  final String? preview;
+
+  const SseToolEvent({required this.tool, required this.status, this.args, this.preview});
 
   factory SseToolEvent.fromJson(Map<String, dynamic> json) => SseToolEvent(
-        name: json['name'] as String? ?? '',
+        tool: json['tool'] as String? ?? '',
         status: json['status'] as String? ?? '',
-        extra: json['extra'] as Map<String, dynamic>?,
+        args: json['args'] as Map<String, dynamic>?,
+        preview: json['preview'] as String?,
       );
 
   @override
-  List<Object?> get props => [name, status, extra];
+  List<Object?> get props => [tool, status, args, preview];
 }
 
-/// text 事件
-class SseTextEvent extends Equatable {
+/// token 事件 — 逐字文本推送
+///
+/// 协议: `{"content": "根"}`, `{"content": "据"}`, ...
+/// 客户端将所有 token 的 content 拼接为完整 markdown 文本
+class SseTokenEvent extends Equatable {
   final String content;
 
-  const SseTextEvent({required this.content});
+  const SseTokenEvent({required this.content});
 
-  factory SseTextEvent.fromJson(Map<String, dynamic> json) =>
-      SseTextEvent(content: json['content'] as String? ?? '');
+  factory SseTokenEvent.fromJson(Map<String, dynamic> json) =>
+      SseTokenEvent(content: json['content'] as String? ?? '');
 
   @override
   List<Object?> get props => [content];
 }
 
 /// card_update 事件（更新卡片推荐理由）
+///
+/// 协议: `{"index": 0, "reason": "诺兰太空史诗..."}`
 class SseCardUpdateEvent extends Equatable {
-  /// 要更新的卡片 ID
-  final String cardId;
+  /// 卡片索引（对应 card 推送顺序，从 0 开始）
+  final int index;
 
-  /// 更新内容（如推荐理由 reason）
+  /// 推荐理由
   final String reason;
 
-  const SseCardUpdateEvent({required this.cardId, required this.reason});
+  const SseCardUpdateEvent({required this.index, required this.reason});
 
   factory SseCardUpdateEvent.fromJson(Map<String, dynamic> json) =>
       SseCardUpdateEvent(
-        cardId: json['card_id'] as String? ?? json['cardId'] as String? ?? '',
+        index: (json['index'] as num?)?.toInt() ?? 0,
         reason: json['reason'] as String? ?? '',
       );
 
   @override
-  List<Object?> get props => [cardId, reason];
+  List<Object?> get props => [index, reason];
 }
 
 /// session 事件
@@ -118,16 +132,30 @@ class SseSessionEvent extends Equatable {
 }
 
 /// done 事件
+///
+/// 协议: `{"answer": "完整文本", "cards": [...], "session_id": "xxx"}`
 class SseDoneEvent extends Equatable {
-  final String? summary;
+  /// 完整文本（和所有 token 拼接的结果一致）
+  final String? answer;
 
-  const SseDoneEvent({this.summary});
+  /// 所有卡片（含 reason），可用于兜底渲染
+  final List<AiMediaCard>? cards;
 
-  factory SseDoneEvent.fromJson(Map<String, dynamic> json) =>
-      SseDoneEvent(summary: json['summary'] as String?);
+  /// 会话 ID
+  final String? sessionId;
+
+  const SseDoneEvent({this.answer, this.cards, this.sessionId});
+
+  factory SseDoneEvent.fromJson(Map<String, dynamic> json) => SseDoneEvent(
+        answer: json['answer'] as String?,
+        cards: (json['cards'] as List<dynamic>?)
+            ?.map((e) => AiMediaCard.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        sessionId: json['session_id'] as String?,
+      );
 
   @override
-  List<Object?> get props => [summary];
+  List<Object?> get props => [answer, cards, sessionId];
 }
 
 // ═══════════════════════════════════════════
