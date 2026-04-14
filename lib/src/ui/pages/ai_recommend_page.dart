@@ -344,6 +344,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   // ─────────────────────────────────────────
 
   Widget _buildMessageBubble(AiChatMessage message) {
+    // AI 回复正在流式中：追加打字光标
+    final isStreaming = !message.isUser && _isLoading && _buildingMessageIndex >= 0
+        && _messages.indexOf(message) == _buildingMessageIndex;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Align(
@@ -357,17 +361,20 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
             children: [
+              // 推荐卡片（先于文本显示）
+              if (message.cards.isNotEmpty) ...[
+                _buildCardList(message.cards),
+                const SizedBox(height: 12),
+              ],
+
               // 状态提示或文字气泡
               if (message.statusText != null)
                 _buildStatusBubble(message.statusText!)
               else if (message.content.isNotEmpty)
-                _buildTextBubble(message.content, message.isUser),
-
-              // 推荐卡片
-              if (message.cards.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildCardList(message.cards),
-              ],
+                _buildTextBubble(
+                  isStreaming ? '${message.content}▍' : message.content,
+                  message.isUser,
+                ),
             ],
           ),
         ),
