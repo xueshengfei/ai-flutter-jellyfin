@@ -24,7 +24,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  late final AiStreamService _streamService;
+  late AiStreamService _streamService;
+
+  /// 当前 AI 服务地址（显示用）
+  String _aiServiceUrl = '';
 
   final List<AiChatMessage> _messages = [];
 
@@ -38,9 +41,9 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   @override
   void initState() {
     super.initState();
-    _streamService = AiStreamService(
-      jellyfinServerUrl: widget.client.configuration.serverUrl,
-    );
+    final jellyfinUrl = widget.client.configuration.serverUrl;
+    _streamService = AiStreamService(jellyfinServerUrl: jellyfinUrl);
+    _aiServiceUrl = _streamService.currentBaseUrl;
   }
 
   @override
@@ -273,6 +276,11 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       appBar: AppBar(
         title: const Text('AI 挑片'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.language),
+            onPressed: _showServiceUrlDialog,
+            tooltip: 'AI 服务地址',
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: _messages.isEmpty ? null : _clearHistory,
@@ -714,5 +722,56 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       _isLoading = false;
       _buildingMessageIndex = -1;
     });
+  }
+
+  /// AI 服务地址设置弹窗
+  void _showServiceUrlDialog() {
+    final controller = TextEditingController(text: _aiServiceUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.language),
+        title: const Text('AI 服务地址'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'IP:端口',
+                hintText: 'http://192.168.1.100:5000',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '默认与 Jellyfin 同 IP，端口 5000',
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final url = controller.text.trim();
+              if (url.isNotEmpty) {
+                _streamService.updateBaseUrl(url);
+                setState(() => _aiServiceUrl = url);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
   }
 }
