@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:jellyfin_service/src/models/ai_recommendation_models.dart';
+
+// 条件导入：Web 用 fetch API，原生用 Dio
+import 'sse_fetch.dart'
+  if (dart.library.html) 'sse_fetch_web.dart'
+  if (dart.library.io) 'sse_fetch_native.dart';
 
 // ═══════════════════════════════════════════
 // SSE 事件统一封装
@@ -25,44 +29,32 @@ class SseEvent {
 
 /// AI 流式推荐服务
 ///
-/// 直连后端 `http://localhost:5000`，通过 POST `/ask_stream` 建立 SSE 连接。
+/// 直连后端 `http://localhost:5000`，通过 GET `/ask_stream` 建立 SSE 连接。
 /// 后端负责全部 AI + Jellyfin 逻辑，客户端只负责消费 SSE 事件流并渲染。
 ///
-/// 仅用 dart:async + dart:convert，兼容鸿蒙平台。
+/// Web 平台：使用浏览器 fetch API + ReadableStream（支持真正的流式传输）
+/// 原生/鸿蒙平台：使用 Dio ResponseType.stream
 class AiStreamService {
   /// 后端地址
   static const String _baseUrl = 'http://localhost:5000';
 
-  final Dio _dio;
-
   /// 当前会话 ID（多轮对话自动传递）
   String? sessionId;
 
-  /// 取消令牌（用于取消上一次请求）
-  CancelToken? _cancelToken;
-
-  AiStreamService() : _dio = Dio(BaseOptions(baseUrl: _baseUrl));
+  /// 连接开始时间（诊断用）
+  DateTime? _connectStartTime;
+  int _eventCount = 0;
 
   /// 发送提问并返回 SSE 事件流
-  ///
-  /// [question] 用户自然语言提问
-  /// 返回 `Stream<SseEvent>`，调用方逐事件监听即可
   Stream<SseEvent> askStream(String question) {
-    // 取消上一次未完成的请求
-    _cancelToken?.cancel('新请求已发起');
-    _cancelToken = CancelToken();
-
     final controller = StreamController<SseEvent>();
-
     _startSseConnection(question, controller);
-
     return controller.stream;
   }
 
   /// 取消当前请求
   void cancel() {
-    _cancelToken?.cancel('用户取消');
-    _cancelToken = null;
+    // TODO: 支持 AbortController (web) / CancelToken (native)
   }
 
   /// 建立 SSE 连接并解析事件流
@@ -71,40 +63,42 @@ class AiStreamService {
     StreamController<SseEvent> controller,
   ) async {
     try {
-      final body = <String, dynamic>{'question': question};
+      // 构造 GET URL（参数通过 query string 传递）
+      final params = <String, String>{'question': question};
       if (sessionId != null) {
-        body['session_id'] = sessionId;
+        params['session_id'] = sessionId!;
       }
-
-      final response = await _dio.post<ResponseBody>(
-        '/ask_stream',
-        data: body,
-        options: Options(
-          responseType: ResponseType.stream,
-          headers: {'Accept': 'text/event-stream'},
-          receiveTimeout: const Duration(minutes: 5),
-        ),
-        cancelToken: _cancelToken,
+      final uri = Uri.parse('$_baseUrl/ask_stream').replace(
+        queryParameters: params,
       );
 
-      final stream = response.data!.stream;
+      // 使用平台适配的流式连接（GET 请求）
+      final stream = createSseStream(
+        uri.toString(),
+        {'Accept': 'text/event-stream'},
+      );
 
-      // 逐行状态机解析 SSE
-      // 后端每个事件是两行：event: xxx \n data: {...} \n
-      // 事件之间可能有空行也可能没有，所以用 event: 行作为事件开始标记
+      _connectStartTime = DateTime.now();
+      _eventCount = 0;
+      print('[SSE] 连接已建立 @${_connectStartTime!.toIso8601String()}');
+      var chunkCount = 0;
       final buffer = StringBuffer();
       String? currentEventName;
       final currentDataLines = <String>[];
 
       await for (final chunk in stream) {
+        chunkCount++;
+        final elapsed =
+            DateTime.now().difference(_connectStartTime!).inMilliseconds;
         final text = utf8.decode(chunk, allowMalformed: true);
+        print(
+            '[SSE] chunk #$chunkCount @${elapsed}ms (${text.length} chars): ${text.length > 80 ? '${text.substring(0, 80)}...' : text}');
         buffer.write(text);
 
         // 逐行处理
         String content = buffer.toString();
         int newlineIdx;
         while ((newlineIdx = content.indexOf('\n')) >= 0) {
-          // 取一行，去掉 \r
           var line = content.substring(0, newlineIdx);
           if (line.endsWith('\r')) {
             line = line.substring(0, line.length - 1);
@@ -112,17 +106,14 @@ class AiStreamService {
           content = content.substring(newlineIdx + 1);
 
           if (line.startsWith('event:')) {
-            // 如果上一个事件还没派发，先派发
             if (currentEventName != null && currentDataLines.isNotEmpty) {
               _emitEvent(currentEventName, currentDataLines, controller);
             }
-            // 开始新事件
             currentEventName = line.substring(6).trim();
             currentDataLines.clear();
           } else if (line.startsWith('data:')) {
             currentDataLines.add(line.substring(5).trim());
           }
-          // 空行或其他行：忽略
         }
         buffer.clear();
         buffer.write(content);
@@ -133,15 +124,11 @@ class AiStreamService {
         _emitEvent(currentEventName, currentDataLines, controller);
       }
     } catch (e) {
-      if (e is DioException && CancelToken.isCancel(e)) {
-        // 用户主动取消，不报错
-      } else {
-        print('[SSE] 连接异常: $e');
-        controller.add(SseEvent(
-          type: SseEventType.error,
-          data: {'message': '连接失败: $e'},
-        ));
-      }
+      print('[SSE] 连接异常: $e');
+      controller.add(SseEvent(
+        type: SseEventType.error,
+        data: {'message': '连接失败: $e'},
+      ));
     } finally {
       await controller.close();
     }
@@ -153,6 +140,11 @@ class AiStreamService {
     List<String> dataLines,
     StreamController<SseEvent> controller,
   ) {
+    _eventCount++;
+    final elapsed = _connectStartTime != null
+        ? DateTime.now().difference(_connectStartTime!).inMilliseconds
+        : -1;
+    print('[SSE] 派发事件 #$_eventCount @${elapsed}ms: $eventName');
     final dataStr = dataLines.join('\n');
     try {
       final data = jsonDecode(dataStr) as Map<String, dynamic>;
