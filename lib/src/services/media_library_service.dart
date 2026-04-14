@@ -769,4 +769,96 @@ class MediaLibraryService {
       );
     }
   }
+
+  /// 跨媒体库通用搜索（供 AI 推荐使用）
+  ///
+  /// 不指定 parentId，在所有媒体库中递归搜索。
+  /// 按 genres 和 includeItemTypes 过滤。
+  ///
+  /// 参数：
+  /// - [genres] 类型标签过滤（如 ["历史", "政治"]）
+  /// - [includeItemTypes] 媒体类型过滤（如 ["Movie", "Series"]）
+  /// - [searchTerm] 搜索关键词
+  /// - [limit] 限制返回数量（默认 30）
+  Future<MediaItemListResult> searchMediaItems({
+    List<String>? genres,
+    List<String>? includeItemTypes,
+    String? searchTerm,
+    int? limit,
+  }) async {
+    _logger.i('Searching media items: genres=$genres, types=$includeItemTypes, term=$searchTerm');
+
+    try {
+      final itemsApi = _apiClient.jellyfinClient.getItemsApi();
+
+      // 将字符串类型转为 BaseItemKind 枚举
+      List<jellyfin_dart.BaseItemKind>? typeEnums;
+      if (includeItemTypes != null && includeItemTypes.isNotEmpty) {
+        typeEnums = includeItemTypes.map((t) {
+          // 字符串转枚举（大小写不敏感）
+          return jellyfin_dart.BaseItemKind.values.firstWhere(
+            (e) => e.name.toLowerCase() == t.toLowerCase(),
+            orElse: () => jellyfin_dart.BaseItemKind.movie,
+          );
+        }).toList();
+      }
+
+      final response = await itemsApi.getItems(
+        userId: _apiClient.config.userId,
+        // 不指定 parentId，跨库搜索
+        recursive: true,
+        genres: genres,
+        includeItemTypes: typeEnums,
+        searchTerm: searchTerm,
+        limit: limit ?? 30,
+        sortBy: const [
+          jellyfin_dart.ItemSortBy.communityRating,
+          jellyfin_dart.ItemSortBy.sortName,
+        ],
+        sortOrder: const [
+          jellyfin_dart.SortOrder.descending,
+          jellyfin_dart.SortOrder.ascending,
+        ],
+        fields: const [
+          jellyfin_dart.ItemFields.primaryImageAspectRatio,
+          jellyfin_dart.ItemFields.genres,
+          jellyfin_dart.ItemFields.overview,
+          jellyfin_dart.ItemFields.studios,
+          jellyfin_dart.ItemFields.people,
+        ],
+        enableImages: true,
+        enableUserData: true,
+      );
+
+      if (response.data == null) {
+        throw ApiException(
+          'Failed to search media items: No response data',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final result = response.data!;
+
+      _logger.i(
+        'Search found ${result.items?.length ?? 0} items (total: ${result.totalRecordCount})',
+      );
+
+      return MediaItemListResult.fromDto(
+        result,
+        _apiClient.config.serverUrl,
+        accessToken: _apiClient.config.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e, stackTrace) {
+      _logger.e('Failed to search media items',
+          error: e, stackTrace: stackTrace);
+
+      throw ApiException(
+        'Failed to search media items: ${e.toString()}',
+        cause: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
 }
