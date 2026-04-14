@@ -16,6 +16,7 @@ import 'package:jellyfin_service/src/ui/pages/media_items_page.dart';
 import 'package:jellyfin_service/src/ui/widgets/library_card.dart';
 import 'package:jellyfin_service/src/ui/widgets/continue_watching_card.dart';
 import 'package:jellyfin_service/src/ui/widgets/mini_player_card.dart';
+import 'package:jellyfin_service/src/ui/pages/ai_recommend_page.dart';
 
 /// 媒体库列表页面 - 登录后展示所有媒体库，点击进入对应类型的页面
 class MediaLibrariesPage extends StatefulWidget {
@@ -86,6 +87,10 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       appBar: AppBar(
         title: const Text('媒体库'),
         actions: [
+          // AI 挑片入口
+          IconButton(icon: const Icon(Icons.auto_awesome), onPressed: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => AiRecommendPage(client: widget.client)));
+          }, tooltip: 'AI 挑片'),
           IconButton(icon: const Icon(Icons.person), onPressed: () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => PersonalPage(client: widget.client)));
           }, tooltip: '个人中心'),
