@@ -149,19 +149,23 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
 
         case SseEventType.done:
           final doneEvent = SseDoneEvent.fromJson(event.data);
-          // 兜底：如果流式没收到完整文本，用 done 的 answer 补全
+          // 兜底文本：只在流式没收到任何 token 时用 done 的 answer
           var finalContent = msg.content;
           if (finalContent.isEmpty && doneEvent.answer != null) {
             finalContent = doneEvent.answer!;
           }
-          // 兜底：用 done 的 cards 补全推荐理由
-          List<AiMediaCard> finalCards = msg.cards;
-          if (doneEvent.cards != null && doneEvent.cards!.isNotEmpty) {
-            finalCards = doneEvent.cards!;
+          // 卡片去重（可能多次搜索产生重复 card）
+          final seenIds = <String>{};
+          final dedupedCards = <AiMediaCard>[];
+          for (final c in msg.cards) {
+            if (!seenIds.contains(c.id)) {
+              seenIds.add(c.id);
+              dedupedCards.add(c);
+            }
           }
           _messages[_buildingMessageIndex] = msg.copyWith(
             content: finalContent,
-            cards: finalCards,
+            cards: dedupedCards,
             statusText: null,
           );
           _isLoading = false;
