@@ -35,11 +35,22 @@ class SseEvent {
 /// Web 平台：使用浏览器 fetch API + ReadableStream（支持真正的流式传输）
 /// 原生/鸿蒙平台：使用 Dio ResponseType.stream
 class AiStreamService {
-  /// 后端地址
-  static const String _baseUrl = 'http://localhost:5000';
+  /// 后端地址（与 Jellyfin 同 IP，端口 5000）
+  final String _baseUrl;
 
   /// 当前会话 ID（多轮对话自动传递）
   String? sessionId;
+
+  /// [jellyfinServerUrl] Jellyfin 服务地址，AI 服务复用其 IP + 端口 5000
+  /// 例如 Jellyfin 为 http://192.168.1.100:8096 → AI 服务为 http://192.168.1.100:5000
+  AiStreamService({required String jellyfinServerUrl})
+      : _baseUrl = _extractAiBaseUrl(jellyfinServerUrl);
+
+  /// 从 Jellyfin URL 提取 IP，拼接 :5000
+  static String _extractAiBaseUrl(String jellyfinUrl) {
+    final uri = Uri.parse(jellyfinUrl);
+    return '${uri.scheme}://${uri.host}:5000';
+  }
 
   /// 连接开始时间（诊断用）
   DateTime? _connectStartTime;
