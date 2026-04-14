@@ -356,8 +356,8 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
-                _buildQuickTag('历史权谋剧'),
-                _buildQuickTag('职场认知提升'),
+                _buildQuickTag('推荐周杰伦的几首歌'),
+                _buildQuickTag('推荐最新的科幻电影'),
                 _buildQuickTag('高分经典电影'),
                 _buildQuickTag('轻松解压喜剧'),
               ],
