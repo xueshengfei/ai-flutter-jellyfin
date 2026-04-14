@@ -248,6 +248,9 @@ class AiMediaCard extends Equatable {
 // UI 模型
 // ═══════════════════════════════════════════
 
+/// 哨兵值，用于区分"未传参"和"显式传 null"
+const _absent = Object();
+
 /// 对话消息（UI 展示用）
 class AiChatMessage extends Equatable {
   /// 消息文字内容
@@ -274,19 +277,24 @@ class AiChatMessage extends Equatable {
   });
 
   /// 创建副本
+  ///
+  /// [statusText] 不传则保留原值，传 null 则清空，传字符串则设置。
+  /// 其他字段行为不变：传 null 保留原值。
   AiChatMessage copyWith({
     String? content,
     bool? isUser,
     DateTime? timestamp,
     List<AiMediaCard>? cards,
-    String? statusText,
+    Object? statusText = _absent,
   }) =>
       AiChatMessage(
         content: content ?? this.content,
         isUser: isUser ?? this.isUser,
         timestamp: timestamp ?? this.timestamp,
         cards: cards ?? this.cards,
-        statusText: statusText ?? this.statusText,
+        statusText: identical(statusText, _absent)
+            ? this.statusText
+            : statusText as String?,
       );
 
   @override
