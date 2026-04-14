@@ -82,55 +82,61 @@ class AiStreamService {
         options: Options(
           responseType: ResponseType.stream,
           headers: {'Accept': 'text/event-stream'},
+          receiveTimeout: const Duration(minutes: 5),
         ),
         cancelToken: _cancelToken,
       );
 
       final stream = response.data!.stream;
-      final buffer = StringBuffer();
-      String charset = 'utf-8';
 
-      // 监听字节流
+      // 逐行状态机解析 SSE
+      // 后端每个事件是两行：event: xxx \n data: {...} \n
+      // 事件之间可能有空行也可能没有，所以用 event: 行作为事件开始标记
+      final buffer = StringBuffer();
+      String? currentEventName;
+      final currentDataLines = <String>[];
+
       await for (final chunk in stream) {
-        // 解码字节为字符串
-        final text = _decodeChunk(chunk, charset);
+        final text = utf8.decode(chunk, allowMalformed: true);
         buffer.write(text);
 
-        // 按 \n\n 分块处理 SSE 事件
+        // 逐行处理
         String content = buffer.toString();
-        while (content.contains('\n\n')) {
-          final index = content.indexOf('\n\n');
-          final block = content.substring(0, index).trim();
-          content = content.substring(index + 2);
-
-          if (block.isNotEmpty) {
-            final event = _parseSseBlock(block);
-            if (event != null) {
-              // 自动保存 sessionId
-              if (event.type == SseEventType.session) {
-                final sessionEvent = SseSessionEvent.fromJson(event.data);
-                sessionId = sessionEvent.sessionId;
-              }
-              controller.add(event);
-            }
+        int newlineIdx;
+        while ((newlineIdx = content.indexOf('\n')) >= 0) {
+          // 取一行，去掉 \r
+          var line = content.substring(0, newlineIdx);
+          if (line.endsWith('\r')) {
+            line = line.substring(0, line.length - 1);
           }
+          content = content.substring(newlineIdx + 1);
+
+          if (line.startsWith('event:')) {
+            // 如果上一个事件还没派发，先派发
+            if (currentEventName != null && currentDataLines.isNotEmpty) {
+              _emitEvent(currentEventName, currentDataLines, controller);
+            }
+            // 开始新事件
+            currentEventName = line.substring(6).trim();
+            currentDataLines.clear();
+          } else if (line.startsWith('data:')) {
+            currentDataLines.add(line.substring(5).trim());
+          }
+          // 空行或其他行：忽略
         }
         buffer.clear();
         buffer.write(content);
       }
 
-      // 处理 buffer 中可能残余的最后一块
-      final remaining = buffer.toString().trim();
-      if (remaining.isNotEmpty) {
-        final event = _parseSseBlock(remaining);
-        if (event != null) {
-          controller.add(event);
-        }
+      // 派发最后一个事件（流结束时）
+      if (currentEventName != null && currentDataLines.isNotEmpty) {
+        _emitEvent(currentEventName, currentDataLines, controller);
       }
     } catch (e) {
       if (e is DioException && CancelToken.isCancel(e)) {
         // 用户主动取消，不报错
       } else {
+        print('[SSE] 连接异常: $e');
         controller.add(SseEvent(
           type: SseEventType.error,
           data: {'message': '连接失败: $e'},
@@ -141,39 +147,31 @@ class AiStreamService {
     }
   }
 
-  /// 解码字节块
-  String _decodeChunk(List<int> chunk, String charset) {
-    // 简单处理：绝大多数场景为 UTF-8
-    return utf8.decode(chunk, allowMalformed: true);
-  }
-
-  /// 解析单个 SSE 块（多行 key:value）
-  SseEvent? _parseSseBlock(String block) {
-    String? eventName;
-    String? dataStr;
-
-    for (final line in block.split('\n')) {
-      if (line.startsWith('event:')) {
-        eventName = line.substring(6).trim();
-      } else if (line.startsWith('data:')) {
-        dataStr = line.substring(5).trim();
-      }
-    }
-
-    if (eventName == null || dataStr == null) return null;
-
+  /// 解析并派发一个完整事件
+  void _emitEvent(
+    String eventName,
+    List<String> dataLines,
+    StreamController<SseEvent> controller,
+  ) {
+    final dataStr = dataLines.join('\n');
     try {
       final data = jsonDecode(dataStr) as Map<String, dynamic>;
-      return SseEvent(
+      final event = SseEvent(
         type: SseEventType.fromName(eventName),
         data: data,
       );
+      // 自动保存 sessionId
+      if (event.type == SseEventType.session) {
+        final sessionEvent = SseSessionEvent.fromJson(event.data);
+        sessionId = sessionEvent.sessionId;
+      }
+      controller.add(event);
     } catch (e) {
-      // JSON 解码失败，返回 error 事件
-      return SseEvent(
+      print('[SSE] JSON解析失败: $e\nevent: $eventName\nraw: $dataStr');
+      controller.add(SseEvent(
         type: SseEventType.error,
-        data: {'message': '解析失败: $e', 'raw': dataStr},
-      );
+        data: {'message': '解析失败', 'raw': dataStr},
+      ));
     }
   }
 }
