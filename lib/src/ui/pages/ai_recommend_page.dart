@@ -38,7 +38,9 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   @override
   void initState() {
     super.initState();
-    _streamService = AiStreamService();
+    _streamService = AiStreamService(
+      jellyfinServerUrl: widget.client.configuration.serverUrl,
+    );
   }
 
   @override
