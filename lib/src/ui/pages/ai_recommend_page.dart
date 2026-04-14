@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 
 /// AI 挑片页面
@@ -100,13 +101,19 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       final msg = _messages[_buildingMessageIndex];
       switch (event.type) {
         case SseEventType.thinking:
+          final thinkEvent = SseThinkingEvent.fromJson(event.data);
+          final label = thinkEvent.node == 'reason'
+              ? '正在生成推荐理由...'
+              : 'AI 正在思考...';
           _messages[_buildingMessageIndex] = msg.copyWith(
-            statusText: 'AI 正在思考...',
+            statusText: label,
           );
 
         case SseEventType.tool:
           final toolEvent = SseToolEvent.fromJson(event.data);
-          final label = toolEvent.status == 'calling' ? '正在搜索...' : '搜索完成';
+          final label = toolEvent.status == 'calling'
+              ? '正在搜索...'
+              : '搜索完成';
           _messages[_buildingMessageIndex] = msg.copyWith(
             statusText: label,
           );
@@ -118,21 +125,20 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
             statusText: null,
           );
 
-        case SseEventType.text:
-          final textEvent = SseTextEvent.fromJson(event.data);
+        case SseEventType.token:
+          final tokenEvent = SseTokenEvent.fromJson(event.data);
           _messages[_buildingMessageIndex] = msg.copyWith(
-            content: msg.content + textEvent.content,
+            content: msg.content + tokenEvent.content,
             statusText: null,
           );
 
         case SseEventType.cardUpdate:
           final update = SseCardUpdateEvent.fromJson(event.data);
-          final updatedCards = msg.cards.map((c) {
-            if (c.id == update.cardId) {
-              return c.copyWith(reason: update.reason);
-            }
-            return c;
-          }).toList();
+          final updatedCards = List<AiMediaCard>.from(msg.cards);
+          if (update.index >= 0 && update.index < updatedCards.length) {
+            updatedCards[update.index] =
+                updatedCards[update.index].copyWith(reason: update.reason);
+          }
           _messages[_buildingMessageIndex] = msg.copyWith(
             cards: updatedCards,
           );
@@ -142,7 +148,20 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
           break;
 
         case SseEventType.done:
+          final doneEvent = SseDoneEvent.fromJson(event.data);
+          // 兜底：如果流式没收到完整文本，用 done 的 answer 补全
+          var finalContent = msg.content;
+          if (finalContent.isEmpty && doneEvent.answer != null) {
+            finalContent = doneEvent.answer!;
+          }
+          // 兜底：用 done 的 cards 补全推荐理由
+          List<AiMediaCard> finalCards = msg.cards;
+          if (doneEvent.cards != null && doneEvent.cards!.isNotEmpty) {
+            finalCards = doneEvent.cards!;
+          }
           _messages[_buildingMessageIndex] = msg.copyWith(
+            content: finalContent,
+            cards: finalCards,
             statusText: null,
           );
           _isLoading = false;
@@ -388,7 +407,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  /// 文字气泡
+  /// 文字气泡（AI 回复使用 Markdown 渲染，用户消息用纯文本）
   Widget _buildTextBubble(String content, bool isUser) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -407,15 +426,25 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
               : const Radius.circular(16),
         ),
       ),
-      child: Text(
-        content,
-        style: TextStyle(
-          color: isUser
-              ? Theme.of(context).colorScheme.onPrimary
-              : Theme.of(context).colorScheme.onSurface,
-          fontSize: 15,
-        ),
-      ),
+      child: isUser
+          ? Text(
+              content,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontSize: 15,
+              ),
+            )
+          : MarkdownBody(
+              data: content,
+              selectable: true,
+              styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                p: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 15,
+                  height: 1.6,
+                ),
+              ),
+            ),
     );
   }
 

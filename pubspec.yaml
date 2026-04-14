@@ -48,6 +48,7 @@ dependencies:
   # 图片缓存 + 取色
   cached_network_image: ^3.4.0
   palette_generator: ^0.3.3+4
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:
