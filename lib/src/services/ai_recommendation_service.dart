@@ -35,8 +35,8 @@ class SseEvent {
 /// Web 平台：使用浏览器 fetch API + ReadableStream（支持真正的流式传输）
 /// 原生/鸿蒙平台：使用 Dio ResponseType.stream
 class AiStreamService {
-  /// 后端地址（与 Jellyfin 同 IP，端口 5000）
-  final String _baseUrl;
+  /// 后端地址
+  String _baseUrl;
 
   /// 当前会话 ID（多轮对话自动传递）
   String? sessionId;
@@ -50,6 +50,15 @@ class AiStreamService {
   static String _extractAiBaseUrl(String jellyfinUrl) {
     final uri = Uri.parse(jellyfinUrl);
     return '${uri.scheme}://${uri.host}:5000';
+  }
+
+  /// 获取当前 AI 服务地址
+  String get currentBaseUrl => _baseUrl;
+
+  /// 更新 AI 服务地址（用户手动修改 IP/端口）
+  void updateBaseUrl(String url) {
+    _baseUrl = url.replaceAll(RegExp(r'/+$'), ''); // 去掉末尾斜杠
+    sessionId = null; // 地址变了，重置会话
   }
 
   /// 连接开始时间（诊断用）
