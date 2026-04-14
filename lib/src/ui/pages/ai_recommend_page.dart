@@ -275,7 +275,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI 挑片'),
-        actionsPadding: EdgeInsets.zero,
+        actionsPadding: const EdgeInsets.only(right: 8),
         actions: [
           IconButton(
             icon: const Icon(Icons.language),
