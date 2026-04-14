@@ -94,6 +94,11 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   void _onSseEvent(SseEvent event) {
     if (!mounted || _buildingMessageIndex < 0) return;
 
+    if (event.type == SseEventType.token || event.type == SseEventType.thinking || event.type == SseEventType.done) {
+      final content = event.type == SseEventType.token ? (event.data['content'] ?? '') : '';
+      print('[UI] 收到 ${event.type.name} 事件 @${DateTime.now().toIso8601String()} content="${(content as String).length > 20 ? content.substring(0, 20) + "..." : content}"');
+    }
+
     setState(() {
       final msg = _messages[_buildingMessageIndex];
       switch (event.type) {
@@ -437,8 +442,23 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
+  /// 去除 markdown 中的代码块（兜底，防止 LLM 输出 ```jellyfin 等）
+  static String _stripCodeBlocks(String content) {
+    var result = content;
+    // 移除完整代码块：```lang\n...\n```
+    result = result.replaceAll(RegExp(r'```\w*\n[\s\S]*?\n```'), '');
+    // 移除流式传输中未闭合的代码块：```lang\n...（到末尾）
+    result = result.replaceAll(RegExp(r'\n*```\w*\n[\s\S]*$'), '');
+    // 清理残留的 ``` 标记
+    result = result.replaceAll(RegExp(r'\n*```\w*\n*'), '');
+    return result.trim();
+  }
+
   /// 文字气泡（AI 回复用 MarkdownBody，用户消息用 Text）
   Widget _buildTextBubble(String content, bool isUser) {
+    // AI 回复：去除代码块再渲染
+    final displayContent = isUser ? content : _stripCodeBlocks(content);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -456,14 +476,14 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       ),
       child: isUser
           ? Text(
-              content,
+              displayContent,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onPrimary,
                 fontSize: 15,
               ),
             )
           : MarkdownBody(
-              data: content,
+              data: displayContent,
               selectable: true,
               styleSheet:
                   MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
