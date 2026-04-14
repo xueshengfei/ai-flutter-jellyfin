@@ -403,11 +403,11 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
             children: [
-              // 状态提示
+              // 状态提示（小标签，不遮挡已有文本）
               if (message.statusText != null)
-                _buildStatusBubble(message.statusText!)
+                _buildStatusChip(message.statusText!),
               // 文本（markdown + 打字机光标）
-              else if (message.content.isNotEmpty)
+              if (message.content.isNotEmpty)
                 _buildTextBubble(
                   isStreaming ? '${message.content}▍' : message.content,
                   message.isUser,
@@ -425,35 +425,27 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  /// 状态提示气泡
-  Widget _buildStatusBubble(String statusText) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-          bottomRight: Radius.circular(16),
-        ),
-      ),
+  /// 状态提示小标签（不遮挡已有文本）
+  Widget _buildStatusChip(String statusText) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 16,
-            height: 16,
+            width: 12,
+            height: 12,
             child: CircularProgressIndicator(
               strokeWidth: 2,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Text(
             statusText,
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
-              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+              fontSize: 12,
             ),
           ),
         ],
