@@ -316,7 +316,11 @@ class _AiRecommendPillState extends State<_AiRecommendPill>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: _totalMs),
-    )..repeat();
+    );
+    // 延迟 2 秒后启动循环动画
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) _ctrl.repeat();
+    });
   }
 
   @override
