@@ -87,10 +87,10 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       appBar: AppBar(
         title: const Text('媒体库'),
         actions: [
-          // AI 挑片入口
-          IconButton(icon: const Icon(Icons.auto_awesome), onPressed: () {
+          // AI 推荐入口（胶囊动画按钮）
+          _AiRecommendPill(onPressed: () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => AiRecommendPage(client: widget.client)));
-          }, tooltip: 'AI 挑片'),
+          }),
           IconButton(icon: const Icon(Icons.person), onPressed: () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => PersonalPage(client: widget.client)));
           }, tooltip: '个人中心'),
@@ -281,4 +281,95 @@ class _ContinueReadingCard extends StatelessWidget {
     color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: const Center(child: Icon(Icons.menu_book, size: 32, color: Colors.white54)),
   );
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI 推荐胶囊动画按钮
+// ═══════════════════════════════════════════════════════════
+
+class _AiRecommendPill extends StatefulWidget {
+  final VoidCallback onPressed;
+  const _AiRecommendPill({required this.onPressed});
+
+  @override
+  State<_AiRecommendPill> createState() => _AiRecommendPillState();
+}
+
+class _AiRecommendPillState extends State<_AiRecommendPill>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _glowAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _glowAnim = Tween<double>(begin: 0.0, end: 1.0).animate(_ctrl);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: AnimatedBuilder(
+        animation: _glowAnim,
+        builder: (context, _) {
+          final t = _glowAnim.value;
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onPressed,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color.lerp(primary, primary.withAlpha(180), t)!,
+                      Color.lerp(primary.withAlpha(200), primary, t)!,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primary.withAlpha((60 + t * 60).round()),
+                      blurRadius: 8 + t * 8,
+                      offset: Offset(0, 2 + t * 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome, size: 16, color: colorScheme.onPrimary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'AI 推荐',
+                      style: TextStyle(
+                        color: colorScheme.onPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }

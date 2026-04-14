@@ -274,7 +274,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI 挑片'),
+        title: const Text('AI 推荐'),
         leading: Padding(
           padding: const EdgeInsets.only(left: 8),
           child: IconButton(
