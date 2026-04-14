@@ -9,8 +9,8 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 /// 对话式 AI 推荐页面：
 /// 1. 用户输入自然语言
 /// 2. 直连后端 SSE 流式通信（POST /ask_stream）
-/// 3. 逐事件渲染（thinking/tool/card/text/card_update/done）
-/// 4. 点击卡片跳转 MediaItemDetailPage
+/// 3. 逐事件渲染（thinking/tool/token/card/done）
+/// 4. card 事件只含 id+reason，客户端并发调 getMediaItemDetail 获取详情
 class AiRecommendPage extends StatefulWidget {
   final JellyfinClient client;
 
@@ -24,19 +24,15 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  /// SSE 流式服务
   late final AiStreamService _streamService;
 
-  /// 聊天消息历史
   final List<AiChatMessage> _messages = [];
 
-  /// 当前正在加载
+  /// itemId → MediaItem 的缓存（并发获取详情后填充）
+  final Map<String, MediaItem> _mediaItemCache = {};
+
   bool _isLoading = false;
-
-  /// 当前流订阅（用于 dispose 时取消）
   StreamSubscription<SseEvent>? _currentSubscription;
-
-  /// 当前正在构建的 AI 回复消息索引（-1 表示无）
   int _buildingMessageIndex = -1;
 
   @override
@@ -54,25 +50,24 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     super.dispose();
   }
 
-  /// 发送提问
+  // ─────────────────────────────────────────
+  // 发送提问
+  // ─────────────────────────────────────────
+
   void _sendMessage() {
     final query = _inputController.text.trim();
     if (query.isEmpty || _isLoading) return;
 
     _inputController.clear();
-
-    // 取消上一次请求
     _currentSubscription?.cancel();
     _streamService.cancel();
 
     setState(() {
-      // 添加用户消息
       _messages.add(AiChatMessage(
         content: query,
         isUser: true,
         timestamp: DateTime.now(),
       ));
-      // 添加一条空的 AI 回复占位
       _messages.add(AiChatMessage(
         content: '',
         isUser: false,
@@ -85,7 +80,6 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
 
     _scrollToBottom();
 
-    // 监听 SSE 事件流
     _currentSubscription = _streamService.askStream(query).listen(
       _onSseEvent,
       onError: _onSseError,
@@ -93,7 +87,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  /// 处理单个 SSE 事件
+  // ─────────────────────────────────────────
+  // SSE 事件处理
+  // ─────────────────────────────────────────
+
   void _onSseEvent(SseEvent event) {
     if (!mounted || _buildingMessageIndex < 0) return;
 
@@ -105,25 +102,13 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
           final label = thinkEvent.node == 'reason'
               ? '正在生成推荐理由...'
               : 'AI 正在思考...';
-          _messages[_buildingMessageIndex] = msg.copyWith(
-            statusText: label,
-          );
+          _messages[_buildingMessageIndex] = msg.copyWith(statusText: label);
 
         case SseEventType.tool:
           final toolEvent = SseToolEvent.fromJson(event.data);
-          final label = toolEvent.status == 'calling'
-              ? '正在搜索...'
-              : '搜索完成';
-          _messages[_buildingMessageIndex] = msg.copyWith(
-            statusText: label,
-          );
-
-        case SseEventType.card:
-          final card = AiMediaCard.fromJson(event.data);
-          _messages[_buildingMessageIndex] = msg.copyWith(
-            cards: [...msg.cards, card],
-            statusText: null,
-          );
+          final label =
+              toolEvent.status == 'calling' ? '正在搜索...' : '搜索完成';
+          _messages[_buildingMessageIndex] = msg.copyWith(statusText: label);
 
         case SseEventType.token:
           final tokenEvent = SseTokenEvent.fromJson(event.data);
@@ -132,16 +117,14 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
             statusText: null,
           );
 
-        case SseEventType.cardUpdate:
-          final update = SseCardUpdateEvent.fromJson(event.data);
-          final updatedCards = List<AiMediaCard>.from(msg.cards);
-          if (update.index >= 0 && update.index < updatedCards.length) {
-            updatedCards[update.index] =
-                updatedCards[update.index].copyWith(reason: update.reason);
-          }
+        case SseEventType.card:
+          final card = AiCard.fromJson(event.data);
           _messages[_buildingMessageIndex] = msg.copyWith(
-            cards: updatedCards,
+            cards: [...msg.cards, card],
+            statusText: null,
           );
+          // 并发获取详情
+          _fetchDetailIfNeeded(card.id);
 
         case SseEventType.session:
           // sessionId 已在 AiStreamService 中自动保存
@@ -149,23 +132,25 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
 
         case SseEventType.done:
           final doneEvent = SseDoneEvent.fromJson(event.data);
-          // 兜底文本：只在流式没收到任何 token 时用 done 的 answer
+          // 文本兜底
           var finalContent = msg.content;
           if (finalContent.isEmpty && doneEvent.answer != null) {
             finalContent = doneEvent.answer!;
           }
-          // 卡片去重（可能多次搜索产生重复 card）
-          final seenIds = <String>{};
-          final dedupedCards = <AiMediaCard>[];
-          for (final c in msg.cards) {
-            if (!seenIds.contains(c.id)) {
-              seenIds.add(c.id);
-              dedupedCards.add(c);
+          // 卡片兜底（如果流式没收到 card，用 done 的）
+          var finalCards = msg.cards;
+          if (finalCards.isEmpty &&
+              doneEvent.cards != null &&
+              doneEvent.cards!.isNotEmpty) {
+            finalCards = doneEvent.cards!;
+            // 补拉详情
+            for (final c in finalCards) {
+              _fetchDetailIfNeeded(c.id);
             }
           }
           _messages[_buildingMessageIndex] = msg.copyWith(
             content: finalContent,
-            cards: dedupedCards,
+            cards: finalCards,
             statusText: null,
           );
           _isLoading = false;
@@ -185,12 +170,26 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     _scrollToBottom();
   }
 
-  /// SSE 流错误
+  /// 并发获取 MediaItem 详情，获取到后 setState 刷新卡片
+  void _fetchDetailIfNeeded(String itemId) {
+    if (_mediaItemCache.containsKey(itemId)) return;
+
+    widget.client.mediaLibrary.getMediaItemDetail(itemId).then((item) {
+      if (!mounted) return;
+      setState(() {
+        _mediaItemCache[itemId] = item;
+      });
+    }).catchError((_) {
+      // 获取失败时忽略，卡片会显示占位信息
+    });
+  }
+
   void _onSseError(Object error) {
     if (!mounted) return;
     setState(() {
       if (_buildingMessageIndex >= 0) {
-        _messages[_buildingMessageIndex] = _messages[_buildingMessageIndex].copyWith(
+        _messages[_buildingMessageIndex] =
+            _messages[_buildingMessageIndex].copyWith(
           content: '连接出错: $error',
           statusText: null,
         );
@@ -201,7 +200,6 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     _scrollToBottom();
   }
 
-  /// SSE 流结束
   void _onSseDone() {
     if (!mounted) return;
     setState(() {
@@ -214,7 +212,6 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     });
   }
 
-  /// 滚动到底部
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -227,18 +224,30 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     });
   }
 
-  /// 卡片点击 → 获取完整 MediaItem → 跳转详情页
-  Future<void> _navigateToCardDetail(AiMediaCard card) async {
+  /// 卡片点击 → 直接跳转（详情已缓存或重新获取）
+  void _navigateToDetail(MediaItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            MediaItemDetailPage(client: widget.client, item: item),
+      ),
+    );
+  }
+
+  /// 卡片点击（可能还没缓存，先获取再跳转）
+  Future<void> _navigateToCard(AiCard card) async {
+    final cached = _mediaItemCache[card.id];
+    if (cached != null) {
+      _navigateToDetail(cached);
+      return;
+    }
     try {
-      // 从 Jellyfin 获取完整 MediaItem
-      final mediaItem = await widget.client.mediaLibrary.getMediaItemDetail(card.id);
+      final item =
+          await widget.client.mediaLibrary.getMediaItemDetail(card.id);
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MediaItemDetailPage(client: widget.client, item: mediaItem),
-        ),
-      );
+      _mediaItemCache[card.id] = item;
+      _navigateToDetail(item);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -246,6 +255,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       );
     }
   }
+
+  // ─────────────────────────────────────────
+  // UI 构建
+  // ─────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +299,6 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  /// 空状态
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -294,13 +306,15 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.auto_awesome, size: 64,
+            Icon(Icons.auto_awesome,
+                size: 64,
                 color: Theme.of(context).colorScheme.primary.withAlpha(128)),
             const SizedBox(height: 16),
             Text(
               '告诉我你想看什么',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+                    color:
+                        Theme.of(context).colorScheme.onSurface.withAlpha(179),
                   ),
             ),
             const SizedBox(height: 12),
@@ -308,7 +322,8 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
               '例如："想看关于权谋的历史剧"\n"推荐一些能提升职场认知的电影"',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
+                    color:
+                        Theme.of(context).colorScheme.onSurface.withAlpha(128),
                   ),
             ),
             const SizedBox(height: 24),
@@ -344,14 +359,17 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   // ─────────────────────────────────────────
 
   Widget _buildMessageBubble(AiChatMessage message) {
-    // AI 回复正在流式中：追加打字光标
-    final isStreaming = !message.isUser && _isLoading && _buildingMessageIndex >= 0
-        && _messages.indexOf(message) == _buildingMessageIndex;
+    // 流式中时追加打字光标
+    final isStreaming = !message.isUser &&
+        _isLoading &&
+        _buildingMessageIndex >= 0 &&
+        _messages.indexOf(message) == _buildingMessageIndex;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Align(
-        alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+        alignment:
+            message.isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.85,
@@ -361,20 +379,21 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
             children: [
-              // 推荐卡片（先于文本显示）
-              if (message.cards.isNotEmpty) ...[
-                _buildCardList(message.cards),
-                const SizedBox(height: 12),
-              ],
-
-              // 状态提示或文字气泡
+              // 状态提示
               if (message.statusText != null)
                 _buildStatusBubble(message.statusText!)
+              // 文本（markdown + 打字机光标）
               else if (message.content.isNotEmpty)
                 _buildTextBubble(
                   isStreaming ? '${message.content}▍' : message.content,
                   message.isUser,
                 ),
+
+              // 推荐卡片（文本下方）
+              if (message.cards.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildCardList(message.cards),
+              ],
             ],
           ),
         ),
@@ -382,7 +401,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  /// 状态提示气泡（正在思考... / 正在搜索...）
+  /// 状态提示气泡
   Widget _buildStatusBubble(String statusText) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -418,7 +437,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  /// 文字气泡（AI 回复使用 Markdown 渲染，用户消息用纯文本）
+  /// 文字气泡（AI 回复用 MarkdownBody，用户消息用 Text）
   Widget _buildTextBubble(String content, bool isUser) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -429,12 +448,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(16),
           topRight: const Radius.circular(16),
-          bottomLeft: isUser
-              ? const Radius.circular(16)
-              : const Radius.circular(4),
-          bottomRight: isUser
-              ? const Radius.circular(4)
-              : const Radius.circular(16),
+          bottomLeft:
+              isUser ? const Radius.circular(16) : const Radius.circular(4),
+          bottomRight:
+              isUser ? const Radius.circular(4) : const Radius.circular(16),
         ),
       ),
       child: isUser
@@ -448,7 +465,8 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
           : MarkdownBody(
               data: content,
               selectable: true,
-              styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+              styleSheet:
+                  MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
                 p: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 15,
@@ -463,7 +481,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   // 推荐卡片列表
   // ─────────────────────────────────────────
 
-  Widget _buildCardList(List<AiMediaCard> cards) {
+  Widget _buildCardList(List<AiCard> cards) {
     return SizedBox(
       height: 240,
       child: ListView.separated(
@@ -477,9 +495,11 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  Widget _buildCard(AiMediaCard card) {
+  Widget _buildCard(AiCard card) {
+    final item = _mediaItemCache[card.id];
+
     return GestureDetector(
-      onTap: () => _navigateToCardDetail(card),
+      onTap: () => _navigateToCard(card),
       child: SizedBox(
         width: 150,
         child: Card(
@@ -491,17 +511,18 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
               // 封面
               Expanded(
                 flex: 3,
-                child: card.posterUrl != null && card.posterUrl!.isNotEmpty
-                    ? Image.network(
-                        card.posterUrl!,
+                child: item != null
+                    ? JellyfinImageWithClient(
+                        client: widget.client,
+                        itemId: item.id,
+                        imageTag: item.primaryImageTag,
+                        fillWidth: 300,
+                        fillHeight: 450,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
-                        loadingBuilder: (_, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return _buildPlaceholderCover();
-                        },
+                        placeholder: _buildPlaceholderCover(),
+                        errorWidget: _buildPlaceholderCover(),
                       )
-                    : _buildPlaceholderCover(),
+                    : _buildLoadingCover(),
               ),
               // 信息
               Expanded(
@@ -513,7 +534,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                     children: [
                       // 标题
                       Text(
-                        card.name,
+                        item?.name ?? '加载中...',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -522,23 +543,29 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                         ),
                       ),
                       // 年份 + 评分
-                      if (card.year != null || card.rating != null) ...[
+                      if (item != null &&
+                          (item.productionYear != null ||
+                              item.communityRating != null)) ...[
                         const SizedBox(height: 2),
                         Row(
                           children: [
-                            if (card.year != null)
+                            if (item.productionYear != null)
                               Text(
-                                '${card.year}',
-                                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                '${item.productionYear}',
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey[600]),
                               ),
-                            if (card.year != null && card.rating != null)
+                            if (item.productionYear != null &&
+                                item.communityRating != null)
                               const SizedBox(width: 6),
-                            if (card.rating != null) ...[
-                              Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                            if (item.communityRating != null) ...[
+                              Icon(Icons.star,
+                                  size: 12, color: Colors.amber[700]),
                               const SizedBox(width: 2),
                               Text(
-                                card.rating!.toStringAsFixed(1),
-                                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                item.communityRating!.toStringAsFixed(1),
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey[600]),
                               ),
                             ],
                           ],
@@ -548,7 +575,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                       // 推荐理由
                       Expanded(
                         child: Text(
-                          card.reason ?? 'AI 推荐',
+                          card.reason.isNotEmpty ? card.reason : 'AI 推荐',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 11, color: Colors.grey[600]),
@@ -560,6 +587,20 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 加载中封面（详情还在获取）
+  Widget _buildLoadingCover() {
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
     );
@@ -590,7 +631,8 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
-          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          top: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant),
         ),
       ),
       child: Row(
@@ -603,14 +645,16 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
               decoration: InputDecoration(
                 hintText: '想看点什么？',
                 hintStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withAlpha(102),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withAlpha(102),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 10,
@@ -644,6 +688,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     _streamService.sessionId = null;
     setState(() {
       _messages.clear();
+      _mediaItemCache.clear();
       _isLoading = false;
       _buildingMessageIndex = -1;
     });
