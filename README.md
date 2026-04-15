@@ -256,6 +256,11 @@ for (final lib in libraries.libraries) {
 │           ├── services/               # 播放、视图模式
 │           ├── widgets/                # 通用组件
 │           └── pages/                  # 页面
+├── scripts/                           # 验证脚本
+│   ├── verify_imports.sh
+│   ├── verify_integration.sh
+│   ├── verify_media_library.sh
+│   └── verify_setup.sh
 └── packages/
     ├── jellyfin_dart_3.8/             # 接口 SDK（Dart 3.8 兼容版）
     └── ohos/                          # 鸿蒙适配插件
