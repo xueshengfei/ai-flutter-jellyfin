@@ -17,6 +17,11 @@ graph LR
 
 ## AI 智能推荐
 
+<p align="center">
+  <img src="images/AI推荐页1.jpg" width="220" />
+  <img src="images/AI推荐页2.jpg" width="220" />
+</p>
+
 > [演示视频](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/AI%E6%8E%A8%E8%8D%90%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
 
 基于独立部署的 Agent 后端实现，后端项目详见 [py-jellyfin-agent](https://github.com/xueshengfei/py-jellyfin-agent)。
@@ -88,23 +93,46 @@ sequenceDiagram
 | `path_provider_ohos` | 文件路径 | `packages/ohos/path_provider` |
 | `shared_preferences_ohos` | 本地存储 | `packages/ohos/shared_preferences` |
 
-> **关于 `jellyfin_dart_3.8`**：接口 SDK 使用本地 `packages/jellyfin_dart_3.8` 版本（基于 Dart 3.8），而非上游最新的 Dart 3.9 版本。这是因为鸿蒙 Flutter 3.22 尚未支持 Dart 3.9 特性，降级依赖以确保鸿蒙平台兼容。
+> **关于 `jellyfin_dart_3.8`**：接口 SDK 使用本地 `packages/jellyfin_dart_3.8` 版本（基于 Dart 3.8），而非上游最新的 Dart 3.9 版本。这是因为鸿蒙 Flutter 3.32 ，尚未支持 Dart 3.9 特性，3.35有兼容性隐患，降级依赖以确保鸿蒙平台兼容。
 
 ---
 
 ## 全类型流媒体
 
-覆盖 Jellyfin 全部媒体类型，完整的流媒体播放能力：
+### 登录与首页
 
-| 类型 | 能力 |
-|------|------|
-| **电影** | 多维筛选（类型/年份/首字母/工作室/评分/HD/4K）、详情页、评分/导演/演员元数据 |
-| **剧集** | 库 → 剧集 → 季 → 集 层级导航，播放进度记忆 |
-| **音乐** | 专辑/歌手浏览，全局音频播放器 + 底部 MiniPlayer，歌词展示 |
+<p align="center">
+  <img src="images/登录注册页.jpg" width="220" />
+  <img src="images/首页.jpg" width="220" />
+</p>
 
-> 视频播放演示：[视频功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/%E8%A7%86%E9%A2%91%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4) | 音乐播放演示：[音乐功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/%E9%9F%B3%E4%B9%90%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
+### 电影浏览
+
+<p align="center">
+  <img src="images/电影页.jpg" width="220" />
+  <img src="images/筛选弹窗.jpg" width="220" />
+</p>
+
+多维筛选（类型/年份/首字母/评分/HD/4K）、详情页、评分/导演/演员元数据。
+
+### 剧集与纪录片
+
+<p align="center">
+  <img src="images/电视剧.jpg" width="220" />
+  <img src="images/动漫.jpg" width="220" />
+  <img src="images/记录片页面.jpg" width="220" />
+</p>
+
+库 → 剧集 → 季 → 集 层级导航，播放进度记忆。
 
 ### 视频播放与画质自适应
+
+<p align="center">
+  <img src="images/视频播放.jpg" width="220" />
+  <img src="images/画质切换.jpg" width="220" />
+</p>
+
+> 视频播放演示：[视频功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/%E8%A7%86%E9%A2%91%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
 
 三种播放模式，自动选择最优方案：
 
@@ -134,6 +162,20 @@ sequenceDiagram
 - 每 10 秒向 Jellyfin 上报播放位置
 - 根据 `playedPercentage` 计算精确恢复位置
 - 切换画质时自动保存/恢复进度
+
+### 音乐
+
+<p align="center">
+  <img src="images/歌手tab.jpg" width="220" />
+  <img src="images/歌曲tab.jpg" width="220" />
+  <img src="images/歌曲播放详情页.jpg" width="220" />
+  <img src="images/歌手.jpg" width="220" />
+  <img src="images/歌词.jpg" width="220" />
+</p>
+
+> 音乐播放演示：[音乐功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/%E9%9F%B3%E4%B9%90%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
+
+专辑/歌手浏览，全局音频播放器 + 底部 MiniPlayer，歌词展示。
 
 ---
 
@@ -244,7 +286,7 @@ for (final lib in libraries.libraries) {
 │   ├── AI推荐演示视频.mp4
 │   ├── 视频功能演示视频.mp4
 │   └── 音乐功能演示视频.mp4
-├── images/                            # 图片资源
+├── images/                            # 界面截图
 ├── lib/
 │   ├── jellyfin_service.dart          # 主导出文件
 │   └── src/
@@ -272,7 +314,7 @@ for (final lib in libraries.libraries) {
 
 | 类别 | 技术 |
 |------|------|
-| 框架 | Flutter >=3.19.0 / Dart >=3.8.0 |
+| 框架 | Flutter >=3.32.0 / Dart >=3.8.0 |
 | HTTP | Dio ^5.9.0 |
 | 视频 | video_player + chewie |
 | 音频 | just_audio |

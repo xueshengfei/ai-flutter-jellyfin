@@ -52,7 +52,9 @@
       "Bash(powershell.exe -Command \"Get-Command ffmpeg | Select-Object -ExpandProperty Source\")",
       "mcp__zread__get_repo_structure",
       "Bash(git push:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(pip show:*)",
+      "Bash(python:*)"
     ]
   }
 }
