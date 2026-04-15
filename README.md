@@ -17,6 +17,8 @@ graph LR
 
 ## AI 智能推荐
 
+> [演示视频](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/AI%E6%8E%A8%E8%8D%90%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
+
 基于独立部署的 Agent 后端实现，后端项目详见 [py-jellyfin-agent](https://github.com/xueshengfei/py-jellyfin-agent)。
 
 > **后端简介**：基于 LangChain ReAct Agent 的 Jellyfin AI 助手。LLM 自动识别用户意图，路由到 6 大类查询工具（搜索/详情/剧集音乐/播放状态/推荐发现/媒体库统计），汇总结果后通过 SSE 流式返回。底层模型可自由替换（DeepSeek / OpenAI / 通义千问 / GLM 等），配置 `.env` 一行切换。
@@ -99,6 +101,8 @@ sequenceDiagram
 | **电影** | 多维筛选（类型/年份/首字母/工作室/评分/HD/4K）、详情页、评分/导演/演员元数据 |
 | **剧集** | 库 → 剧集 → 季 → 集 层级导航，播放进度记忆 |
 | **音乐** | 专辑/歌手浏览，全局音频播放器 + 底部 MiniPlayer，歌词展示 |
+
+> 视频播放演示：[视频功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/%E8%A7%86%E9%A2%91%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4) | 音乐播放演示：[音乐功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/%E9%9F%B3%E4%B9%90%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
 
 ### 视频播放与画质自适应
 
