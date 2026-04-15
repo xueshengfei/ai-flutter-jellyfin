@@ -13,7 +13,7 @@ dependencies:
 
   # Jellyfin API SDK (接口层) - 本地路径依赖
   jellyfin_dart:
-    path: ..\jellyfin_dart-0.1.0
+    path: packages/jellyfin_dart_3.8
 
   # HTTP客户端
   dio: ^5.9.0
