@@ -443,7 +443,7 @@ packages:
   jellyfin_dart:
     dependency: "direct main"
     description:
-      path: "../jellyfin_dart-0.1.0"
+      path: "packages/jellyfin_dart_3.8"
       relative: true
     source: path
     version: "0.1.0"
