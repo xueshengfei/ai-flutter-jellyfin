@@ -1,347 +1,265 @@
-# Jellyfin Service SDK - 简化版
+# Jellyfin Service SDK
 
-**版本**: 0.1.0
-**状态**: ✅ 可用
-**功能**: 用户认证
+基于 Flutter 的全功能 Jellyfin 客户端 SDK——AI 智能推荐、全类型流媒体、安卓 + 鸿蒙双平台。
+
+```mermaid
+graph LR
+    Client["Jellyfin 客户端\nFlutter / 本项目"]
+    Server["Jellyfin 服务端"]
+    Agent["Agent 服务端\npy-jellyfin-agent"]
+
+    Client <-- "REST API\n认证 / 浏览 / 播放 / 进度" --> Server
+    Client <-- "SSE 流式通信\n自然语言 → 推荐卡片" --> Agent
+    Agent -- "只读查询媒体数据" --> Server
+```
 
 ---
 
-## 📋 简介
+## AI 智能推荐
 
-这是 Jellyfin Service SDK 的简化版本，只包含核心的**用户认证功能**。移除了所有缓存、状态管理和复杂的业务逻辑，专注于提供简单、可靠的认证服务。
+基于独立部署的 Agent 后端实现，后端项目详见 [py-jellyfin-agent](https://github.com/xueshengfei/py-jellyfin-agent)。
 
-### 🏗️ 架构定位
+> **后端简介**：基于 LangChain ReAct Agent 的 Jellyfin AI 助手。LLM 自动识别用户意图，路由到 6 大类查询工具（搜索/详情/剧集音乐/播放状态/推荐发现/媒体库统计），汇总结果后通过 SSE 流式返回。底层模型可自由替换（DeepSeek / OpenAI / 通义千问 / GLM 等），配置 `.env` 一行切换。
 
-**本 SDK 是一个业务 SDK（Business SDK）**，基于接口 SDK 构建更高层的业务能力。
-
-#### 架构分层
+用自然语言描述想看什么，AI 自动搜索你的媒体库并给出带理由的推荐。
 
 ```
-┌─────────────────────────────────────┐
-│   业务应用层 (Flutter App)           │
-├─────────────────────────────────────┤
-│   Jellyfin Service SDK (业务SDK)     │  ← 本项目
-│   - 封装业务逻辑                      │
-│   - 提供业务用例                      │
-│   - 业务异常处理                      │
-├─────────────────────────────────────┤
-│   jellyfin_dart (接口SDK)            │  ← 依赖
-│   - Jellyfin API 数据模型            │
-│   - API 端点定义                     │
-│   - HTTP 请求/响应封装               │
-├─────────────────────────────────────┤
-│   Dio + Logger (基础库)              │
-└─────────────────────────────────────┘
+用户: "推荐几部评分高的科幻电影"
+
+AI 思考中...  →  正在搜索...  →  逐字回复 + 推荐卡片
 ```
 
-#### 职责分工
+**意图识别与工具路由**：
 
-| 层级 | SDK | 职责 |
-|------|-----|------|
-| **接口 SDK** | `jellyfin_dart` | • 对接 Jellyfin API<br>• 定义 API 数据模型<br>• 提供基础的 HTTP 请求能力 |
-| **业务 SDK** | `jellyfin_service` (本项目) | • 实现业务用例（认证、媒体管理等）<br>• 组合多个 API 调用<br>• 提供业务级别的错误处理<br>• 面向业务场景的 API 设计 |
+```
+用户提问 → LLM 意图识别 → 自动匹配工具类别 → 查询 Jellyfin → 总结返回
 
-#### 设计原则
+"找几部动作片"        →  搜索类    → search_media
+"讲了什么"            →  详情类    → get_item_overview
+"第一季有哪些集"       →  剧集音乐类 → get_episodes
+"我看到哪了"          →  播放状态类 → get_resume_items
+"和这部类似的还有吗"    →  推荐发现类 → get_similar
+"有哪些分类/统计"      →  媒体库统计 → get_genres / get_media_stats
+```
 
-- **接口 SDK** 负责与 Jellyfin 服务器通信，提供 1:1 的 API 映射
-- **业务 SDK** 基于接口 SDK 构建业务逻辑，提供面向业务场景的简化 API
-- 业务 SDK 定义自己的业务模型，封装接口 SDK 的 DTO
-- 这种分层设计使得接口变更不影响业务层
+**工作流**：
 
-### ✨ 功能特性
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant C as Flutter 客户端
+    participant A as Agent 服务端
+    participant J as Jellyfin 服务端
 
-- ✅ **用户名密码认证** - 使用用户名和密码登录
-- ✅ **会话管理** - 管理访问令牌和会话
-- ✅ **错误处理** - 完整的异常处理体系
-- ✅ **日志记录** - 可选的调试日志
-- ✅ **类型安全** - 完整的 Dart 类型注解
+    U->>C: "推荐几部评分高的科幻电影"
+    C->>A: SSE /ask_stream
+    A-->>C: event:thinking (意图识别)
+    A->>J: search_media(科幻)
+    A-->>C: event:tool (正在搜索...)
+    A->>J: get_item_detail(候选影片)
+    A->>J: get_similar(关联推荐)
+    A-->>C: event:token (总结回复，逐字推送)
+    A-->>C: event:card {id, reason} (推荐卡片)
+    A-->>C: event:done
+    C->>J: 查询 item_id 海报/评分
+    C->>U: 渲染推荐卡片列表
+```
+
+**客户端集成**：
+
+- **SSE 事件流**：`thinking` → `tool` → `token`（逐字推送）→ `card`（推荐卡片）→ `done`
+- **轻量卡片协议**：后端只发 `item_id` + `reason`，客户端并发查询 Jellyfin 拿海报/评分/年份
+- **多轮对话**：session 维护上下文记忆，最多 10 轮连续追问
+- **平台适配**：web 用 fetch API，native 用 Dio，条件导入自动切换
 
 ---
 
-## 🚀 快速开始
+## 安卓 + 鸿蒙双平台
 
-### 1. 添加依赖
+同时支持 Android 和 HarmonyOS（ohos），集成社区鸿蒙化插件并完成验证：
+
+| 插件 | 功能 | 本地路径 |
+|------|------|---------|
+| `video_player_ohos` | 视频播放 | `packages/ohos/video_player` |
+| `fluttertpc_chewie` | 视频播放器 UI 控件 | `packages/ohos/fluttertpc_chewie` |
+| `fluttertpc_just_audio` | 音频播放 | `packages/ohos/fluttertpc_just_audio` |
+| `path_provider_ohos` | 文件路径 | `packages/ohos/path_provider` |
+| `shared_preferences_ohos` | 本地存储 | `packages/ohos/shared_preferences` |
+
+> **关于 `jellyfin_dart_3.8`**：接口 SDK 使用本地 `packages/jellyfin_dart_3.8` 版本（基于 Dart 3.8），而非上游最新的 Dart 3.9 版本。这是因为鸿蒙 Flutter 3.22 尚未支持 Dart 3.9 特性，降级依赖以确保鸿蒙平台兼容。
+
+---
+
+## 全类型流媒体
+
+覆盖 Jellyfin 全部媒体类型，完整的流媒体播放能力：
+
+| 类型 | 能力 |
+|------|------|
+| **电影** | 多维筛选（类型/年份/首字母/工作室/评分/HD/4K）、详情页、评分/导演/演员元数据 |
+| **剧集** | 库 → 剧集 → 季 → 集 层级导航，播放进度记忆 |
+| **音乐** | 专辑/歌手浏览，全局音频播放器 + 底部 MiniPlayer，歌词展示 |
+
+### 视频播放与画质自适应
+
+三种播放模式，自动选择最优方案：
+
+| 模式 | 说明 |
+|------|------|
+| **DirectPlay** | 客户端直接播放原始文件，不转码 |
+| **DirectStream** | 服务端流式传输，不重编码 |
+| **Transcode** | 服务端转码为 HLS (H.264 + AAC)，兼容性最好 |
+
+**画质切换**（手动 / 自动）：
+
+```
+自动  → 根据网络带宽动态调整
+4K   → 15 Mbps
+1080P → 5 Mbps
+720P  → 2.5 Mbps
+480P  → 1 Mbps
+```
+
+**自适应算法**：
+- 滑动窗口采样（最多 10 个样本，3 分钟窗口）
+- 降级立即执行，升级需连续确认 3 次
+- 安全系数 0.7（使用 70% 估算带宽）
+- 每 15 秒检测一次，切换时保持播放位置无缝衔接
+
+**进度管理**：
+- 每 10 秒向 Jellyfin 上报播放位置
+- 根据 `playedPercentage` 计算精确恢复位置
+- 切换画质时自动保存/恢复进度
+
+---
+
+## 快速开始
 
 ```yaml
+# pubspec.yaml
 dependencies:
   jellyfin_service:
     path: ../Jellyfin_Service
 ```
 
-### 2. 简单示例
-
 ```dart
 import 'package:jellyfin_service/jellyfin_service.dart';
 
-void main() async {
-  // 创建客户端
-  final client = JellyfinClient(
-    serverUrl: 'http://localhost:8096',
-    enableLogging: true,
-  );
+// 创建客户端
+final client = JellyfinClient(serverUrl: 'http://localhost:8096');
 
-  // 登录
-  try {
-    final result = await client.auth.authenticate(
-      username: 'your_username',
-      password: 'your_password',
-    );
+// 登录
+final result = await client.auth.authenticate(
+  username: 'user',
+  password: 'pass',
+);
 
-    print('登录成功: ${result.user.name}');
-  } on AuthenticationException catch (e) {
-    print('认证失败: $e');
-  }
+// 获取媒体库
+final libraries = await client.mediaLibrary.getMediaLibraries();
+for (final lib in libraries.libraries) {
+  print('${lib.type.icon} ${lib.name}: ${lib.itemCount} 项');
 }
 ```
 
 ---
 
-## 📖 API 文档
+## 业务模块速查
 
-### JellyfinClient
+### 核心服务
 
-主客户端类，提供统一的API访问入口。
+| 服务 | 关键方法 | 说明 |
+|------|---------|------|
+| **AuthService** | `authenticate()` / `logout()` / `initiateQuickConnect()` | 认证与会话管理 |
+| **MediaLibraryService** | `getMediaLibraries()` / `getMovies(filter)` / `getSeasons()` / `getEpisodes()` | 媒体库浏览与层级导航 |
+| **UserService** | `getContinueWatching()` / `updateUserItemData()` / `toggleFavorite()` | 进度上报、收藏、继续观看 |
+| **ImageService** | 自动鉴权图片加载 | Jellyfin 图片需 token，封装为统一组件 |
+| **ServerDiscoveryService** | `discoverServers()` | 局域网自动发现 Jellyfin 服务器 |
 
-#### 构造函数
+### 播放服务
 
-```dart
-JellyfinClient({
-  required String serverUrl,      // 服务器地址
-  String applicationName,          // 应用名称
-  String applicationVersion,       // 应用版本
-  String? deviceName,              // 设备名称
-  String? deviceId,                // 设备ID
-  String clientName,               // 客户端名称
-  bool enableLogging,              // 启用日志
-})
+| 组件 | 说明 |
+|------|------|
+| `VideoPlayerPage` | 视频播放页，支持画质切换 |
+| `PlaybackService` | 播放控制、三种模式自动选择 |
+| `AudioPlaybackManager` | 全局单例，音频播放状态 + 底部 MiniPlayer |
+| `EpubReaderPage` | EPUB 阅读器，Isolate 解析 + 主题切换 + 进度恢复 |
+
+### 页面一览
+
+| 页面 | 功能 |
+|------|------|
+| `LoginPage` | 登录（账号密码 / Quick Connect） |
+| `MediaLibrariesPage` | 媒体库主页 |
+| `MovieFilterPage` → `MovieDetailPage` | 电影筛选 → 详情 |
+| `SeasonsPage` → `EpisodesPage` | 剧集季 → 集列表 |
+| `VideoPlayerPage` | 视频播放 |
+| `MusicLibraryPage` → `AlbumDetailPage` → `LyricsPage` | 音乐浏览 → 专辑 → 歌词 |
+| `BookLibraryPage` → `EpubReaderPage` | 书籍浏览 → EPUB 阅读 |
+| `AIRecommendPage` | AI 推荐对话 |
+| `PersonDetailPage` | 演员/导演详情 |
+| `PersonalPage` | 个人中心 |
+
+---
+
+## SDK 内部分层
+
 ```
-
-#### 属性
-
-```dart
-// 检查是否已认证
-bool get isAuthenticated
-
-// 访问令牌
-String? get accessToken
-
-// 用户ID
-String? get userId
-
-// 配置
-JellyfinConfiguration get configuration
-```
-
-#### 方法
-
-```dart
-// 更新访问令牌
-void updateAccessToken(String? token)
-
-// 清除认证信息
-void clearAuth()
-```
-
-### AuthService
-
-认证服务，处理用户登录和登出。
-
-#### 方法
-
-**用户名密码认证**
-
-```dart
-Future<AuthenticationResult> authenticate({
-  required String username,
-  required String password,
-})
-```
-
-**返回值**: `AuthenticationResult` 包含访问令牌和用户信息
-
-**抛出**:
-- `AuthenticationException` - 认证失败时
-
-**Quick Connect 认证**
-
-```dart
-Future<String> initiateQuickConnect()
-```
-
-**检查 Quick Connect 状态**
-
-```dart
-Future<AuthenticationResult?> checkQuickConnect(String secret)
-```
-
-**登出**
-
-```dart
-Future<void> logout()
-```
-
-**检查认证状态**
-
-```dart
-bool isAuthenticated()
-```
-
-### AuthenticationResult
-
-认证结果，包含用户信息和会话数据。
-
-#### 属性
-
-```dart
-class AuthenticationResult {
-  final String accessToken;          // 访问令牌
-  final UserProfile user;             // 用户信息
-  final String? serverId;             // 服务器ID
-  final SessionInfo? sessionInfo;     // 会话信息
-}
-```
-
-### UserProfile
-
-用户配置信息。
-
-#### 属性
-
-```dart
-class UserProfile {
-  final String id;                    // 用户ID
-  final String name;                  // 用户名
-  final String serverUrl;             // 服务器URL
-  final String? primaryImageTag;      // 头像标签
-  final DateTime? lastLoginDate;      // 最后登录时间
-  final bool isAdmin;                 // 是否管理员
-}
+┌─────────────────────────────────────┐
+│   Flutter 业务应用                    │
+├─────────────────────────────────────┤
+│   jellyfin_service  ← 本项目         │
+│   业务 SDK：业务逻辑、自有模型、UI 组件  │
+├─────────────────────────────────────┤
+│   jellyfin_dart                      │
+│   接口 SDK：1:1 API 映射、DTO 模型     │
+├─────────────────────────────────────┤
+│   Dio / HTTP                         │
+└─────────────────────────────────────┘
 ```
 
 ---
 
-## 🔥 错误处理
+## 项目结构
 
-### AuthenticationException
-
-认证失败时抛出的异常。
-
-```dart
-try {
-  await client.auth.authenticate(
-    username: 'user',
-    password: 'pass',
-  );
-} on AuthenticationException catch (e) {
-  print('错误: ${e.message}');
-  print('错误代码: ${e.errorCode}');
-
-  // 常见错误代码:
-  // - INVALID_CREDENTIALS: 用户名或密码错误
-  // - SERVER_NOT_FOUND: 服务器未找到
-  // - TIMEOUT: 连接超时
-  // - CONNECTION_ERROR: 连接错误
-}
+```
+lib/
+├── jellyfin_service.dart              # 主导出文件
+└── src/
+    ├── jellyfin_client.dart            # 主客户端（统一 API 入口）
+    ├── services/                       # 服务层
+    │   ├── auth_service.dart
+    │   ├── media_library_service.dart
+    │   ├── user_service.dart
+    │   ├── image_service.dart
+    │   ├── music_service.dart
+    │   ├── book_service.dart
+    │   ├── server_discovery_service.dart
+    │   └── ai_recommendation_service.dart
+    ├── models/                         # 业务模型
+    ├── exceptions/                     # 异常体系
+    ├── debug/                          # 调试工具
+    └── ui/
+        ├── services/                   # 播放、视图模式
+        ├── widgets/                    # 通用组件
+        └── pages/                      # 页面
 ```
 
 ---
 
-## 📝 完整示例
+## 技术栈
 
-查看 `example/main.dart` 获取完整的使用示例。
-
----
-
-## 🛠️ 技术栈
-
-### 核心依赖
-
-- **Dart**: >=3.9.0
-- **Flutter**: >=3.19.0
-
-### SDK 层次
-
-- **jellyfin_dart**: 0.1.0 - **接口 SDK**（负责 API 映射和通信）
-- **jellyfin_service**: 0.1.0 - **业务 SDK**（本项目，负责业务逻辑）
-
-### 工具库
-
-- **Dio**: 5.9.0 (HTTP客户端)
-- **Logger**: 2.0.2 (日志记录)
-- **Equatable**: 2.0.7 (值相等)
-- **JSON Serializable**: 6.9.3 (序列化)
+| 类别 | 技术 |
+|------|------|
+| 框架 | Flutter >=3.19.0 / Dart >=3.8.0 |
+| HTTP | Dio ^5.9.0 |
+| 视频 | video_player + chewie |
+| 音频 | just_audio |
+| EPUB | epubx ^4.0.0 |
+| 图片 | cached_network_image ^3.4.0 |
+| 动画 | flutter_animate ^4.5.2 |
 
 ---
 
-## 📂 项目结构
-
-```
-Jellyfin_Service/
-├── lib/
-│   ├── jellyfin_sdk.dart           # 主导出文件
-│   └── src/
-│       ├── jellyfin_client.dart     # 主客户端
-│       ├── jellyfin_configuration.dart  # 配置
-│       ├── core/
-│       │   └── api_client.dart      # API客户端
-│       ├── services/
-│       │   └── auth_service.dart    # 认证服务
-│       ├── models/
-│       │   └── user_models.dart     # 用户模型
-│       └── exceptions/              # 异常类
-├── example/
-│   └── main.dart                   # 使用示例
-└── pubspec.yaml
-```
-
----
-
-## ⚠️ 注意事项
-
-1. **服务器URL**: 确保服务器地址正确，包含协议（http/https）
-2. **网络连接**: 确保设备可以访问Jellyfin服务器
-3. **用户凭据**: 确保用户名和密码正确
-4. **HTTPS证书**: 如果使用HTTPS，确保证书有效
-
----
-
-## 🎯 下一步
-
-1. **运行示例**:
-   ```bash
-   cd example
-   flutter run -d chrome
-   ```
-
-2. **集成到项目**:
-   ```yaml
-   # 在你的项目的 pubspec.yaml 中
-   dependencies:
-     jellyfin_service:
-       path: ../Jellyfin_Service
-   ```
-
-3. **开始使用**:
-   ```dart
-   final client = JellyfinClient(serverUrl: 'http://localhost:8096');
-   final result = await client.auth.authenticate(
-     username: 'user',
-     password: 'pass',
-   );
-   ```
-
----
-
-## 📄 许可证
+## 许可证
 
 MIT License
-
----
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
----
-
-**状态**: ✅ 简化版完成，可以开始使用认证功能
