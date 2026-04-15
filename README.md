@@ -17,7 +17,7 @@ graph LR
 
 ## AI 智能推荐
 
-> [演示视频](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/AI%E6%8E%A8%E8%8D%90%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
+> [演示视频](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/AI%E6%8E%A8%E8%8D%90%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
 
 基于独立部署的 Agent 后端实现，后端项目详见 [py-jellyfin-agent](https://github.com/xueshengfei/py-jellyfin-agent)。
 
@@ -102,7 +102,7 @@ sequenceDiagram
 | **剧集** | 库 → 剧集 → 季 → 集 层级导航，播放进度记忆 |
 | **音乐** | 专辑/歌手浏览，全局音频播放器 + 底部 MiniPlayer，歌词展示 |
 
-> 视频播放演示：[视频功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/%E8%A7%86%E9%A2%91%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4) | 音乐播放演示：[音乐功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/%E9%9F%B3%E4%B9%90%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
+> 视频播放演示：[视频功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/%E8%A7%86%E9%A2%91%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4) | 音乐播放演示：[音乐功能演示视频.mp4](https://github.com/xueshengfei/ai-flutter-jellyfin/raw/master/videos/%E9%9F%B3%E4%B9%90%E5%8A%9F%E8%83%BD%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)
 
 ### 视频播放与画质自适应
 
@@ -226,26 +226,39 @@ for (final lib in libraries.libraries) {
 ## 项目结构
 
 ```
-lib/
-├── jellyfin_service.dart              # 主导出文件
-└── src/
-    ├── jellyfin_client.dart            # 主客户端（统一 API 入口）
-    ├── services/                       # 服务层
-    │   ├── auth_service.dart
-    │   ├── media_library_service.dart
-    │   ├── user_service.dart
-    │   ├── image_service.dart
-    │   ├── music_service.dart
-    │   ├── book_service.dart
-    │   ├── server_discovery_service.dart
-    │   └── ai_recommendation_service.dart
-    ├── models/                         # 业务模型
-    ├── exceptions/                     # 异常体系
-    ├── debug/                          # 调试工具
-    └── ui/
-        ├── services/                   # 播放、视图模式
-        ├── widgets/                    # 通用组件
-        └── pages/                      # 页面
+├── README.md
+├── docs/
+│   ├── design/                        # 设计文档
+│   │   ├── ai_recommendation_design.md
+│   │   └── sse_typewriter_pitfalls.md
+│   ├── guide/                         # 使用指南
+│   │   ├── FEATURES.md
+│   │   ├── DEMO_GUIDE.md
+│   │   ├── WINDOWS_SETUP.md
+│   │   └── KNOWN_ISSUES.md
+│   └── debug/                         # 调试记录
+│       ├── DEBUG_ISSUE.md
+│       ├── DEBUG_MOVIE_FILTER.md
+│       └── DEV_DEBUG_LOG.md
+├── videos/                            # 功能演示视频
+│   ├── AI推荐演示视频.mp4
+│   ├── 视频功能演示视频.mp4
+│   └── 音乐功能演示视频.mp4
+├── images/                            # 图片资源
+├── lib/
+│   ├── jellyfin_service.dart          # 主导出文件
+│   └── src/
+│       ├── jellyfin_client.dart        # 主客户端（统一 API 入口）
+│       ├── services/                   # 服务层
+│       ├── models/                     # 业务模型
+│       ├── exceptions/                 # 异常体系
+│       └── ui/
+│           ├── services/               # 播放、视图模式
+│           ├── widgets/                # 通用组件
+│           └── pages/                  # 页面
+└── packages/
+    ├── jellyfin_dart_3.8/             # 接口 SDK（Dart 3.8 兼容版）
+    └── ohos/                          # 鸿蒙适配插件
 ```
 
 ---

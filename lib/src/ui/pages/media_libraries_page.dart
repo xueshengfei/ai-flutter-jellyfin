@@ -7,7 +7,6 @@ import 'package:jellyfin_service/src/models/book_models.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
 import 'package:jellyfin_service/src/ui/pages/login_page.dart';
 import 'package:jellyfin_service/src/ui/pages/personal_page.dart';
-import 'package:jellyfin_service/src/ui/pages/test_api_page.dart';
 import 'package:jellyfin_service/src/ui/pages/movie_filter_page.dart';
 import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
 import 'package:jellyfin_service/src/ui/pages/book_library_page.dart';
@@ -85,7 +84,6 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('媒体库'),
         actions: [
           // AI 推荐入口（胶囊动画按钮）
           _AiRecommendPill(onPressed: () {
@@ -94,9 +92,6 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           IconButton(icon: const Icon(Icons.person), onPressed: () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => PersonalPage(client: widget.client)));
           }, tooltip: '个人中心'),
-          IconButton(icon: const Icon(Icons.bug_report), onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => TestApiPage(client: widget.client)));
-          }, tooltip: 'API测试'),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: Center(child: Text(widget.user.name, style: const TextStyle(fontWeight: FontWeight.bold)))),
           IconButton(icon: const Icon(Icons.logout), onPressed: () async {
             await widget.client.auth.logout();
