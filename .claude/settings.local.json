@@ -44,7 +44,15 @@
       "Bash(printf:*)",
       "Bash(xxd:*)",
       "Bash(grep:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(where ffmpeg:*)",
+      "Bash(where winget:*)",
+      "Bash(cmd.exe /c \"ffprobe -v error -show_entries format=duration -of csv=p=0 \\\\\"D:\\\\claudeProject\\\\flutter_video_project\\\\ai-video-project\\\\Jellyfin_Service\\\\AI推荐演示视频.mp4\\\\\"\")",
+      "Bash(powershell.exe -Command \"ffprobe -v error -show_entries format=duration -of csv=p=0 'D:\\\\claudeProject\\\\flutter_video_project\\\\ai-video-project\\\\Jellyfin_Service\\\\AI推荐演示视频.mp4'\")",
+      "Bash(powershell.exe -Command \"Get-Command ffmpeg | Select-Object -ExpandProperty Source\")",
+      "mcp__zread__get_repo_structure",
+      "Bash(git push:*)",
+      "Bash(git remote:*)"
     ]
   }
 }
