@@ -202,7 +202,31 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+
+        // 剧情简介（紧跟播放按钮下方）
+        if (item.overview != null && item.overview!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('剧情简介'),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Text(
+                    item.overview!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.5,
+                          color: Colors.grey.shade700,
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
 
         // 季列表（仅剧集显示）
         if (item.type.toLowerCase() == 'series')
@@ -518,23 +542,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 剧情简介
-        if (item.overview != null && item.overview!.isNotEmpty) ...[
-          _buildSectionTitle('剧情简介'),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Text(
-              item.overview!,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.5,
-                    color: Colors.grey.shade700,
-                  ),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-
         // 类型标签
         if (item.genres != null && item.genres!.isNotEmpty) ...[
           _buildSectionTitle('类型'),

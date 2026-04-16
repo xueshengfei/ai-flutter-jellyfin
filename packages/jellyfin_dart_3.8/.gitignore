@@ -1,0 +1,19 @@
+# FVM Version Cache
+.fvm/
+
+# Dart / Flutter
+.dart_tool/
+build/
+*.g.dart
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
