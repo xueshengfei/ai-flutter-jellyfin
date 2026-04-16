@@ -1,0 +1,21 @@
+name: jellyfin_dart
+version: 0.1.0
+description: Auto-generated Dart client for Jellyfin Media Server API (v10.11.0). Provides type-safe access to all Jellyfin endpoints with full API coverage.
+homepage: https://github.com/devaryakjha/jellyfin-dart
+repository: https://github.com/devaryakjha/jellyfin-dart
+issue_tracker: https://github.com/devaryakjha/jellyfin-dart/issues
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  dio: '^5.7.0'
+  equatable: '^2.0.7'
+  copy_with_extension: '^7.1.0'
+  json_annotation: '^4.9.0'
+
+dev_dependencies:
+  build_runner: any
+  copy_with_extension_gen: ^7.1.0
+  json_serializable: '^6.9.3'
+  test: '^1.16.0'

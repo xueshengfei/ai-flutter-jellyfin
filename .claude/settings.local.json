@@ -41,17 +41,20 @@
       "Bash(sleep:*)",
       "mcp__zai-mcp-server__analyze_image",
       "mcp__chrome-devtools__wait_for",
-      "Read(//d/claudeProject/flutter_video_project/ai-video-project/Jellyfin_Service/$ANDROID_HOME/**)",
-      "Read(//d/claudeProject/flutter_video_project/ai-video-project/Jellyfin_Service/$ANDROID_SDK_ROOT/**)",
-      "Read(//d/Android/Sdk/**)",
-      "Read(//c/Users/$USER/AppData/Local/Android/Sdk/**)",
-      "Bash(rm -f \"C:/Users/xue13/.gradle/wrapper/dists/gradle-8.12-all/ejduaidbjup3bmmkhw3rie4zb/\"*.lck \"C:/Users/xue13/.gradle/wrapper/dists/gradle-8.12-all/ejduaidbjup3bmmkhw3rie4zb/\"*.lock)",
-      "Read(//c/Users/xue13/.gradle/wrapper/dists/gradle-8.12-all/ejduaidbjup3bmmkhw3rie4zb/**)",
-      "Bash(for d:*)",
-      "Bash(do echo:*)",
-      "Read(//d/claudeProject/flutter_video_project/ai-video-project/Jellyfin_Service/example/**)",
-      "Bash(done)",
-      "mcp__web-search-prime__web_search_prime"
+      "Bash(printf:*)",
+      "Bash(xxd:*)",
+      "Bash(grep:*)",
+      "Bash(git rm:*)",
+      "Bash(where ffmpeg:*)",
+      "Bash(where winget:*)",
+      "Bash(cmd.exe /c \"ffprobe -v error -show_entries format=duration -of csv=p=0 \\\\\"D:\\\\claudeProject\\\\flutter_video_project\\\\ai-video-project\\\\Jellyfin_Service\\\\AI推荐演示视频.mp4\\\\\"\")",
+      "Bash(powershell.exe -Command \"ffprobe -v error -show_entries format=duration -of csv=p=0 'D:\\\\claudeProject\\\\flutter_video_project\\\\ai-video-project\\\\Jellyfin_Service\\\\AI推荐演示视频.mp4'\")",
+      "Bash(powershell.exe -Command \"Get-Command ffmpeg | Select-Object -ExpandProperty Source\")",
+      "mcp__zread__get_repo_structure",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(pip show:*)",
+      "Bash(python:*)"
     ]
   }
 }

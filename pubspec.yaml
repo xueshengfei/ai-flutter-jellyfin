@@ -1,11 +1,11 @@
 name: jellyfin_service
 description: Jellyfin业务SDK - 提供完整的Jellyfin媒体库浏览、播放功能
-version: 0.2.0
+version: 0.3.0
 publish_to: 'none'
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
-  flutter: ">=3.19.0"
+  flutter: ">=3.32.0"
 
 dependencies:
   flutter:
@@ -13,7 +13,7 @@ dependencies:
 
   # Jellyfin API SDK (接口层) - 本地路径依赖
   jellyfin_dart:
-    path: ..\jellyfin_dart-0.1.0
+    path: packages/jellyfin_dart_3.8
 
   # 纯 Dart 依赖 - 无需鸿蒙适配
   dio: ^5.9.0
@@ -38,6 +38,18 @@ dependencies:
   # 本地存储 - 鸿蒙适配
   shared_preferences:
     path: ../packages/ohos/shared_preferences/shared_preferences
+
+  # EPUB 电子书解析
+  epubx: ^4.0.0
+
+  # 动画
+  flutter_animate: ^4.5.2
+  shimmer: ^3.0.0
+
+  # 图片缓存 + 取色
+  cached_network_image: ^3.4.0
+  palette_generator: ^0.3.3+4
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:
