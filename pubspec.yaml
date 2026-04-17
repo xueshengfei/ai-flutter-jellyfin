@@ -60,6 +60,8 @@ dev_dependencies:
 
 # 鸿蒙适配：强制子依赖也使用本地 ohos 路径
 dependency_overrides:
+  video_player:
+    path: packages/ohos/video_player/video_player
   path_provider:
     path: packages/ohos/path_provider/path_provider
 

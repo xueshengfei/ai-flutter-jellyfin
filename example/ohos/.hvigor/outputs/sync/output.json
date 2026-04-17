@@ -73,73 +73,28 @@
     },
     "BUILD_CACHE_DIR": ""
   },
-  "ohos-module-flutter_sound": {
-    "SELECT_TARGET": "default",
-    "MODULE_BUILD_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build",
-    "TARGETS": {
-      "default": {
-        "SOURCE_ROOT": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\src\\main",
-        "RESOURCES_PATH": [
-          "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\src\\main\\resources"
-        ],
-        "BUILD_PATH": {
-          "OUTPUT_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\outputs\\default",
-          "INTERMEDIA_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates",
-          "JS_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\loader_out\\default",
-          "JS_LITE_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\loader_out_lite\\default",
-          "RES_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\res\\default",
-          "RES_PROFILE_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
-          "ETS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\cache\\default\\default@HarCompileArkTS\\esmodule",
-          "JS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\cache\\default\\default@HarCompileJS\\jsbundle",
-          "WORKER_LOADER": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\loader\\default\\loader.json",
-          "MANIFEST_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\manifest\\default",
-          "OUTPUT_METADATA_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
-          "SOURCE_MAP_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos\\build\\default\\intermediates\\source_map\\default"
-        },
-        "BUILD_OPTION": {
-          "debuggable": true
-        }
-      }
-    },
-    "BUILD_OPTION": {
-      "default-default": {
-        "debuggable": true,
-        "copyFrom": "default"
-      }
-    },
-    "BUILD_PROFILE_OPT": {
-      "apiType": "stageMode",
-      "buildOption": {},
-      "targets": [
-        {
-          "name": "default"
-        }
-      ]
-    },
-    "BUILD_CACHE_DIR": ""
-  },
   "ohos-module-path_provider_ohos": {
     "SELECT_TARGET": "default",
-    "MODULE_BUILD_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build",
+    "MODULE_BUILD_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build",
     "TARGETS": {
       "default": {
-        "SOURCE_ROOT": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\src\\main",
+        "SOURCE_ROOT": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\src\\main",
         "RESOURCES_PATH": [
-          "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\src\\main\\resources"
+          "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\src\\main\\resources"
         ],
         "BUILD_PATH": {
-          "OUTPUT_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\outputs\\default",
-          "INTERMEDIA_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates",
-          "JS_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\loader_out\\default",
-          "JS_LITE_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\loader_out_lite\\default",
-          "RES_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\res\\default",
-          "RES_PROFILE_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
-          "ETS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileArkTS\\esmodule",
-          "JS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileJS\\jsbundle",
-          "WORKER_LOADER": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\loader\\default\\loader.json",
-          "MANIFEST_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\manifest\\default",
-          "OUTPUT_METADATA_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
-          "SOURCE_MAP_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\source_map\\default"
+          "OUTPUT_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\outputs\\default",
+          "INTERMEDIA_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates",
+          "JS_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\loader_out\\default",
+          "JS_LITE_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\loader_out_lite\\default",
+          "RES_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\res\\default",
+          "RES_PROFILE_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+          "ETS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileArkTS\\esmodule",
+          "JS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileJS\\jsbundle",
+          "WORKER_LOADER": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\loader\\default\\loader.json",
+          "MANIFEST_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\manifest\\default",
+          "OUTPUT_METADATA_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+          "SOURCE_MAP_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos\\build\\default\\intermediates\\source_map\\default"
         },
         "BUILD_OPTION": {
           "debuggable": true
@@ -165,26 +120,26 @@
   },
   "ohos-module-shared_preferences_ohos": {
     "SELECT_TARGET": "default",
-    "MODULE_BUILD_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build",
+    "MODULE_BUILD_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build",
     "TARGETS": {
       "default": {
-        "SOURCE_ROOT": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\src\\main",
+        "SOURCE_ROOT": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\src\\main",
         "RESOURCES_PATH": [
-          "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\src\\main\\resources"
+          "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\src\\main\\resources"
         ],
         "BUILD_PATH": {
-          "OUTPUT_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\outputs\\default",
-          "INTERMEDIA_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates",
-          "JS_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\loader_out\\default",
-          "JS_LITE_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\loader_out_lite\\default",
-          "RES_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\res\\default",
-          "RES_PROFILE_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
-          "ETS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileArkTS\\esmodule",
-          "JS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileJS\\jsbundle",
-          "WORKER_LOADER": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\loader\\default\\loader.json",
-          "MANIFEST_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\manifest\\default",
-          "OUTPUT_METADATA_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
-          "SOURCE_MAP_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\source_map\\default"
+          "OUTPUT_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\outputs\\default",
+          "INTERMEDIA_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates",
+          "JS_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\loader_out\\default",
+          "JS_LITE_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\loader_out_lite\\default",
+          "RES_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\res\\default",
+          "RES_PROFILE_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+          "ETS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileArkTS\\esmodule",
+          "JS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileJS\\jsbundle",
+          "WORKER_LOADER": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\loader\\default\\loader.json",
+          "MANIFEST_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\manifest\\default",
+          "OUTPUT_METADATA_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+          "SOURCE_MAP_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos\\build\\default\\intermediates\\source_map\\default"
         },
         "BUILD_OPTION": {
           "debuggable": true
@@ -210,26 +165,26 @@
   },
   "ohos-module-video_player_ohos": {
     "SELECT_TARGET": "default",
-    "MODULE_BUILD_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build",
+    "MODULE_BUILD_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build",
     "TARGETS": {
       "default": {
-        "SOURCE_ROOT": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\src\\main",
+        "SOURCE_ROOT": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\src\\main",
         "RESOURCES_PATH": [
-          "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\src\\main\\resources"
+          "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\src\\main\\resources"
         ],
         "BUILD_PATH": {
-          "OUTPUT_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\outputs\\default",
-          "INTERMEDIA_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates",
-          "JS_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\loader_out\\default",
-          "JS_LITE_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\loader_out_lite\\default",
-          "RES_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\res\\default",
-          "RES_PROFILE_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
-          "ETS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileArkTS\\esmodule",
-          "JS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileJS\\jsbundle",
-          "WORKER_LOADER": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\loader\\default\\loader.json",
-          "MANIFEST_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\manifest\\default",
-          "OUTPUT_METADATA_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
-          "SOURCE_MAP_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\source_map\\default"
+          "OUTPUT_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\outputs\\default",
+          "INTERMEDIA_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates",
+          "JS_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\loader_out\\default",
+          "JS_LITE_ASSETS_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\loader_out_lite\\default",
+          "RES_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\res\\default",
+          "RES_PROFILE_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+          "ETS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileArkTS\\esmodule",
+          "JS_SUPER_VISUAL_PATH": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\cache\\default\\default@HarCompileJS\\jsbundle",
+          "WORKER_LOADER": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\loader\\default\\loader.json",
+          "MANIFEST_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\manifest\\default",
+          "OUTPUT_METADATA_JSON": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+          "SOURCE_MAP_DIR": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos\\build\\default\\intermediates\\source_map\\default"
         },
         "BUILD_OPTION": {
           "debuggable": true
@@ -302,24 +257,19 @@
         "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\example\\ohos"
       },
       {
-        "name": "flutter_sound",
-        "srcPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound\\ohos",
-        "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound"
-      },
-      {
         "name": "path_provider_ohos",
-        "srcPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos",
-        "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos"
+        "srcPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos\\ohos",
+        "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos"
       },
       {
         "name": "shared_preferences_ohos",
-        "srcPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos",
-        "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos"
+        "srcPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos\\ohos",
+        "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos"
       },
       {
         "name": "video_player_ohos",
-        "srcPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos\\ohos",
-        "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos"
+        "srcPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos\\ohos",
+        "belongProjectPath": "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos"
       }
     ],
     "PROFILE_OPT": {
@@ -331,11 +281,11 @@
             "material": {
               "certpath": "C:\\Users\\xue13\\.ohos\\config\\default_ohos_o_WVtyx6QtSBZCG8tUcrOdqaTbZQ4TTK8l0OQJpdxXU=.cer",
               "keyAlias": "debugKey",
-              "keyPassword": "0000001B43A9EA778E836C8B01D04855615F53B5872927C24732D8E726A6F10185AB61B2BBEFCA62074AF3",
+              "keyPassword": "0000001BD8D4B6F718E6A80019226AAFC6970686F7AA7A8603C2776613F917440370F947F18F8E337CDB59",
               "profile": "C:\\Users\\xue13\\.ohos\\config\\default_ohos_o_WVtyx6QtSBZCG8tUcrOdqaTbZQ4TTK8l0OQJpdxXU=.p7b",
               "signAlg": "SHA256withECDSA",
               "storeFile": "C:\\Users\\xue13\\.ohos\\config\\default_ohos_o_WVtyx6QtSBZCG8tUcrOdqaTbZQ4TTK8l0OQJpdxXU=.p12",
-              "storePassword": "0000001BB5EBD0C22DF63A3B767B47F139C40151DDE6E1C6011F2F8B88E661DC128FD7C1023AE6CAB99DE3"
+              "storePassword": "0000001B94137E431D97104D29732B76214D2DD500C9DF4619F2900C96E637A99AAF16954A8E69B6B5B373"
             }
           }
         ],
@@ -373,20 +323,16 @@
           ]
         },
         {
-          "name": "flutter_sound",
-          "srcPath": "../../../packages/ohos/flutter_sound/flutter_sound/ohos"
-        },
-        {
           "name": "path_provider_ohos",
-          "srcPath": "../../../packages/ohos/path_provider/path_provider_ohos/ohos"
+          "srcPath": "../../packages/ohos/path_provider/path_provider_ohos/ohos"
         },
         {
           "name": "shared_preferences_ohos",
-          "srcPath": "../../../packages/ohos/shared_preferences/shared_preferences_ohos/ohos"
+          "srcPath": "../../packages/ohos/shared_preferences/shared_preferences_ohos/ohos"
         },
         {
           "name": "video_player_ohos",
-          "srcPath": "../../../packages/ohos/video_player/video_player_ohos/ohos"
+          "srcPath": "../../packages/ohos/video_player/video_player_ohos/ohos"
         }
       ]
     },
@@ -397,10 +343,9 @@
     },
     "OVERALL_PROJECT_PATHS": [
       "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\example\\ohos",
-      "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\flutter_sound\\flutter_sound",
-      "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\path_provider\\path_provider_ohos",
-      "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\shared_preferences\\shared_preferences_ohos",
-      "D:\\claudeProject\\flutter_video_project\\ai-video-project\\packages\\ohos\\video_player\\video_player_ohos"
+      "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\path_provider\\path_provider_ohos",
+      "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\shared_preferences\\shared_preferences_ohos",
+      "D:\\claudeProject\\flutter_video_project\\ai-video-project\\Jellyfin_Service\\packages\\ohos\\video_player\\video_player_ohos"
     ],
     "BUILD_CACHE_DIR": ""
   }

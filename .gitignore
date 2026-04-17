@@ -36,3 +36,13 @@ coverage/
 
 # FVM Version Cache
 .fvm/
+
+# Ohos 构建缓存
+example/ohos/.hvigor/cache/
+example/ohos/.hvigor/outputs/
+example/ohos/.hvigor/report/
+example/ohos/.idea/
+example/ohos/entry/src/main/resources/rawfile/flutter_assets/
+example/ohos/entry/oh_modules/
+example/ohos/oh_modules/
+**/oh_modules/

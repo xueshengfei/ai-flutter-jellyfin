@@ -406,7 +406,7 @@ class _LyricsPageState extends State<LyricsPage> {
       listenable: manager,
       builder: (context, _) {
         final position = manager.position;
-        final duration = manager.displayDuration;
+        final duration = manager.duration;
         final isPlaying = manager.isPlaying;
 
         return Container(
