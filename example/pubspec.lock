@@ -758,7 +758,7 @@ packages:
     source: hosted
     version: "2.1.4"
   video_player:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../packages/ohos/video_player/video_player"
       relative: true
