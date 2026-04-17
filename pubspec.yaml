@@ -5,7 +5,7 @@ publish_to: 'none'
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
-  flutter: ">=3.32.0"
+  flutter: ">=3.19.0"
 
 dependencies:
   flutter:
@@ -23,21 +23,21 @@ dependencies:
 
   # 视频播放 - 鸿蒙适配
   video_player:
-    path: ../packages/ohos/video_player/video_player
+    path: packages/ohos/video_player/video_player
   chewie:
-    path: ../packages/ohos/fluttertpc_chewie
+    path: packages/ohos/fluttertpc_chewie
 
   # 音频播放 - 鸿蒙适配
   just_audio:
-    path: ../packages/ohos/fluttertpc_just_audio/just_audio
+    path: packages/ohos/fluttertpc_just_audio/just_audio
 
   # 文件路径 - 鸿蒙适配
   path_provider:
-    path: ../packages/ohos/path_provider/path_provider
+    path: packages/ohos/path_provider/path_provider
 
   # 本地存储 - 鸿蒙适配
   shared_preferences:
-    path: ../packages/ohos/shared_preferences/shared_preferences
+    path: packages/ohos/shared_preferences/shared_preferences
 
   # EPUB 电子书解析
   epubx: ^4.0.0
@@ -61,7 +61,7 @@ dev_dependencies:
 # 鸿蒙适配：强制子依赖也使用本地 ohos 路径
 dependency_overrides:
   path_provider:
-    path: ../packages/ohos/path_provider/path_provider
+    path: packages/ohos/path_provider/path_provider
 
 flutter:
   uses-material-design: true

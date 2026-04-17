@@ -23,7 +23,7 @@ dev_dependencies:
 # 鸿蒙适配：强制子依赖也使用本地 ohos 路径
 dependency_overrides:
   path_provider:
-    path: ../../packages/ohos/path_provider/path_provider
+    path: ../packages/ohos/path_provider/path_provider
 
 flutter:
   uses-material-design: true
