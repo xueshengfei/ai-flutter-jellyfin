@@ -3,14 +3,11 @@ import 'package:jellyfin_service/src/jellyfin_client.dart';
 import 'package:jellyfin_service/src/models/user_models.dart';
 import 'package:jellyfin_service/src/models/media_library_models.dart';
 import 'package:jellyfin_service/src/models/media_item_models.dart';
-import 'package:jellyfin_service/src/models/book_models.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
 import 'package:jellyfin_service/src/ui/pages/login_page.dart';
 import 'package:jellyfin_service/src/ui/pages/personal_page.dart';
 import 'package:jellyfin_service/src/ui/pages/movie_filter_page.dart';
 import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
-import 'package:jellyfin_service/src/ui/pages/book_library_page.dart';
-import 'package:jellyfin_service/src/ui/pages/epub_reader_page.dart';
 import 'package:jellyfin_service/src/ui/pages/media_items_page.dart';
 import 'package:jellyfin_service/src/ui/widgets/library_card.dart';
 import 'package:jellyfin_service/src/ui/widgets/continue_watching_card.dart';
@@ -31,7 +28,6 @@ class MediaLibrariesPage extends StatefulWidget {
 class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
   List<MediaLibrary> _mediaLibraries = [];
   List<MediaItem> _continueWatching = [];
-  List<Book> _continueReadingBooks = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -49,29 +45,9 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
         widget.client.user.getContinueWatching(limit: 10),
       ]);
       if (mounted) {
-        final allContinueItems = (results[1] as MediaItemListResult).items;
-        // 分离视频/音频类和书籍类
-        final videoItems = <MediaItem>[];
-        final bookItems = <Book>[];
-        for (final item in allContinueItems) {
-          if (item.type.toLowerCase() == 'book') {
-            bookItems.add(Book(
-              id: item.id,
-              name: item.name,
-              serverUrl: item.serverUrl,
-              primaryImageTag: item.primaryImageTag,
-              accessToken: item.accessToken,
-              parentId: item.parentId,
-              playedPercentage: item.playedPercentage,
-            ));
-          } else {
-            videoItems.add(item);
-          }
-        }
         setState(() {
           _mediaLibraries = (results[0] as MediaLibraryListResult).libraries;
-          _continueWatching = videoItems;
-          _continueReadingBooks = bookItems;
+          _continueWatching = (results[1] as MediaItemListResult).items;
           _isLoading = false;
         });
       }
@@ -155,31 +131,6 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
               ),
             ),
           ],
-          // 继续阅读
-          if (_continueReadingBooks.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text('继续阅读', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            SizedBox(
-              height: 180,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _continueReadingBooks.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final book = _continueReadingBooks[index];
-                  return _ContinueReadingCard(
-                    book: book,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => EpubReaderPage(client: widget.client, book: book),
-                    )),
-                  );
-                },
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -191,91 +142,11 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       page = MovieFilterPage(client: widget.client, libraryId: library.id, libraryName: library.name);
     } else if (library.type == MediaLibraryType.music) {
       page = MusicLibraryPage(client: widget.client, libraryId: library.id, libraryName: library.name);
-    } else if (library.type == MediaLibraryType.books) {
-      page = BookLibraryPage(client: widget.client, libraryId: library.id, libraryName: library.name);
     } else {
       page = MediaItemsPage(client: widget.client, library: library);
     }
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
-}
-
-/// 继续阅读卡片
-class _ContinueReadingCard extends StatelessWidget {
-  final Book book;
-  final VoidCallback onTap;
-
-  const _ContinueReadingCard({required this.book, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (book.playedPercentage ?? 0) / 100;
-    final coverUrl = book.getCoverImageUrl(fillWidth: 200, fillHeight: 300);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 110,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 封面 + 进度条
-            Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: coverUrl != null
-                        ? Image.network(coverUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                            errorBuilder: (_, __, ___) => _placeholder(context))
-                        : _placeholder(context),
-                  ),
-                  // 底部进度条
-                  if (progress > 0)
-                    Positioned(
-                      left: 0, right: 0, bottom: 0,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
-                        child: LinearProgressIndicator(
-                          value: progress.clamp(0.0, 1.0),
-                          minHeight: 3,
-                          backgroundColor: Colors.white.withValues(alpha: 0.3),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5C6BC0)),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            // 标题
-            Text(
-              book.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-            if (book.playedPercentage != null && book.playedPercentage! > 0)
-              Text(
-                '已读 ${book.playedPercentage!.toStringAsFixed(0)}%',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _placeholder(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: const Center(child: Icon(Icons.menu_book, size: 32, color: Colors.white54)),
-  );
 }
 
 // ═══════════════════════════════════════════════════════════
