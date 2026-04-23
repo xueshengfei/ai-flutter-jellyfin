@@ -47,8 +47,8 @@ export 'src/services/image_service.dart';
 export 'src/services/user_service.dart';
 export 'src/services/music_service.dart';
 export 'src/services/server_discovery_service.dart';
-export 'src/services/book_service.dart';
 export 'src/services/ai_recommendation_service.dart';
+export 'src/services/tts_service.dart';
 
 // 业务模型（业务SDK的核心价值）
 export 'src/models/user_models.dart';
@@ -59,7 +59,6 @@ export 'src/models/movie_filter_models.dart';
 export 'src/models/music_models.dart';
 export 'src/models/lyrics_models.dart';
 export 'src/models/server_discovery_models.dart';
-export 'src/models/book_models.dart';
 export 'src/models/video_quality_models.dart';
 export 'src/models/ai_recommendation_models.dart';
 
@@ -117,6 +116,4 @@ export 'src/ui/pages/artist_detail_page.dart';
 export 'src/ui/pages/album_detail_page.dart';
 export 'src/ui/pages/test_api_page.dart';
 export 'src/ui/pages/lyrics_page.dart';
-export 'src/ui/pages/book_library_page.dart';
-export 'src/ui/pages/epub_reader_page.dart';
 export 'src/ui/pages/ai_recommend_page.dart';
