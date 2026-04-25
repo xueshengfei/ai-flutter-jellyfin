@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:equatable/equatable.dart';
 
 // ═══════════════════════════════════════════
@@ -131,10 +132,54 @@ class SseDoneEvent extends Equatable {
 // 卡片模型
 // ═══════════════════════════════════════════
 
-/// AI 推荐卡片（精简版：只有 id + reason）
+/// AI 推荐卡片类型
 ///
-/// 协议: `{"id": "5269cdea...", "reason": "影史经典..."}`
-/// 客户端拿到 id 后调 getMediaItemDetail(id) 从 Jellyfin 获取完整数据
+/// 直接透传 Jellyfin 原始类型名（小写），用于决定卡片点击后跳转到哪个详情页
+enum AiCardType {
+  movie,
+  series,
+  episode,
+  video,
+  season,
+  audio,
+  musicalbum,
+  musicartist,
+  musicvideo,
+  book,
+  comicbook;
+
+  static AiCardType fromName(String? name) => switch (name?.toLowerCase()) {
+        'movie' => AiCardType.movie,
+        'series' => AiCardType.series,
+        'episode' => AiCardType.episode,
+        'video' => AiCardType.video,
+        'season' => AiCardType.season,
+        'audio' => AiCardType.audio,
+        'musicalbum' => AiCardType.musicalbum,
+        'musicartist' => AiCardType.musicartist,
+        'musicvideo' => AiCardType.musicvideo,
+        'book' => AiCardType.book,
+        'comicbook' => AiCardType.comicbook,
+        _ => AiCardType.video, // 兜底
+      };
+
+  /// 对应的占位图标
+  IconData get icon => switch (this) {
+        AiCardType.movie || AiCardType.video => Icons.movie_outlined,
+        AiCardType.series || AiCardType.season => Icons.tv_outlined,
+        AiCardType.episode => Icons.play_circle_outline,
+        AiCardType.audio || AiCardType.musicalbum || AiCardType.musicvideo =>
+          Icons.music_note_outlined,
+        AiCardType.musicartist => Icons.person_outlined,
+        AiCardType.book => Icons.menu_book_outlined,
+        AiCardType.comicbook => Icons.auto_stories_outlined,
+      };
+}
+
+/// AI 推荐卡片（精简版：id + reason + type）
+///
+/// 协议: `{"id": "5269cdea...", "reason": "影史经典...", "type": "movie"}`
+/// type 直接透传 Jellyfin 原始类型名（小写）
 class AiCard extends Equatable {
   /// Jellyfin Item ID
   final String id;
@@ -142,15 +187,19 @@ class AiCard extends Equatable {
   /// AI 推荐理由
   final String reason;
 
-  const AiCard({required this.id, required this.reason});
+  /// 卡片类型，决定跳转目标
+  final AiCardType type;
+
+  const AiCard({required this.id, required this.reason, this.type = AiCardType.video});
 
   factory AiCard.fromJson(Map<String, dynamic> json) => AiCard(
         id: json['id'] as String? ?? '',
         reason: json['reason'] as String? ?? '',
+        type: AiCardType.fromName(json['type'] as String?),
       );
 
   @override
-  List<Object?> get props => [id, reason];
+  List<Object?> get props => [id, reason, type];
 }
 
 // ═══════════════════════════════════════════

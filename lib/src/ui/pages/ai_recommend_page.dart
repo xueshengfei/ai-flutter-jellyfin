@@ -234,22 +234,109 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     });
   }
 
-  /// 卡片点击 → 直接跳转（详情已缓存或重新获取）
-  void _navigateToDetail(MediaItem item) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            MediaItemDetailPage(client: widget.client, item: item),
-      ),
-    );
+  /// 卡片点击 → 根据 AiCardType 跳转到对应详情页
+  void _navigateToDetail(MediaItem item, AiCardType type) {
+    switch (type) {
+      // 视频类 → 通用详情页
+      case AiCardType.movie:
+      case AiCardType.series:
+      case AiCardType.episode:
+      case AiCardType.video:
+      case AiCardType.season:
+      case AiCardType.musicvideo:
+      case AiCardType.book:
+      case AiCardType.comicbook:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                MediaItemDetailPage(client: widget.client, item: item),
+          ),
+        );
+
+      // 歌曲 → 直接播放
+      case AiCardType.audio:
+        _navigateToSong(item);
+
+      // 专辑 → AlbumDetailPage
+      case AiCardType.musicalbum:
+        final album = MusicAlbum(
+          id: item.id,
+          name: item.name,
+          serverUrl: widget.client.configuration.serverUrl,
+          primaryImageTag: item.primaryImageTag,
+          accessToken: widget.client.configuration.accessToken,
+          productionYear: item.productionYear,
+          communityRating: item.communityRating,
+          genres: item.genres,
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AlbumDetailPage(client: widget.client, album: album),
+          ),
+        );
+
+      // 歌手 → ArtistDetailPage
+      case AiCardType.musicartist:
+        final artist = MusicArtist(
+          id: item.id,
+          name: item.name,
+          serverUrl: widget.client.configuration.serverUrl,
+          primaryImageTag: item.primaryImageTag,
+          accessToken: widget.client.configuration.accessToken,
+          communityRating: item.communityRating,
+          genres: item.genres,
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                ArtistDetailPage(client: widget.client, artist: artist),
+          ),
+        );
+    }
+  }
+
+  /// 歌曲：构造 MusicSong 后播放
+  Future<void> _navigateToSong(MediaItem item) async {
+    try {
+      final musicSong = MusicSong(
+        id: item.id,
+        name: item.name,
+        serverUrl: widget.client.configuration.serverUrl,
+        accessToken: widget.client.configuration.accessToken,
+        runTimeTicks: item.runTimeTicks,
+        genres: item.genres,
+        communityRating: item.communityRating,
+      );
+      final manager = AudioPlaybackManager.instance;
+      await manager.play([musicSong], 0, widget.client);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AudioPlayerPage(
+            client: widget.client,
+            song: musicSong,
+            playlist: [musicSong],
+            initialIndex: 0,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('播放失败: $e')),
+      );
+    }
   }
 
   /// 卡片点击（可能还没缓存，先获取再跳转）
   Future<void> _navigateToCard(AiCard card) async {
     final cached = _mediaItemCache[card.id];
     if (cached != null) {
-      _navigateToDetail(cached);
+      _navigateToDetail(cached, card.type);
       return;
     }
     try {
@@ -257,7 +344,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
           await widget.client.mediaLibrary.getMediaItemDetail(card.id);
       if (!mounted) return;
       _mediaItemCache[card.id] = item;
-      _navigateToDetail(item);
+      _navigateToDetail(item, card.type);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -503,6 +590,15 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                   fontSize: 15,
                   height: 1.6,
                 ),
+                a: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 15,
+                  height: 1.6,
+                ),
+                listBullet: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 15,
+                ),
               ),
             ),
     );
@@ -550,8 +646,8 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                         fillWidth: 300,
                         fillHeight: 450,
                         fit: BoxFit.cover,
-                        placeholder: _buildPlaceholderCover(),
-                        errorWidget: _buildPlaceholderCover(),
+                        placeholder: _buildPlaceholderCover(card.type),
+                        errorWidget: _buildPlaceholderCover(card.type),
                       )
                     : _buildLoadingCover(),
               ),
@@ -637,12 +733,12 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     );
   }
 
-  /// 占位封面
-  Widget _buildPlaceholderCover() {
+  /// 占位封面（按卡片类型显示不同图标）
+  Widget _buildPlaceholderCover(AiCardType type) {
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Center(
-        child: Icon(Icons.movie_outlined, size: 32, color: Colors.white54),
+      child: Center(
+        child: Icon(type.icon, size: 32, color: Colors.white54),
       ),
     );
   }
@@ -741,14 +837,14 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
               controller: controller,
               decoration: const InputDecoration(
                 labelText: 'IP:端口',
-                hintText: 'http://192.168.1.100:5000',
+                hintText: 'http://192.168.1.100:5005',
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 8),
             Text(
-              '默认与 Jellyfin 同 IP，端口 5000',
+              '默认与 Jellyfin 同 IP，端口 5005',
               style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                     color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                   ),
