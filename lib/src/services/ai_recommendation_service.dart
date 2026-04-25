@@ -29,7 +29,7 @@ class SseEvent {
 
 /// AI 流式推荐服务
 ///
-/// 直连后端 `http://localhost:5000`，通过 GET `/ask_stream` 建立 SSE 连接。
+/// 直连后端 `http://localhost:5005`，通过 GET `/ask_stream` 建立 SSE 连接。
 /// 后端负责全部 AI + Jellyfin 逻辑，客户端只负责消费 SSE 事件流并渲染。
 ///
 /// Web 平台：使用浏览器 fetch API + ReadableStream（支持真正的流式传输）
@@ -41,15 +41,15 @@ class AiStreamService {
   /// 当前会话 ID（多轮对话自动传递）
   String? sessionId;
 
-  /// [jellyfinServerUrl] Jellyfin 服务地址，AI 服务复用其 IP + 端口 5000
-  /// 例如 Jellyfin 为 http://192.168.1.100:8096 → AI 服务为 http://192.168.1.100:5000
+  /// [jellyfinServerUrl] Jellyfin 服务地址，AI 服务复用其 IP + 端口 5005
+  /// 例如 Jellyfin 为 http://192.168.1.100:8096 → AI 服务为 http://192.168.1.100:5005
   AiStreamService({required String jellyfinServerUrl})
       : _baseUrl = _extractAiBaseUrl(jellyfinServerUrl);
 
   /// 从 Jellyfin URL 提取 IP，拼接 :5000
   static String _extractAiBaseUrl(String jellyfinUrl) {
     final uri = Uri.parse(jellyfinUrl);
-    return '${uri.scheme}://${uri.host}:5000';
+    return '${uri.scheme}://${uri.host}:5005';
   }
 
   /// 获取当前 AI 服务地址
