@@ -1,0 +1,10 @@
+name: rainfall_tts_sdk
+description: 雨落TTS (RainfallTTS) Dart SDK，封装 Gradio v5 服务端 API
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dev_dependencies:
+  lints: ^4.0.0
