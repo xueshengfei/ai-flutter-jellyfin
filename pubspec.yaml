@@ -47,6 +47,10 @@ dependencies:
   palette_generator: ^0.3.3+4
   flutter_markdown: ^0.7.7+1
 
+  # RVC 语音转换
+  rvc_flutter:
+    path: packages/rvc_flutter
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

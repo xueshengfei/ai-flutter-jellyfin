@@ -1214,6 +1214,29 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
           ),
         ),
       ),
+      const SizedBox(width: 4),
+      // RVC 语音转换
+      SizedBox(
+        width: 48, height: 48,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => RvcPage(
+                rvcServerUrl: 'http://localhost:9880',
+                audioPath: song.path,
+              ),
+            ));
+          },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.auto_fix_high, size: 22, color: Theme.of(context).colorScheme.primary),
+              Text('RVC', style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ),
     ]);
   }
 

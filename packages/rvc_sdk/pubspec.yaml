@@ -1,0 +1,14 @@
+name: rvc_sdk
+description: RVC 语音转换 HTTP API 客户端 SDK (Dart 3.32+)
+version: 1.0.0
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+
+dependencies:
+  http: ^1.2.0
+  meta: ^1.12.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
