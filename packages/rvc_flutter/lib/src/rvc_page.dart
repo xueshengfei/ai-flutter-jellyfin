@@ -60,8 +60,13 @@ class _RvcPageState extends State<RvcPage> {
 
   // ---- 转换状态 ----
   bool _isConverting = false;
-  ConvertResult? _convertResult;
+  dynamic _convertResult; // ConvertResult 或 CoverResult
   String? _convertError;
+  String _convertMode = 'convert'; // 'convert' 或 'cover'
+
+  // 翻唱参数
+  double _vocalVol = 1.0;
+  double _instVol = 0.8;
 
   // ---- 播放 ----
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -151,24 +156,42 @@ class _RvcPageState extends State<RvcPage> {
     });
 
     try {
-      final result = await _client.convert(
-        modelName: _selectedModel!,
-        inputPath: _selectedFilePath,
-        audioBytes: _selectedAudioBytes,
-        audioFilename: _selectedFileName ?? 'audio.wav',
-        f0UpKey: _f0UpKey,
-        f0Method: _f0Method,
-        indexRate: _indexRate,
-        filterRadius: _filterRadius,
-        resampleSr: _resampleSr,
-        protect: _protect,
-      );
+      final dynamic result;
+      if (_convertMode == 'cover') {
+        result = await _client.cover(
+          modelName: _selectedModel!,
+          inputPath: _selectedFilePath,
+          audioBytes: _selectedAudioBytes,
+          audioFilename: _selectedFileName ?? 'audio.wav',
+          f0UpKey: _f0UpKey,
+          f0Method: _f0Method,
+          indexRate: _indexRate,
+          filterRadius: _filterRadius,
+          resampleSr: _resampleSr,
+          protect: _protect,
+          vocalVol: _vocalVol,
+          instVol: _instVol,
+        );
+      } else {
+        result = await _client.convert(
+          modelName: _selectedModel!,
+          inputPath: _selectedFilePath,
+          audioBytes: _selectedAudioBytes,
+          audioFilename: _selectedFileName ?? 'audio.wav',
+          f0UpKey: _f0UpKey,
+          f0Method: _f0Method,
+          indexRate: _indexRate,
+          filterRadius: _filterRadius,
+          resampleSr: _resampleSr,
+          protect: _protect,
+        );
+      }
 
       if (!mounted) return;
 
       if (!result.success) {
         setState(() {
-          _convertError = '转换失败: ${result.filename}';
+          _convertError = '转换失败';
           _isConverting = false;
         });
         return;
@@ -675,21 +698,92 @@ class _RvcPageState extends State<RvcPage> {
     final canConvert =
         _selectedModel != null && (_selectedFilePath != null || _selectedAudioBytes != null) && !_isConverting;
 
-    return FilledButton.icon(
-      onPressed: canConvert ? _doConvert : null,
-      icon: _isConverting
-          ? SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.onPrimary,
-              ),
-            )
-          : const Icon(Icons.auto_fix_high),
-      label: Text(_isConverting ? '正在转换...' : '开始转换'),
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
+    return Column(
+      children: [
+        // 模式切换
+        SegmentedButton<String>(
+          segments: const [
+            ButtonSegment(value: 'convert', label: Text('音色转换'), icon: Icon(Icons.auto_fix_high)),
+            ButtonSegment(value: 'cover', label: Text('一键翻唱'), icon: Icon(Icons.music_note)),
+          ],
+          selected: {_convertMode},
+          onSelectionChanged: (v) => setState(() {
+            _convertMode = v.first;
+            _convertResult = null;
+            _convertError = null;
+          }),
+        ),
+        // 翻唱模式额外参数
+        if (_convertMode == 'cover') ...[
+          const SizedBox(height: 12),
+          _buildCoverParams(theme),
+        ],
+        const SizedBox(height: 12),
+        // 转换/翻唱按钮
+        FilledButton.icon(
+          onPressed: canConvert ? _doConvert : null,
+          icon: _isConverting
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                )
+              : Icon(_convertMode == 'cover' ? Icons.music_note : Icons.auto_fix_high),
+          label: Text(_isConverting
+              ? (_convertMode == 'cover' ? '正在翻唱...' : '正在转换...')
+              : (_convertMode == 'cover' ? '一键翻唱' : '开始转换')),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 翻唱模式参数：人声音量、伴奏音量
+  Widget _buildCoverParams(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 80, child: Text('人声音量')),
+                Expanded(
+                  child: Slider(
+                    value: _vocalVol,
+                    min: 0,
+                    max: 2,
+                    divisions: 20,
+                    label: _vocalVol.toStringAsFixed(1),
+                    onChanged: (v) => setState(() => _vocalVol = v),
+                  ),
+                ),
+                SizedBox(width: 40, child: Text(_vocalVol.toStringAsFixed(1), textAlign: TextAlign.end)),
+              ],
+            ),
+            Row(
+              children: [
+                const SizedBox(width: 80, child: Text('伴奏音量')),
+                Expanded(
+                  child: Slider(
+                    value: _instVol,
+                    min: 0,
+                    max: 2,
+                    divisions: 20,
+                    label: _instVol.toStringAsFixed(1),
+                    onChanged: (v) => setState(() => _instVol = v),
+                  ),
+                ),
+                SizedBox(width: 40, child: Text(_instVol.toStringAsFixed(1), textAlign: TextAlign.end)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
