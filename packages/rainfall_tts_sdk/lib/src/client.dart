@@ -38,9 +38,8 @@ final class RainfallTTS {
     _httpClient.connectionTimeout = const Duration(seconds: 30);
   }
 
-  /// 默认输出目录
-  String get _defaultOutputDir =>
-      '${Directory.current.path}${Platform.pathSeparator}outputs';
+  /// 默认输出目录（相对路径，由服务端解析为其工作目录下的 outputs）
+  String get _defaultOutputDir => 'outputs';
 
   // ===========================================================================
   // 健康检查
