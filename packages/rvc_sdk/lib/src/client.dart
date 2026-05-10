@@ -201,14 +201,118 @@ final class RVCClient {
   }
 
   // =========================================================================
+  // 一键翻唱接口
+  // =========================================================================
+
+  /// 一键AI翻唱：人声分离 → 去混响 → RVC音色转换 → AI混音。
+  ///
+  /// 输入一首完整的歌曲（含伴奏），自动分离人声、转换音色、混音输出成品。
+  ///
+  /// ```dart
+  /// final result = await client.cover(
+  ///   modelName: 'TaylorSwift.pth',
+  ///   inputPath: 'D:/song.mp3',
+  ///   f0UpKey: 12,
+  /// );
+  /// // 播放: client.getPlayUrl(result)
+  /// ```
+  Future<CoverResult> cover({
+    required String modelName,
+    String? inputPath,
+    Uint8List? audioBytes,
+    String? audioFilename,
+    int f0UpKey = 0,
+    F0Method f0Method = F0Method.rmvpe,
+    double indexRate = 0.75,
+    int filterRadius = 3,
+    int resampleSr = 0,
+    double rmsMixRate = 1.0,
+    double protect = 0.33,
+    String? indexFile,
+    double vocalVol = 1.0,
+    double instVol = 0.8,
+  }) async {
+    _requireInput(inputPath, audioBytes);
+
+    final params = ConvertParams(
+      modelName: modelName,
+      inputPath: inputPath,
+      f0UpKey: f0UpKey,
+      f0Method: f0Method,
+      indexRate: indexRate,
+      filterRadius: filterRadius,
+      resampleSr: resampleSr,
+      rmsMixRate: rmsMixRate,
+      protect: protect,
+      indexFile: indexFile,
+    );
+
+    final extraParams = <String, String>{
+      'vocal_vol': vocalVol.toString(),
+      'inst_vol': instVol.toString(),
+    };
+
+    final resp = await _doPostMultipart(
+      '/cover',
+      params: params,
+      extraParams: extraParams,
+      audioBytes: audioBytes,
+      audioFilename: audioFilename,
+    );
+
+    final json = jsonDecode(resp.body) as Map<String, dynamic>;
+    return CoverResult.fromJson(json);
+  }
+
+  /// 一键AI翻唱，然后从服务端下载成品音频字节。
+  Future<Uint8List> coverAndDownload({
+    required String modelName,
+    String? inputPath,
+    Uint8List? audioBytes,
+    String? audioFilename,
+    int f0UpKey = 0,
+    F0Method f0Method = F0Method.rmvpe,
+    double indexRate = 0.75,
+    int filterRadius = 3,
+    int resampleSr = 0,
+    double rmsMixRate = 1.0,
+    double protect = 0.33,
+    String? indexFile,
+    double vocalVol = 1.0,
+    double instVol = 0.8,
+  }) async {
+    final result = await cover(
+      modelName: modelName,
+      inputPath: inputPath,
+      audioBytes: audioBytes,
+      audioFilename: audioFilename,
+      f0UpKey: f0UpKey,
+      f0Method: f0Method,
+      indexRate: indexRate,
+      filterRadius: filterRadius,
+      resampleSr: resampleSr,
+      rmsMixRate: rmsMixRate,
+      protect: protect,
+      indexFile: indexFile,
+      vocalVol: vocalVol,
+      instVol: instVol,
+    );
+
+    final url = '$_baseUrl${result.downloadUrl}';
+    final resp = await _httpClient.get(Uri.parse(url)).timeout(_timeout);
+    return resp.bodyBytes;
+  }
+
+  // =========================================================================
   // URL 辅助
   // =========================================================================
 
-  /// 获取完整播放 URL
-  String getPlayUrl(ConvertResult result) => '$_baseUrl${result.playUrl}';
+  /// 获取完整播放 URL（支持 ConvertResult 和 CoverResult）
+  String getPlayUrl(dynamic result) =>
+      '$_baseUrl${result.playUrl}';
 
-  /// 获取完整下载 URL
-  String getDownloadUrl(ConvertResult result) =>
+  /// 获取完整下载 URL（支持 ConvertResult 和 CoverResult）
+  String getDownloadUrl(dynamic result) =>
       '$_baseUrl${result.downloadUrl}';
 
   // =========================================================================

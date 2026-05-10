@@ -106,6 +106,45 @@ final class ConvertFileResult {
       );
 }
 
+/// 一键翻唱结果（/cover 返回）
+///
+/// 完整流水线：人声分离 → 去混响 → RVC音色转换 → AI混音
+final class CoverResult {
+  final bool success;
+  final String playUrl;
+  final String downloadUrl;
+  final String filename;
+  final int sampleRate;
+  final double durationSec;
+  final int fileSize;
+  final String? vocalPath;
+  final String? instrPath;
+
+  const CoverResult({
+    required this.success,
+    required this.playUrl,
+    required this.downloadUrl,
+    required this.filename,
+    required this.sampleRate,
+    required this.durationSec,
+    required this.fileSize,
+    this.vocalPath,
+    this.instrPath,
+  });
+
+  factory CoverResult.fromJson(Map<String, dynamic> json) => CoverResult(
+        success: json['success'] as bool,
+        playUrl: json['play_url'] as String,
+        downloadUrl: json['download_url'] as String,
+        filename: json['filename'] as String,
+        sampleRate: json['sample_rate'] as int,
+        durationSec: (json['duration_sec'] as num).toDouble(),
+        fileSize: json['file_size'] as int,
+        vocalPath: json['vocal_path'] as String?,
+        instrPath: json['instr_path'] as String?,
+      );
+}
+
 // ---------------------------------------------------------------------------
 // 转换参数
 // ---------------------------------------------------------------------------

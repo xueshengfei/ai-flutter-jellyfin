@@ -20,6 +20,10 @@ dart pub get
 
 ## 快速开始
 
+### 一键AI翻唱（推荐）
+
+输入一首完整歌曲，自动完成：人声分离 → 去混响 → 音色转换 → AI混音。
+
 ```dart
 import 'dart:io';
 import 'package:rvc_sdk/rvc_sdk.dart';
@@ -27,27 +31,35 @@ import 'package:rvc_sdk/rvc_sdk.dart';
 void main() async {
   final client = RVCClient(baseUrl: 'http://192.168.1.100:9880');
 
-  // 转换音频，获取播放/下载地址
-  final result = await client.convert(
+  // 一键翻唱：上传歌曲 → 自动分离 → 转换 → 混音
+  final result = await client.cover(
     modelName: 'TaylorSwift.pth',
-    inputPath: 'D:/song.wav',
+    inputPath: 'D:/song.mp3',
     f0UpKey: 12,
   );
 
   // 播放地址
   print(client.getPlayUrl(result));
-  // http://192.168.1.100:9880/audio/TaylorSwift_12key_xxx.wav
+  // http://192.168.1.100:9880/audio/TaylorSwift_song_cover_xxx.wav
 
-  // 下载地址
-  print(client.getDownloadUrl(result));
-  // http://192.168.1.100:9880/audio/TaylorSwift_12key_xxx.wav?download=1
-
-  print(result.filename);      // TaylorSwift_12key_xxx.wav
-  print(result.sampleRate);    // 40000
-  print(result.durationSec);   // 1.49
+  print(result.filename);      // TaylorSwift_song_cover_xxx.wav
+  print(result.durationSec);   // 45.2（总耗时，含分离+转换+混音）
 
   client.close();
 }
+```
+
+### 纯音色转换
+
+需要预先准备干声（已分离人声的音频）。
+
+```dart
+final result = await client.convert(
+  modelName: 'TaylorSwift.pth',
+  inputPath: 'D:/vocals.wav',
+  f0UpKey: 12,
+);
+print(client.getPlayUrl(result));
 ```
 
 ## 客户端配置
@@ -56,7 +68,7 @@ void main() async {
 // 基础用法
 final client = RVCClient(baseUrl: 'http://192.168.1.100:9880');
 
-// 自定义超时（默认 5 分钟，转换耗时较长）
+// 自定义超时（默认 5 分钟，翻唱流水线建议 10 分钟+）
 final client = RVCClient(
   baseUrl: 'http://192.168.1.100:9880',
   timeout: Duration(minutes: 10),
@@ -84,7 +96,14 @@ final client = RVCClient(
 | `listModels()` | `Future<List<ModelInfo>>` | 列出所有可用模型 |
 | `listIndices()` | `Future<List<String>>` | 列出所有索引文件路径 |
 
-### 转换接口
+### 翻唱接口（完整流水线）
+
+| 方法 | 返回类型 | 说明 |
+|------|---------|------|
+| `cover(...)` | `Future<CoverResult>` | 一键AI翻唱：分离 → 转换 → 混音 |
+| `coverAndDownload(...)` | `Future<Uint8List>` | 一键翻唱并下载音频字节 |
+
+### 转换接口（仅音色转换）
 
 | 方法 | 返回类型 | 说明 |
 |------|---------|------|
@@ -99,20 +118,27 @@ final client = RVCClient(
 | `getPlayUrl(result)` | 拼接完整播放 URL |
 | `getDownloadUrl(result)` | 拼接完整下载 URL |
 
-## 转换方式详解
+## 翻唱 vs 转换
 
-### 方式一：获取播放/下载地址（推荐）
+| | `cover()` 一键翻唱 | `convert()` 音色转换 |
+|---|---|---|
+| **输入** | 完整歌曲（含伴奏） | 干声（纯人声） |
+| **流程** | 分离 → 去混响 → 转换 → AI混音 | 仅音色转换 |
+| **输出** | 成品歌曲（人声+伴奏混音） | 转换后的干声 |
+| **耗时** | 较长（1-5分钟） | 较短（几秒~几十秒） |
+| **适用** | 快速出成品 | 专业用户精细调参 |
 
-适用于：前端直接播放、URL 分发。
+## 翻唱接口详解
+
+### 方式一：获取成品播放/下载地址（推荐）
 
 ```dart
-final result = await client.convert(
+final result = await client.cover(
   modelName: 'TaylorSwift.pth',
-  inputPath: 'D:/song.wav',
+  inputPath: 'D:/song.mp3',
   f0UpKey: 12,
 );
 
-// 完整 URL
 final playUrl = client.getPlayUrl(result);
 final downloadUrl = client.getDownloadUrl(result);
 
@@ -120,46 +146,35 @@ final downloadUrl = client.getDownloadUrl(result);
 // AudioPlayer().play(UrlSource(playUrl));
 ```
 
-### 方式二：转换并下载到本地
-
-适用于：需要将音频保存到本地文件。
+### 方式二：翻唱并下载音频字节
 
 ```dart
-final bytes = await client.convertAndDownload(
+final bytes = await client.coverAndDownload(
   modelName: 'TaylorSwift.pth',
-  inputPath: 'D:/song.wav',
+  inputPath: 'D:/song.mp3',
   f0UpKey: 12,
 );
 await File('output.wav').writeAsBytes(bytes);
 ```
 
-### 方式三：上传音频字节
-
-适用于：远程调用，音频文件不在服务端机器上。
+### 方式三：上传音频字节（远程调用）
 
 ```dart
-final bytes = await File('song.wav').readAsBytes();
-final result = await client.convert(
-  modelName: 'model.pth',
+final bytes = await File('song.mp3').readAsBytes();
+final result = await client.cover(
+  modelName: 'TaylorSwift.pth',
   audioBytes: bytes,
   f0UpKey: 12,
 );
 print(client.getPlayUrl(result));
 ```
 
-### 方式四：服务端保存文件
+### 翻唱混音参数
 
-适用于：服务端和客户端同机。
-
-```dart
-final result = await client.convertServerSave(
-  modelName: 'model.pth',
-  inputPath: 'D:/song.wav',
-  f0UpKey: 12,
-  outputDir: 'D:/output',
-);
-print(result.message); // 已保存: D:/output/xxx.wav
-```
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `vocalVol` | double | `1.0` | **人声音量**。1.0 = 原始音量 |
+| `instVol` | double | `0.8` | **伴奏音量**。0.8 = 略低于人声 |
 
 ## 转换参数说明
 
@@ -222,6 +237,22 @@ print(result.message); // 已保存: D:/output/xxx.wav
 
 ## 返回类型
 
+### CoverResult
+
+```dart
+final class CoverResult {
+  final bool success;        // 是否成功
+  final String playUrl;      // 成品播放地址（相对路径）
+  final String downloadUrl;  // 成品下载地址（相对路径）
+  final String filename;     // 成品文件名
+  final int sampleRate;      // 采样率
+  final double durationSec;  // 总耗时（秒），含分离+转换+混音
+  final int fileSize;        // 文件大小（字节）
+  final String? vocalPath;   // 分离出的干声路径（服务端）
+  final String? instrPath;   // 分离出的伴奏路径（服务端）
+}
+```
+
 ### ConvertResult
 
 ```dart
@@ -241,7 +272,7 @@ final class ConvertResult {
 ```dart
 final class ServiceStatus {
   final String service;   // "RVC API"
-  final String version;   // "1.0.0"
+  final String version;   // "1.1.0"
   final String status;    // "running"
 }
 ```
@@ -269,9 +300,9 @@ final class ConvertFileResult {
 
 ```dart
 try {
-  final result = await client.convert(
+  final result = await client.cover(
     modelName: 'model.pth',
-    inputPath: 'song.wav',
+    inputPath: 'song.mp3',
     f0UpKey: 12,
   );
 } on RVCConnectionError catch (e) {
@@ -312,19 +343,19 @@ Future<void> main() async {
       return;
     }
 
-    // 转换并获取播放/下载地址
-    final result = await client.convert(
+    // 一键翻唱：上传完整歌曲，自动分离+转换+混音
+    final result = await client.cover(
       modelName: 'TaylorSwift.pth',
-      inputPath: 'D:/vocals.wav',
+      inputPath: 'D:/song.mp3',
       f0UpKey: 12,
       f0Method: F0Method.rmvpe,
-      indexRate: 0.75,
-      protect: 0.33,
+      vocalVol: 1.0,
+      instVol: 0.8,
     );
 
     print('播放: ${client.getPlayUrl(result)}');
     print('下载: ${client.getDownloadUrl(result)}');
-    print('文件: ${result.filename} (${result.fileSize} bytes)');
+    print('文件: ${result.filename} (${result.fileSize} bytes, ${result.durationSec}s)');
 
   } on RVCConnectionError catch (e) {
     print('无法连接 API 服务: ${e.message}');
