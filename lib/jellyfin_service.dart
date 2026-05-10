@@ -116,3 +116,6 @@ export 'src/ui/pages/album_detail_page.dart';
 export 'src/ui/pages/test_api_page.dart';
 export 'src/ui/pages/lyrics_page.dart';
 export 'src/ui/pages/ai_recommend_page.dart';
+
+// RVC 语音转换
+export 'package:rvc_flutter/rvc_flutter.dart';

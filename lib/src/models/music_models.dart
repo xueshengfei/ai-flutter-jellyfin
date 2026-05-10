@@ -200,6 +200,9 @@ class MusicSong extends Equatable {
   final String serverUrl;
   final String? accessToken;
 
+  /// Jellyfin 上的本地文件路径（如 E:\Music\song.mp3）
+  final String? path;
+
   const MusicSong({
     required this.id,
     required this.name,
@@ -221,6 +224,7 @@ class MusicSong extends Equatable {
     this.played,
     this.playCount,
     this.accessToken,
+    this.path,
   });
 
   factory MusicSong.fromDto(
@@ -270,6 +274,7 @@ class MusicSong extends Equatable {
       played: userData?.played,
       playCount: userData?.playCount,
       accessToken: accessToken,
+      path: dto.path,
     );
   }
 
