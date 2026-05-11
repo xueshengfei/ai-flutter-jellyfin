@@ -288,10 +288,31 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.1.2"
+  jellyfin_api:
+    dependency: transitive
+    description:
+      path: "../packages/foundation/jellyfin_api"
+      relative: true
+    source: path
+    version: "0.1.0"
+  jellyfin_core:
+    dependency: transitive
+    description:
+      path: "../packages/foundation/jellyfin_core"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_dart:
     dependency: transitive
     description:
-      path: "../packages/jellyfin_dart_3.8"
+      path: "../packages/vendor/jellyfin_dart_3.8"
+      relative: true
+    source: path
+    version: "0.1.0"
+  jellyfin_models:
+    dependency: transitive
+    description:
+      path: "../packages/shared/jellyfin_models"
       relative: true
     source: path
     version: "0.1.0"
@@ -302,6 +323,13 @@ packages:
       relative: true
     source: path
     version: "0.3.0"
+  jellyfin_ui_kit:
+    dependency: transitive
+    description:
+      path: "../packages/shared/jellyfin_ui_kit"
+      relative: true
+    source: path
+    version: "0.1.0"
   json_annotation:
     dependency: transitive
     description:
@@ -545,14 +573,14 @@ packages:
   rvc_flutter:
     dependency: transitive
     description:
-      path: "../packages/rvc_flutter"
+      path: "../packages/features/rvc_flutter"
       relative: true
     source: path
     version: "0.1.0"
   rvc_sdk:
     dependency: transitive
     description:
-      path: "../packages/rvc_sdk"
+      path: "../packages/vendor/rvc_sdk"
       relative: true
     source: path
     version: "1.0.0"

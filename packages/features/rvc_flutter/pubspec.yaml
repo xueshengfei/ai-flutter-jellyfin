@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   rvc_sdk:
-    path: ../rvc_sdk
+    path: ../../vendor/rvc_sdk
   just_audio: ^0.9.42
   file_picker: ^8.0.0
   path_provider: ^2.1.5

@@ -13,7 +13,23 @@ dependencies:
 
   # Jellyfin API SDK (接口层) - 本地路径依赖
   jellyfin_dart:
-    path: packages/jellyfin_dart_3.8
+    path: packages/vendor/jellyfin_dart_3.8
+
+  # 核心基础包
+  jellyfin_core:
+    path: packages/foundation/jellyfin_core
+
+  # API 客户端包
+  jellyfin_api:
+    path: packages/foundation/jellyfin_api
+
+  # 共享模型包
+  jellyfin_models:
+    path: packages/shared/jellyfin_models
+
+  # 共享 UI 组件包
+  jellyfin_ui_kit:
+    path: packages/shared/jellyfin_ui_kit
 
   # HTTP客户端
   dio: ^5.9.0
@@ -47,9 +63,9 @@ dependencies:
   palette_generator: ^0.3.3+4
   flutter_markdown: ^0.7.7+1
 
-  # RVC 语音转换
+  # RVC 语音转换，AI翻唱
   rvc_flutter:
-    path: packages/rvc_flutter
+    path: packages/features/rvc_flutter
 
 dev_dependencies:
   flutter_test:
