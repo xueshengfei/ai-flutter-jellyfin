@@ -3,22 +3,26 @@ import 'package:jellyfin_service/src/jellyfin_client.dart';
 import 'package:jellyfin_service/src/models/user_models.dart';
 import 'package:jellyfin_service/src/models/media_library_models.dart';
 import 'package:jellyfin_service/src/models/media_item_models.dart' as local;
+import 'package:jellyfin_service/src/ui/pages/episodes_page.dart';
+import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
 import 'package:jellyfin_service/src/models/music_models.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
 import 'package:jellyfin_service/src/ui/pages/login_page.dart';
 import 'package:jellyfin_service/src/ui/pages/personal_page.dart';
 import 'package:jellyfin_service/src/ui/pages/movie_filter_page.dart';
 import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
-import 'package:jellyfin_service/src/ui/pages/media_items_page.dart';
-import 'package:jellyfin_service/src/ui/pages/media_item_detail_page.dart';
 import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
 import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
 import 'package:jellyfin_service/src/ui/widgets/library_card.dart';
 import 'package:jellyfin_service/src/ui/widgets/continue_watching_card.dart';
 import 'package:jellyfin_service/src/ui/widgets/mini_player_card.dart';
 import 'package:jellyfin_service/src/ui/services/jellyfin_client_image_provider.dart';
+import 'package:jellyfin_service/src/adapters/media_item_mapper.dart';
 import 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
+import 'package:jellyfin_media/jellyfin_media_pages.dart' as media_pages;
+import 'package:jellyfin_media/jellyfin_media_models.dart' as media_models;
+import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 
 /// 媒体库列表页面 - 登录后展示所有媒体库，点击进入对应类型的页面
 class MediaLibrariesPage extends StatefulWidget {
@@ -69,50 +73,19 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
         actions: [
           // AI 推荐入口（胶囊动画按钮 — 来自独立业务模块）
           AiRecommendPill(onPressed: () {
-            // 根包 MediaItem → jellyfin_models MediaItem 适配器
-            models.MediaItem toModelsMediaItem(local.MediaItem src) =>
-              models.MediaItem(
-                id: src.id,
-                name: src.name,
-                type: src.type,
-                serverUrl: widget.client.configuration.serverUrl,
-                primaryImageTag: src.primaryImageTag,
-                backdropImageTag: src.backdropImageTag,
-                productionYear: src.productionYear,
-                genres: src.genres,
-                communityRating: src.communityRating,
-                runTimeTicks: src.runTimeTicks,
-                accessToken: widget.client.configuration.accessToken,
-              );
-
             Navigator.push(context, MaterialPageRoute(builder: (_) => AiRecommendPage(
               aiServiceUrl: widget.client.configuration.resolvedAiServiceUrl,
               imageProvider: JellyfinClientImageProvider(widget.client),
               fetchMediaItemDetail: (itemId) async {
                 final src = await widget.client.mediaLibrary.getMediaItemDetail(itemId);
-                return toModelsMediaItem(src);
+                return MediaItemMapper.toShared(src,
+                  serverUrl: widget.client.configuration.serverUrl,
+                  accessToken: widget.client.configuration.accessToken,
+                );
               },
               onNavigateToMediaItem: (ctx, item) {
-                // jellyfin_models.MediaItem → 根包 MediaItem 用于本地页面
-                final localItem = local.MediaItem(
-                  id: item.id,
-                  name: item.name,
-                  type: item.type,
-                  serverUrl: item.serverUrl,
-                  primaryImageTag: item.primaryImageTag,
-                  productionYear: item.productionYear,
-                  communityRating: item.communityRating,
-                  genres: item.genres,
-                  runTimeTicks: item.runTimeTicks,
-                  overview: item.overview,
-                  backdropImageTag: item.backdropImageTag,
-                  officialRating: item.officialRating,
-                  studios: item.studios,
-                  actors: item.actors,
-                  accessToken: item.accessToken,
-                );
                 Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
-                    MediaItemDetailPage(client: widget.client, item: localItem)));
+                    _buildNewMediaItemDetailPage(item)));
               },
               onNavigateToAlbum: (ctx, item) {
                 final album = MusicAlbum(
@@ -242,8 +215,141 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
     } else if (library.type == MediaLibraryType.music) {
       page = MusicLibraryPage(client: widget.client, libraryId: library.id, libraryName: library.name);
     } else {
-      page = MediaItemsPage(client: widget.client, library: library);
+      // 使用新的 jellyfin_media 模块页面链路
+      page = _buildNewMediaItemsPage(library);
     }
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  // ==================== 新模块页面构建 ====================
+
+  /// 构建 jellyfin_media::MediaItemsPage
+  Widget _buildNewMediaItemsPage(MediaLibrary library) {
+    final sharedLibrary = models.MediaLibrary(
+      id: library.id,
+      name: library.name,
+      type: models.MediaLibraryType.values.firstWhere(
+        (t) => t.name == library.type.name,
+        orElse: () => models.MediaLibraryType.unknown,
+      ),
+      serverUrl: widget.client.configuration.serverUrl,
+      primaryImageTag: library.primaryImageTag,
+      itemCount: library.itemCount,
+      accessToken: widget.client.configuration.accessToken,
+    );
+
+    return media_pages.MediaItemsPage(
+      library: sharedLibrary,
+      fetchMediaItems: ({required parentId, recursive = true, limit}) async {
+        final result = await widget.client.mediaLibrary.getMediaItems(
+          parentId: parentId,
+          recursive: recursive,
+          limit: limit,
+        );
+        return models.MediaItemListResult(
+          items: result.items.map((item) => MediaItemMapper.toShared(item,
+            serverUrl: widget.client.configuration.serverUrl,
+            accessToken: widget.client.configuration.accessToken,
+          )).toList(),
+          totalCount: result.totalCount,
+          startIndex: result.startIndex,
+        );
+      },
+      onNavigateToMediaItem: (ctx, item) {
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            _buildNewMediaItemDetailPage(item)));
+      },
+    );
+  }
+
+  /// 构建 jellyfin_media::MediaItemDetailPage
+  Widget _buildNewMediaItemDetailPage(models.MediaItem item) {
+    return media_pages.MediaItemDetailPage(
+      item: item,
+      fetchDetail: (itemId) async {
+        final src = await widget.client.mediaLibrary.getMediaItemDetail(itemId);
+        return MediaItemMapper.toShared(src,
+          serverUrl: widget.client.configuration.serverUrl,
+          accessToken: widget.client.configuration.accessToken,
+        );
+      },
+      fetchSeasons: (seriesId) async {
+        final result = await widget.client.mediaLibrary.getSeasons(seriesId);
+        return models.SeasonListResult(
+          seasons: result.seasons.map((s) => models.Season(
+            id: s.id,
+            seriesId: s.seriesId,
+            name: s.name,
+            indexNumber: s.indexNumber,
+            serverUrl: s.serverUrl,
+            primaryImageTag: s.primaryImageTag,
+            overview: s.overview,
+            episodeCount: s.episodeCount,
+            accessToken: s.accessToken,
+          )).toList(),
+          totalCount: result.totalCount,
+        );
+      },
+      onNavigateToPerson: (ctx, personId, personName, personType) {
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            _buildNewPersonDetailPage(personId, personName, personType)));
+      },
+      onNavigateToEpisodes: (ctx, series, season) {
+        // 剧集列表仍使用旧页面（待 Task 13 抽 jellyfin_series）
+        final localSeries = MediaItemMapper.toLocal(series);
+        final localSeason = local.Season(
+          id: season.id,
+          seriesId: season.seriesId,
+          name: season.name,
+          indexNumber: season.indexNumber,
+          serverUrl: season.serverUrl,
+          primaryImageTag: season.primaryImageTag,
+          overview: season.overview,
+          episodeCount: season.episodeCount,
+          accessToken: season.accessToken,
+        );
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            EpisodesPage(client: widget.client, series: localSeries, season: localSeason)));
+      },
+      onStartPlayback: (ctx, item) {
+        final localItem = MediaItemMapper.toLocal(item);
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            VideoPlayerPage(client: widget.client, item: localItem)));
+      },
+    );
+  }
+
+  /// 构建 jellyfin_media::PersonDetailPage
+  Widget _buildNewPersonDetailPage(String personId, String personName, String personType) {
+    // String personType → jellyfin_dart.PersonKind（仅 API 调用需要）
+    final personKind = jellyfin_dart.PersonKind.values.firstWhere(
+      (k) => k.name.toLowerCase() == personType.toLowerCase(),
+      orElse: () => jellyfin_dart.PersonKind.actor,
+    );
+
+    return media_pages.PersonDetailPage(
+      personId: personId,
+      personName: personName,
+      personType: personType,
+      fetchPersonDetail: (pId, pType) async {
+        final src = await widget.client.mediaLibrary.getPersonDetail(pId, personKind);
+        return MediaItemMapper.toSharedPerson(src);
+      },
+      fetchPersonCredits: (pId, {includeItemTypes}) async {
+        final result = await widget.client.mediaLibrary.getPersonCredits(personId: pId);
+        return media_models.PersonCreditsResult(
+          items: result.items.map((item) => MediaItemMapper.toShared(item,
+            serverUrl: widget.client.configuration.serverUrl,
+            accessToken: widget.client.configuration.accessToken,
+          )).toList(),
+          totalCount: result.totalCount,
+        );
+      },
+      imageProvider: JellyfinClientImageProvider(widget.client),
+      onNavigateToMediaItem: (ctx, item) {
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            _buildNewMediaItemDetailPage(item)));
+      },
+    );
   }
 }

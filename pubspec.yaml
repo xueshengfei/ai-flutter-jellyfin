@@ -35,6 +35,10 @@ dependencies:
   jellyfin_ai_recommendation:
     path: packages/features/jellyfin_ai_recommendation
 
+  # 通用媒体业务模块
+  jellyfin_media:
+    path: packages/features/jellyfin_media
+
   # HTTP客户端
   dio: ^5.9.0
 
