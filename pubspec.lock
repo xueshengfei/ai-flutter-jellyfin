@@ -440,10 +440,45 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.5"
+  jellyfin_ai_recommendation:
+    dependency: "direct main"
+    description:
+      path: "packages/features/jellyfin_ai_recommendation"
+      relative: true
+    source: path
+    version: "0.1.0"
+  jellyfin_api:
+    dependency: "direct main"
+    description:
+      path: "packages/foundation/jellyfin_api"
+      relative: true
+    source: path
+    version: "0.1.0"
+  jellyfin_core:
+    dependency: "direct main"
+    description:
+      path: "packages/foundation/jellyfin_core"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_dart:
     dependency: "direct main"
     description:
-      path: "packages/jellyfin_dart_3.8"
+      path: "packages/vendor/jellyfin_dart_3.8"
+      relative: true
+    source: path
+    version: "0.1.0"
+  jellyfin_models:
+    dependency: "direct main"
+    description:
+      path: "packages/shared/jellyfin_models"
+      relative: true
+    source: path
+    version: "0.1.0"
+  jellyfin_ui_kit:
+    dependency: "direct main"
+    description:
+      path: "packages/shared/jellyfin_ui_kit"
       relative: true
     source: path
     version: "0.1.0"
@@ -746,14 +781,14 @@ packages:
   rvc_flutter:
     dependency: "direct main"
     description:
-      path: "packages/rvc_flutter"
+      path: "packages/features/rvc_flutter"
       relative: true
     source: path
     version: "0.1.0"
   rvc_sdk:
     dependency: transitive
     description:
-      path: "packages/rvc_sdk"
+      path: "packages/vendor/rvc_sdk"
       relative: true
     source: path
     version: "1.0.0"

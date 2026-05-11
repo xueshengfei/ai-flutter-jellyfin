@@ -288,6 +288,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.1.2"
+  jellyfin_ai_recommendation:
+    dependency: transitive
+    description:
+      path: "../packages/features/jellyfin_ai_recommendation"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_api:
     dependency: transitive
     description:

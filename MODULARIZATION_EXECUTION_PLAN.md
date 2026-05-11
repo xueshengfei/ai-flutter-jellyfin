@@ -1110,24 +1110,29 @@ git commit -m "ci: add modular package validation and version workflow"
 
 ## 24. 第二阶段最小可交付版本
 
-第二阶段建议做到 Task 10 到 Task 15。
+第二阶段建议做到 Task 10 到 Task 16。
+
+> **2026-05-11 调整**：将 Task 16（AI 推荐）从第三阶段提前到第二阶段，优先验证业务解耦和 NavigationIntent 模式。
 
 第二阶段完成后应具备：
 
 - 通用媒体、首页、电影、剧集、播放、音乐分别独立。
+- **AI 对话推荐作为独立 feature 模块，不直接 import 其它 feature 页面。**
 - 首页通过 intent 打开业务模块。
 - 媒体详情通过 intent 打开播放/剧集。
 - 音乐模块拥有自己的模型、repository、页面和测试。
+- AI 推荐卡片点击通过 NavigationIntent 分发到对应 feature。
 
 这是业务组件化真正成型的阶段。
 
 ## 25. 第三阶段最小可交付版本
 
-第三阶段完成 Task 16 到 Task 19。
+第三阶段完成 Task 17 到 Task 19。
+
+> **2026-05-11 调整**：Task 16 已提前到第二阶段完成。
 
 第三阶段完成后应具备：
 
-- AI 推荐独立，不直接依赖媒体/音乐页面。
 - RVC 和视频手势成为按需启用扩展。
 - 根包退化为兼容 facade。
 - CI 可以按模块验证。
