@@ -1,0 +1,13 @@
+name: jellyfin_core
+description: Jellyfin SDK 核心基础包 - 配置、异常基类、模块协议
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  equatable: ^2.0.7
+
+dev_dependencies:
+  test: ^1.25.0
