@@ -489,6 +489,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  jellyfin_playback:
+    dependency: "direct main"
+    description:
+      path: "packages/features/jellyfin_playback"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_series:
     dependency: "direct main"
     description:
@@ -799,6 +806,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.5.0"
+  rainfall_tts_sdk:
+    dependency: transitive
+    description:
+      path: "packages/vendor/rainfall_tts_sdk"
+      relative: true
+    source: path
+    version: "1.0.0"
   rvc_flutter:
     dependency: "direct main"
     description:

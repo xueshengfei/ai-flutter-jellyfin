@@ -4,7 +4,10 @@ import 'package:jellyfin_service/src/models/user_models.dart';
 import 'package:jellyfin_service/src/models/media_library_models.dart';
 import 'package:jellyfin_service/src/models/media_item_models.dart' as local;
 import 'package:jellyfin_service/src/models/movie_filter_models.dart' as movie_models;
-import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
+import 'package:jellyfin_service/src/ui/services/playback_service.dart';
+import 'package:jellyfin_service/src/models/video_quality_models.dart';
+import 'package:jellyfin_playback/jellyfin_playback.dart' as playback;
+import 'package:jellyfin_playback/jellyfin_playback_pages.dart' as playback_pages;
 import 'package:jellyfin_series/jellyfin_series_pages.dart' as series_pages;
 import 'package:jellyfin_service/src/models/music_models.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
@@ -283,7 +286,10 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       onStartPlayback: (ctx, movie) {
         final localItem = MediaItemMapper.toLocal(movie);
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
-            VideoPlayerPage(client: widget.client, item: localItem)));
+            playback_pages.VideoPlayerPage(
+              item: movie,
+              playback: _createPlaybackDelegate(localItem),
+            )));
       },
     );
   }
@@ -425,7 +431,10 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       onStartPlayback: (ctx, item) {
         final localItem = MediaItemMapper.toLocal(item);
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
-            VideoPlayerPage(client: widget.client, item: localItem)));
+            playback_pages.VideoPlayerPage(
+              item: item,
+              playback: _createPlaybackDelegate(localItem),
+            )));
       },
     );
   }
@@ -487,9 +496,64 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           overview: episode.overview,
           serverUrl: episode.serverUrl,
         );
+        final sharedItem = models.MediaItem(
+          id: episode.id,
+          name: episode.name,
+          type: 'Episode',
+          serverUrl: episode.serverUrl,
+          primaryImageTag: episode.primaryImageTag,
+          runTimeTicks: episode.runTimeTicks,
+          runTimeMinutes: episode.runTimeMinutes,
+          overview: episode.overview,
+          playedPercentage: episode.playedPercentage,
+        );
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
-            VideoPlayerPage(client: widget.client, item: localItem)));
+            playback_pages.VideoPlayerPage(
+              item: sharedItem,
+              playback: _createPlaybackDelegate(localItem),
+            )));
       },
+    );
+  }
+
+  /// 创建 PlaybackDelegate（将 PlaybackService 包装为回调集合）
+  playback.PlaybackDelegate _createPlaybackDelegate(local.MediaItem localItem) {
+    final service = PlaybackService(client: widget.client);
+    service.setCurrentItem(localItem);
+    return playback.PlaybackDelegate(
+      getPlaybackUrl: ({required itemId, startTimeTicks, maxStreamingBitrate}) async {
+        final info = await service.getPlaybackUrl(
+          itemId: itemId,
+          startTimeTicks: startTimeTicks,
+          maxStreamingBitrate: maxStreamingBitrate,
+        );
+        return playback.PlaybackInfo(
+          url: info.url,
+          playSessionId: info.playSessionId,
+          isTranscoded: info.isTranscoded,
+          actualBitrate: info.actualBitrate,
+        );
+      },
+      startSession: ({required itemId, required sessionIds}) =>
+          service.startPlaybackSession(itemId: itemId, sessionIds: sessionIds),
+      switchQuality: ({required itemId, required quality, required currentPosition}) async {
+        final rootQuality = VideoQuality.values.firstWhere((q) => q.name == quality.name);
+        final info = await service.switchQuality(
+          itemId: itemId,
+          quality: rootQuality,
+          currentPosition: currentPosition,
+        );
+        return playback.PlaybackInfo(
+          url: info.url,
+          playSessionId: info.playSessionId,
+          isTranscoded: info.isTranscoded,
+          actualBitrate: info.actualBitrate,
+        );
+      },
+      stopEncoding: (playSessionId) =>
+          service.stopActiveEncodings(playSessionId),
+      stopSession: () => service.stopPlaybackSession(),
+      dispose: () => service.dispose(),
     );
   }
 }

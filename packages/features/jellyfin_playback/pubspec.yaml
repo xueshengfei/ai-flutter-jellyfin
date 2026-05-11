@@ -1,0 +1,23 @@
+name: jellyfin_playback
+description: 视频播放业务模块，播放器页面、画质管理、网络质量监测。
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  equatable: ^2.0.5
+  jellyfin_models:
+    path: ../../shared/jellyfin_models
+  video_player: ^2.8.1
+  chewie: ^1.7.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  test: ^1.24.0

@@ -47,6 +47,10 @@ dependencies:
   jellyfin_series:
     path: packages/features/jellyfin_series
 
+  # 播放业务模块
+  jellyfin_playback:
+    path: packages/features/jellyfin_playback
+
   # HTTP客户端
   dio: ^5.9.0
 
