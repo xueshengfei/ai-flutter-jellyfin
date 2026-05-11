@@ -1,7 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
+
+import 'package:http/http.dart' as http;
 
 import 'exceptions.dart';
+import 'file_saver.dart';
 import 'models.dart';
 
 const String _gradioApiPrefix = '/gradio_api';
@@ -25,7 +27,7 @@ final class RainfallTTS {
   final String baseUrl;
   final Duration timeout;
 
-  final HttpClient _httpClient = HttpClient();
+  final http.Client _httpClient = http.Client();
 
   /// [baseUrl] Gradio 服务地址，默认 http://127.0.0.1:7861
   /// [timeoutSeconds] API 请求超时秒数，默认 300
@@ -35,9 +37,7 @@ final class RainfallTTS {
   })  : baseUrl = baseUrl.endsWith('/')
             ? baseUrl.substring(0, baseUrl.length - 1)
             : baseUrl,
-        timeout = Duration(seconds: timeoutSeconds) {
-    _httpClient.connectionTimeout = const Duration(seconds: 30);
-  }
+        timeout = Duration(seconds: timeoutSeconds);
 
   /// 默认输出目录（服务端的 outputs，相对路径）
   String get _defaultOutputDir => 'outputs';
@@ -49,10 +49,9 @@ final class RainfallTTS {
   /// 检查服务是否在线
   Future<bool> isServerAlive() async {
     try {
-      final uri = Uri.parse('$baseUrl/config');
-      final req = await _httpClient.getUrl(uri);
-      final resp = await req.close();
-      await resp.drain<void>();
+      final resp = await _httpClient
+          .get(Uri.parse('$baseUrl/config'))
+          .timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -302,27 +301,21 @@ final class RainfallTTS {
   // ===========================================================================
 
   /// 从服务端下载音频文件到本地
+  ///
+  /// Web 平台不支持文件写入，会抛出 [UnsupportedError]。
   Future<String> downloadAudio(TTSResult result, String localPath) async {
     if (result.audioUrl.isEmpty) {
       throw RainfallSynthesisError('没有可下载的音频 URL，请先调用 generate()');
     }
 
     try {
-      final uri = Uri.parse(result.audioUrl);
-      final req = await _httpClient.getUrl(uri);
-      final resp = await req.close();
+      final resp = await _httpClient.get(Uri.parse(result.audioUrl));
 
       if (resp.statusCode != 200) {
         throw RainfallServerError('下载音频失败，HTTP ${resp.statusCode}');
       }
 
-      final file = File(localPath);
-      await file.parent.create(recursive: true);
-      final sink = file.openWrite();
-      await resp.pipe(sink);
-      // pipe() 已关闭 sink，无需再次 close
-
-      return file.absolute.path;
+      return saveFile(localPath, resp.bodyBytes);
     } on RainfallTTSError {
       rethrow;
     } catch (e) {
@@ -352,38 +345,33 @@ final class RainfallTTS {
   }) async {
     final effectiveTimeout = callTimeout ?? timeout;
     final callUrl = '$baseUrl$_gradioApiPrefix/call/$endpoint';
-    final uri = Uri.parse(callUrl);
 
     // 第一步: 提交任务
-    final postReq = await _httpClient.postUrl(uri);
     final body = jsonEncode({'data': data});
-    postReq.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
-    postReq.add(utf8.encode(body));
-
-    HttpClientResponse postResp;
+    http.Response postResp;
     try {
-      postResp = await postReq.close();
-    } on SocketException catch (e) {
-      throw RainfallConnectionError('无法连接到 $baseUrl: $e');
-    } on HttpException catch (e) {
-      if (e.message.contains('timed out') || e.message.contains('Timeout')) {
+      postResp = await _httpClient
+          .post(Uri.parse(callUrl), headers: {'Content-Type': 'application/json'}, body: body)
+          .timeout(const Duration(seconds: 30));
+    } catch (e) {
+      if (e.toString().contains('timed out') || e.toString().contains('Timeout')) {
         throw RainfallTimeoutError('提交任务超时: $e');
       }
-      rethrow;
+      throw RainfallConnectionError('无法连接到 $baseUrl: $e');
     }
 
     if (postResp.statusCode != 200) {
-      final respBody = await _readBody(postResp);
+      final respBody = postResp.body;
       throw RainfallServerError(
         '提交任务失败，HTTP ${postResp.statusCode}: ${respBody.substring(0, respBody.length > 500 ? 500 : respBody.length)}',
       );
     }
 
-    final respBody = await _readBody(postResp);
     final Map<String, dynamic> result;
     try {
-      result = jsonDecode(respBody) as Map<String, dynamic>;
+      result = jsonDecode(postResp.body) as Map<String, dynamic>;
     } catch (e) {
+      final respBody = postResp.body;
       throw RainfallServerError(
         '解析提交响应失败: $e, body=${respBody.substring(0, respBody.length > 500 ? 500 : respBody.length)}',
       );
@@ -391,49 +379,40 @@ final class RainfallTTS {
 
     final eventId = result['event_id'];
     if (eventId is! String || eventId.isEmpty) {
-      throw RainfallServerError('未获取到 event_id, body=$respBody');
+      throw RainfallServerError('未获取到 event_id, body=${postResp.body}');
     }
 
     // 第二步: SSE 轮询结果
-    final sseUri = Uri.parse('$callUrl/$eventId');
-    final getReq = await _httpClient.getUrl(sseUri);
-
-    final HttpClientResponse getResp;
+    final sseUrl = '$callUrl/$eventId';
+    http.Response getResp;
     try {
-      getResp = await getReq.close().timeout(effectiveTimeout);
-    } on SocketException catch (e) {
-      throw RainfallConnectionError('获取结果时连接失败: $e');
+      getResp = await _httpClient
+          .get(Uri.parse(sseUrl))
+          .timeout(effectiveTimeout);
     } catch (e) {
       if (e.toString().contains('TimeoutException') ||
           e.toString().contains('timed out')) {
         throw RainfallTimeoutError(
             '获取结果超时 (${effectiveTimeout.inSeconds}s)');
       }
-      rethrow;
+      throw RainfallConnectionError('获取结果时连接失败: $e');
     }
 
     if (getResp.statusCode != 200) {
-      final errBody = await _readBody(getResp);
+      final errBody = getResp.body;
       throw RainfallServerError(
         '获取结果失败，HTTP ${getResp.statusCode}: ${errBody.substring(0, errBody.length > 500 ? 500 : errBody.length)}',
       );
     }
 
-    return _parseSseStream(getResp);
+    return _parseSseText(getResp.body);
   }
 
-  /// 解析 SSE 事件流，返回最终 payload
-  static Future<dynamic> _parseSseStream(
-      HttpClientResponse response) async {
-    final buffer = <int>[];
-    await for (final chunk in response) {
-      buffer.addAll(chunk);
-    }
-
-    final fullText = utf8.decode(buffer);
+  /// 解析 SSE 文本，返回最终 payload
+  static dynamic _parseSseText(String sseText) {
     dynamic lastData;
 
-    for (final rawLine in fullText.split('\n')) {
+    for (final rawLine in sseText.split('\n')) {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
 
@@ -538,7 +517,4 @@ final class RainfallTTS {
     final encoded = segments.map(Uri.encodeComponent).join('/');
     return '$baseUrl$_gradioApiPrefix/file=$encoded';
   }
-
-  static Future<String> _readBody(HttpClientResponse resp) =>
-      resp.transform(utf8.decoder).join();
 }

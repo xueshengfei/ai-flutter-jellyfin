@@ -13,12 +13,15 @@ dependencies:
   equatable: ^2.0.5
   flutter_markdown: ^0.7.0
   dio: ^5.4.0
+  just_audio: ^0.9.42
   jellyfin_core:
     path: ../../foundation/jellyfin_core
   jellyfin_models:
     path: ../../shared/jellyfin_models
   jellyfin_ui_kit:
     path: ../../shared/jellyfin_ui_kit
+  rainfall_tts_sdk:
+    path: ../../vendor/rainfall_tts_sdk
 
 dev_dependencies:
   flutter_test:

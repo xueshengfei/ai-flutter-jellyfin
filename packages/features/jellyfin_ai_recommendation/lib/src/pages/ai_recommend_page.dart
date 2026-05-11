@@ -3,7 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:jellyfin_ai_recommendation/src/models/ai_recommendation_models.dart';
+import 'package:jellyfin_ai_recommendation/src/models/tts_models.dart';
 import 'package:jellyfin_ai_recommendation/src/services/ai_recommendation_service.dart';
+import 'package:jellyfin_ai_recommendation/src/services/tts_playback_service.dart';
+import 'package:jellyfin_ai_recommendation/src/widgets/tts_control_button.dart';
+import 'package:jellyfin_ai_recommendation/src/widgets/tts_settings_dialog.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
@@ -84,6 +88,11 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
   StreamSubscription<SseEvent>? _currentSubscription;
   int _buildingMessageIndex = -1;
 
+  /// TTS 语音播报
+  TtsPlaybackService? _ttsService;
+  int? _ttsActiveMsgIdx;
+  TtsSettings _ttsSettings = const TtsSettings();
+
   @override
   void initState() {
     super.initState();
@@ -97,6 +106,8 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     _scrollController.dispose();
     _currentSubscription?.cancel();
     _streamService.cancel();
+    _ttsService?.stop();
+    _ttsService?.dispose();
     super.dispose();
   }
 
@@ -111,6 +122,12 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     _inputController.clear();
     _currentSubscription?.cancel();
     _streamService.cancel();
+
+    // 停止当前 TTS，立即创建新服务用于流式播报
+    _ttsService?.stop();
+    _ttsService?.dispose();
+    _ttsService = null;
+    _ttsActiveMsgIdx = null;
 
     setState(() {
       _messages.add(AiChatMessage(
@@ -127,6 +144,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       _buildingMessageIndex = _messages.length - 1;
       _isLoading = true;
     });
+
+    // 创建 TTS 服务，流式过程中边生成边播
+    _ttsService = TtsPlaybackService(settings: _ttsSettings);
+    _ttsActiveMsgIdx = _buildingMessageIndex;
 
     _scrollToBottom();
 
@@ -171,6 +192,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
             content: msg.content + tokenEvent.content,
             statusText: null,
           );
+          _ttsService?.feedToken(tokenEvent.content);
 
         case SseEventType.card:
           final card = AiCard.fromJson(event.data);
@@ -210,6 +232,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
           );
           _isLoading = false;
           _buildingMessageIndex = -1;
+          _ttsService?.flushRemaining();
 
         case SseEventType.error:
           final errMsg = event.data['message'] as String? ?? '未知错误';
@@ -345,6 +368,11 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
         actionsPadding: const EdgeInsets.only(right: 8),
         actions: [
           IconButton(
+            icon: const Icon(Icons.record_voice_over),
+            onPressed: _showTtsSettingsDialog,
+            tooltip: '语音播报设置',
+          ),
+          IconButton(
             icon: const Icon(Icons.language),
             onPressed: _showServiceUrlDialog,
             tooltip: 'AI 服务地址',
@@ -471,6 +499,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                   isStreaming ? '${message.content}▍' : message.content,
                   message.isUser,
                 ),
+
+              // TTS 播放按钮（非用户消息 + 有内容）
+              if (!message.isUser && message.content.isNotEmpty)
+                _buildTtsButton(message),
 
               // 推荐卡片（文本下方）
               if (message.cards.isNotEmpty) ...[
@@ -785,12 +817,75 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     _currentSubscription?.cancel();
     _streamService.cancel();
     _streamService.sessionId = null;
+    _ttsService?.stop();
+    _ttsService?.dispose();
+    _ttsService = null;
+    _ttsActiveMsgIdx = null;
     setState(() {
       _messages.clear();
       _mediaItemCache.clear();
       _isLoading = false;
       _buildingMessageIndex = -1;
     });
+  }
+
+  // ─────────────────────────────────────────
+  // TTS 语音播报
+  // ─────────────────────────────────────────
+
+  Widget _buildTtsButton(AiChatMessage message) {
+    final msgIdx = _messages.indexOf(message);
+    final isActive = _ttsActiveMsgIdx == msgIdx && _ttsService != null;
+
+    if (isActive) {
+      return ListenableBuilder(
+        listenable: _ttsService!,
+        builder: (context, _) {
+          return TtsControlButton(
+            state: _ttsService!.state,
+            onPressed: () {
+              switch (_ttsService!.state) {
+                case TtsPlaybackState.playing:
+                  _ttsService!.pause();
+                case TtsPlaybackState.paused:
+                  _ttsService!.play();
+                case TtsPlaybackState.completed:
+                case TtsPlaybackState.idle:
+                  _startTtsForMessage(msgIdx);
+                case TtsPlaybackState.preparing:
+                  break;
+                case TtsPlaybackState.error:
+                  _startTtsForMessage(msgIdx);
+              }
+            },
+          );
+        },
+      );
+    }
+
+    return TtsControlButton(
+      state: TtsPlaybackState.idle,
+      onPressed: () => _startTtsForMessage(msgIdx),
+    );
+  }
+
+  void _startTtsForMessage(int msgIdx) {
+    _ttsService?.stop();
+    _ttsService?.dispose();
+    final msg = _messages[msgIdx];
+    if (msg.content.isEmpty) return;
+    _ttsService = TtsPlaybackService(settings: _ttsSettings);
+    _ttsActiveMsgIdx = msgIdx;
+    setState(() {});
+    _ttsService!.playFullText(msg.content);
+  }
+
+  Future<void> _showTtsSettingsDialog() async {
+    final result = await showTtsSettingsDialog(context, _ttsSettings);
+    if (result != null) {
+      setState(() => _ttsSettings = result);
+      _ttsService?.updateSettings(result);
+    }
   }
 
   /// AI 服务地址设置弹窗
