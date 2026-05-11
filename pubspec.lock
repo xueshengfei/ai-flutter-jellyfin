@@ -489,6 +489,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  jellyfin_music:
+    dependency: "direct main"
+    description:
+      path: "packages/features/jellyfin_music"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_playback:
     dependency: "direct main"
     description:
@@ -812,7 +819,7 @@ packages:
       path: "packages/vendor/rainfall_tts_sdk"
       relative: true
     source: path
-    version: "1.0.0"
+    version: "1.1.0"
   rvc_flutter:
     dependency: "direct main"
     description:

@@ -8,6 +8,8 @@ import 'package:jellyfin_service/src/ui/services/playback_service.dart';
 import 'package:jellyfin_service/src/models/video_quality_models.dart';
 import 'package:jellyfin_playback/jellyfin_playback.dart' as playback;
 import 'package:jellyfin_playback/jellyfin_playback_pages.dart' as playback_pages;
+import 'package:jellyfin_music/jellyfin_music.dart' as music;
+import 'package:jellyfin_music/jellyfin_music_pages.dart' as music_pages;
 import 'package:jellyfin_series/jellyfin_series_pages.dart' as series_pages;
 import 'package:jellyfin_service/src/models/music_models.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
@@ -95,7 +97,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
                     _buildNewMediaItemDetailPage(item)));
               },
               onNavigateToAlbum: (ctx, item) {
-                final album = MusicAlbum(
+                final musicAlbum = music.MusicAlbum(
                   id: item.id,
                   name: item.name,
                   serverUrl: widget.client.configuration.serverUrl,
@@ -106,10 +108,10 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
                   genres: item.genres,
                 );
                 Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
-                    AlbumDetailPage(client: widget.client, album: album)));
+                    _buildNewAlbumDetailPage(musicAlbum)));
               },
               onNavigateToArtist: (ctx, item) {
-                final artist = MusicArtist(
+                final musicArtist = music.MusicArtist(
                   id: item.id,
                   name: item.name,
                   serverUrl: widget.client.configuration.serverUrl,
@@ -119,7 +121,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
                   genres: item.genres,
                 );
                 Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
-                    ArtistDetailPage(client: widget.client, artist: artist)));
+                    _buildNewArtistDetailPage(musicArtist)));
               },
               onPlaySong: (ctx, item) async {
                 try {
@@ -555,5 +557,103 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       stopSession: () => service.stopPlaybackSession(),
       dispose: () => service.dispose(),
     );
+  }
+
+  // ==================== 音乐模块页面构建 ====================
+
+  /// 构建 jellyfin_music::AlbumDetailPage
+  Widget _buildNewAlbumDetailPage(music.MusicAlbum album) {
+    return music_pages.AlbumDetailPage(
+      album: album,
+      fetchAlbumDetail: (id) async {
+        final rootAlbum = await widget.client.music.getAlbumDetail(id);
+        return _toMusicAlbum(rootAlbum);
+      },
+      fetchAlbumSongs: (id) async {
+        final rootResult = await widget.client.music.getAlbumSongs(id);
+        return _toMusicSongListResult(rootResult);
+      },
+      onPlaySong: (ctx, song, playlist, index) {
+        _playMusicSongs(ctx, playlist, index);
+      },
+    );
+  }
+
+  /// 构建 jellyfin_music::ArtistDetailPage
+  Widget _buildNewArtistDetailPage(music.MusicArtist artist) {
+    return music_pages.ArtistDetailPage(
+      artist: artist,
+      fetchArtistDetail: (id) async {
+        final rootArtist = await widget.client.music.getArtistDetail(id);
+        return _toMusicArtist(rootArtist);
+      },
+      fetchArtistAlbums: (id) async {
+        final rootResult = await widget.client.music.getArtistAlbums(id);
+        return _toMusicAlbumListResult(rootResult);
+      },
+      onNavigateToAlbum: (ctx, album) {
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            _buildNewAlbumDetailPage(album)));
+      },
+    );
+  }
+
+  // ==================== 音乐模型转换 ====================
+
+  music.MusicAlbum _toMusicAlbum(MusicAlbum root) => music.MusicAlbum(
+    id: root.id, name: root.name, serverUrl: root.serverUrl,
+    sortName: root.sortName, productionYear: root.productionYear,
+    artists: root.artists, genres: root.genres, songCount: root.songCount,
+    communityRating: root.communityRating, overview: root.overview,
+    primaryImageTag: root.primaryImageTag, backdropImageTag: root.backdropImageTag,
+    accessToken: root.accessToken, parentId: root.parentId,
+  );
+
+  music.MusicArtist _toMusicArtist(MusicArtist root) => music.MusicArtist(
+    id: root.id, name: root.name, serverUrl: root.serverUrl,
+    sortName: root.sortName, albumCount: root.albumCount, songCount: root.songCount,
+    overview: root.overview, genres: root.genres,
+    communityRating: root.communityRating, primaryImageTag: root.primaryImageTag,
+    backdropImageTag: root.backdropImageTag, accessToken: root.accessToken,
+  );
+
+  music.MusicSong _toMusicSong(MusicSong root) => music.MusicSong(
+    id: root.id, name: root.name, serverUrl: root.serverUrl,
+    sortName: root.sortName, albumId: root.albumId, albumName: root.albumName,
+    albumPrimaryImageTag: root.albumPrimaryImageTag, artists: root.artists,
+    artistRefs: root.artistRefs?.map((r) => music.ArtistRef(id: r.id, name: r.name)).toList(),
+    trackNumber: root.trackNumber, discNumber: root.discNumber,
+    runTimeTicks: root.runTimeTicks, runTimeSeconds: root.runTimeSeconds,
+    genres: root.genres, communityRating: root.communityRating,
+    parentId: root.parentId, isFavorite: root.isFavorite,
+    played: root.played, playCount: root.playCount,
+    accessToken: root.accessToken, path: root.path,
+  );
+
+  music.MusicSongListResult _toMusicSongListResult(MusicSongListResult root) =>
+    music.MusicSongListResult(
+      songs: root.songs.map(_toMusicSong).toList(),
+      totalCount: root.totalCount, startIndex: root.startIndex,
+    );
+
+  music.MusicAlbumListResult _toMusicAlbumListResult(MusicAlbumListResult root) =>
+    music.MusicAlbumListResult(
+      albums: root.albums.map(_toMusicAlbum).toList(),
+      totalCount: root.totalCount, startIndex: root.startIndex,
+    );
+
+  /// 播放歌曲列表（转换回根包 MusicSong 供 AudioPlaybackManager 使用）
+  void _playMusicSongs(BuildContext ctx, List<music.MusicSong> musicPlaylist, int index) {
+    final rootPlaylist = musicPlaylist.map((s) => MusicSong(
+      id: s.id, name: s.name, serverUrl: s.serverUrl,
+      accessToken: s.accessToken, albumId: s.albumId, albumName: s.albumName,
+      albumPrimaryImageTag: s.albumPrimaryImageTag, artists: s.artists,
+      trackNumber: s.trackNumber, discNumber: s.discNumber,
+      runTimeTicks: s.runTimeTicks, runTimeSeconds: s.runTimeSeconds,
+      genres: s.genres, communityRating: s.communityRating,
+      parentId: s.parentId, isFavorite: s.isFavorite,
+      played: s.played, playCount: s.playCount, path: s.path,
+    )).toList();
+    AudioPlaybackManager.instance.play(rootPlaylist, index, widget.client);
   }
 }

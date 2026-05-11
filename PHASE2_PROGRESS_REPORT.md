@@ -1,7 +1,7 @@
 # 第二阶段模块化进展报告
 
 > 对应计划：`MODULARIZATION_EXECUTION_PLAN.md`
-> 更新日期：2026-05-12（Task 14 完成后更新）
+> 更新日期：2026-05-12（Task 15 完成后更新）
 
 ---
 
@@ -237,8 +237,45 @@ packages/features/jellyfin_playback/
 ## 二、未完成内容
 
 - **Task 11 jellyfin_home** — 首页独立成包（**延后至 Round 4**，依赖 Auth/App Shell 稳定，Leader 建议）
-- **Task 15 jellyfin_music** — 音乐业务模块（依赖 Task 14，现已解锁）
+- **Task 15 jellyfin_music** — 音乐业务模块（已完成）
 - 根包旧文件保留在原位作为兼容层（Task 18 facade 收敛时清理）
+
+### Task 15: 抽 jellyfin_music
+
+**状态：完成**（2026-05-12）
+
+抽取音乐专辑详情页和艺术家详情页为独立模块。采用回调模式解耦，模型复制（纯数据类，无 fromDto）。
+
+#### 模块结构
+
+```
+packages/features/jellyfin_music/
+├── lib/
+│   ├── jellyfin_music.dart            (barrel: models + typedefs)
+│   ├── jellyfin_music_pages.dart      (sub-barrel: pages)
+│   └── src/
+│       ├── models/music_models.dart   (280行) MusicAlbum/Artist/Song/Genre + 列表结果 + 回调 typedef
+│       ├── pages/album_detail_page.dart  (220行) 解耦版专辑详情页
+│       └── pages/artist_detail_page.dart (280行) 解耦版艺术家详情页
+├── test/jellyfin_music_test.dart      (283行) 21个测试
+└── pubspec.yaml
+```
+
+**依赖关系：**
+
+```yaml
+dependencies:
+  flutter: sdk: flutter
+  equatable: ^2.0.5
+  cached_network_image: ^3.4.0
+```
+
+#### 解耦设计
+
+- **回调 typedef**: `AlbumDetailFetcher`, `AlbumSongsFetcher`, `ArtistDetailFetcher`, `ArtistAlbumsFetcher`, `OnPlaySong`, `OnNavigateToAlbum`
+- **根包集成**: media_libraries_page.dart 中 AI 推荐回调转换为 `music.MusicAlbum` / `music.MusicArtist`，通过工厂方法构建新页面
+- **hide 模式**: 根 barrel `hide MusicAlbum, MusicArtist, MusicSong, MusicGenre, ArtistRef, MusicAlbumListResult, MusicArtistListResult, MusicSongListResult` 避免同名冲突
+- **保留在根包**: MusicLibraryPage (1609行)、MusicSearchPage、LyricsPage、AudioPlaybackManager、MusicService
 
 ---
 
@@ -273,12 +310,13 @@ packages/features/jellyfin_playback/
 | `packages/features/jellyfin_movies/**` | 5 lib + 1 test | 1058 行 lib + 201 行 test | 电影业务模块 |
 | `packages/features/jellyfin_series/**` | 7 lib + 1 test | 786 行 lib + 340 行 test | 剧集业务模块 |
 | `packages/features/jellyfin_playback/**` | 5 lib + 1 test | 762 行 lib + 205 行 test | 播放业务模块 |
+| `packages/features/jellyfin_music/**` | 5 lib + 1 test | 780 行 lib + 283 行 test | 音乐业务模块 |
 
 ### 根包改动
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `pubspec.yaml` | 修改 | 新增 5 个 feature 包依赖 |
+| `pubspec.yaml` | 修改 | 新增 6 个 feature 包依赖 |
 | `lib/jellyfin_service.dart` | 修改 | 新增各 feature 包 export（hide 同名类型避免 ambiguous_export） |
 | `lib/src/adapters/media_item_mapper.dart` | 新增 | 统一 DTO 映射器（MediaItem/Person/Season/Episode） |
 | `lib/src/ui/pages/media_libraries_page.dart` | 修改 | 集成点切换到新模块页面（AI/Media/Movies/Series/Playback） |
@@ -314,6 +352,7 @@ packages/features/jellyfin_playback/
 | `jellyfin_movies` 独立 `flutter test` | 11/11 通过 |
 | `jellyfin_series` 独立 `flutter test` | 11/11 通过 |
 | `jellyfin_playback` 独立 `flutter test` | 19/19 通过 |
+| `jellyfin_music` 独立 `flutter test` | 21/21 通过 |
 | `jellyfin_core` 独立 `flutter test` | 17/17 通过 |
 | `jellyfin_api` 独立 `flutter test` | 8/8 通过 |
 | `jellyfin_models` 独立 `flutter test` | 8/8 通过 |
@@ -321,14 +360,13 @@ packages/features/jellyfin_playback/
 | 根包 `flutter test` | 24/24 通过 |
 | `jellyfin_playback` 不依赖 `jellyfin_dart` | **确认** — 零 vendor 依赖 |
 | `jellyfin_playback` 不依赖 `JellyfinClient` | **确认** — 通过 PlaybackDelegate 解耦 |
-| **10 包总测试数** | **150 个全部通过** |
+| **11 包总测试数** | **171 个全部通过** |
 
 ---
 
 ## 六、下一步
 
-1. Task 15（jellyfin_music）— 音乐业务模块
-2. Task 11（jellyfin_home）— **Round 4**（依赖 Auth/App Shell）
+1. Task 11（jellyfin_home）— **Round 4**（依赖 Auth/App Shell）
 
 ---
 
@@ -349,6 +387,7 @@ jellyfin_media ──→ jellyfin_models + jellyfin_ui_kit
 jellyfin_movies ──→ jellyfin_models
 jellyfin_series ──→ jellyfin_models
 jellyfin_playback ──→ jellyfin_models + video_player + chewie
+jellyfin_music ──→ equatable + cached_network_image
 
 根包 jellyfin_service ──→ 上述所有包
     ├── jellyfin_service.dart export 旧版页面/组件（兼容层，hide 同名类型）
@@ -356,7 +395,8 @@ jellyfin_playback ──→ jellyfin_models + video_player + chewie
     ├── media_libraries_page.dart → jellyfin_media pages（已切换）
     ├── media_libraries_page.dart → jellyfin_movies pages（已切换）
     ├── media_libraries_page.dart → jellyfin_series pages（已切换）
-    └── media_libraries_page.dart → jellyfin_playback pages（已切换）
+    ├── media_libraries_page.dart → jellyfin_playback pages（已切换）
+    └── media_libraries_page.dart → jellyfin_music pages（AI 推荐入口已切换）
 ```
 
 ---
@@ -372,5 +412,5 @@ jellyfin_playback ──→ jellyfin_models + video_player + chewie
 | Phase 2-B：通用媒体能力解耦 | **完成** | Task 10, 10.5 |
 | Phase 2-C：电影/剧集模块 | **完成** | Task 12, 13 |
 | Phase 2-D：播放模块 | **完成** | Task 14 |
-| Phase 2-E：音乐模块 | **待开始** | Task 15 |
+| Phase 2-E：音乐模块 | **完成** | Task 15 |
 | Phase 2-F：首页模块 | **Round 4** | Task 11（延后，依赖 Auth/App Shell） |

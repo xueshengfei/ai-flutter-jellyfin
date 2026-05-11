@@ -135,5 +135,10 @@ export 'package:jellyfin_series/jellyfin_series.dart';
 export 'package:jellyfin_playback/jellyfin_playback.dart' hide VideoQuality, NetworkQualityMonitor, AutoQualityDecider, PlaybackInfo;
 export 'package:jellyfin_playback/jellyfin_playback_pages.dart' hide VideoPlayerPage;
 
+// 音乐业务模块（已解耦为独立 feature 包）
+// hide 与根包同名的类型，避免 ambiguous_export
+export 'package:jellyfin_music/jellyfin_music.dart' hide MusicAlbum, MusicArtist, MusicSong, MusicGenre, ArtistRef, MusicAlbumListResult, MusicArtistListResult, MusicSongListResult;
+export 'package:jellyfin_music/jellyfin_music_pages.dart' hide AlbumDetailPage, ArtistDetailPage;
+
 // RVC 语音转换
 export 'package:rvc_flutter/rvc_flutter.dart';
