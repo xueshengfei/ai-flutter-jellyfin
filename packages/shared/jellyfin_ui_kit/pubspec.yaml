@@ -1,0 +1,22 @@
+name: jellyfin_ui_kit
+description: 跨业务复用的 Jellyfin UI 组件库，包含图片加载、字母索引、视图模式、媒体卡片等共享组件。
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  equatable: ^2.0.5
+  shimmer: ^3.0.0
+  jellyfin_models:
+    path: ../jellyfin_models
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  test: ^1.24.0

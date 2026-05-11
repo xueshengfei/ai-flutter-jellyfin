@@ -1,0 +1,16 @@
+name: jellyfin_testing
+description: Jellyfin 测试工具 - fake 实现、fixture 和测试 helper
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  jellyfin_core:
+    path: ../../foundation/jellyfin_core
+  jellyfin_models:
+    path: ../jellyfin_models
+
+dev_dependencies:
+  test: ^1.25.0
