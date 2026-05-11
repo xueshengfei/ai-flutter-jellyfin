@@ -144,9 +144,7 @@ enum AiCardType {
   audio,
   musicalbum,
   musicartist,
-  musicvideo,
-  book,
-  comicbook;
+  musicvideo;
 
   static AiCardType fromName(String? name) => switch (name?.toLowerCase()) {
         'movie' => AiCardType.movie,
@@ -158,8 +156,6 @@ enum AiCardType {
         'musicalbum' => AiCardType.musicalbum,
         'musicartist' => AiCardType.musicartist,
         'musicvideo' => AiCardType.musicvideo,
-        'book' => AiCardType.book,
-        'comicbook' => AiCardType.comicbook,
         _ => AiCardType.video, // 兜底
       };
 
@@ -171,8 +167,6 @@ enum AiCardType {
         AiCardType.audio || AiCardType.musicalbum || AiCardType.musicvideo =>
           Icons.music_note_outlined,
         AiCardType.musicartist => Icons.person_outlined,
-        AiCardType.book => Icons.menu_book_outlined,
-        AiCardType.comicbook => Icons.auto_stories_outlined,
       };
 }
 

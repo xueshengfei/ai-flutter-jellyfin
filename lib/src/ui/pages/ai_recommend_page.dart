@@ -243,8 +243,6 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
       case AiCardType.video:
       case AiCardType.season:
       case AiCardType.musicvideo:
-      case AiCardType.book:
-      case AiCardType.comicbook:
         Navigator.push(
           context,
           MaterialPageRoute(
