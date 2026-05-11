@@ -7,3 +7,4 @@ export 'src/user_models.dart';
 export 'src/media_library_models.dart';
 export 'src/media_item_models.dart';
 export 'src/server_discovery_models.dart';
+export 'src/media_contracts.dart';

@@ -316,6 +316,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  jellyfin_media:
+    dependency: transitive
+    description:
+      path: "../packages/features/jellyfin_media"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_models:
     dependency: transitive
     description:

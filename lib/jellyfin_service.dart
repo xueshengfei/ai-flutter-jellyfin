@@ -67,6 +67,9 @@ export 'src/exceptions/api_exception.dart';
 // 主客户端
 export 'src/jellyfin_client.dart';
 
+// 适配器
+export 'src/adapters/media_item_mapper.dart';
+
 // 调试工具
 export 'src/debug/network_simulator.dart';
 export 'src/debug/flutter_debug_panel.dart';
@@ -116,6 +119,9 @@ export 'src/ui/pages/lyrics_page.dart';
 
 // AI 推荐业务模块（已解耦为独立 feature 包）
 export 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
+
+// 通用媒体业务模块（已解耦为独立 feature 包）
+export 'package:jellyfin_media/jellyfin_media.dart';
 
 // RVC 语音转换
 export 'package:rvc_flutter/rvc_flutter.dart';
