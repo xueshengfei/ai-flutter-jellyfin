@@ -1,0 +1,21 @@
+name: jellyfin_movies
+description: 电影业务模块，电影筛选、电影详情、电影列表浏览。
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  equatable: ^2.0.5
+  jellyfin_models:
+    path: ../../shared/jellyfin_models
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  test: ^1.24.0

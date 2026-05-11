@@ -482,6 +482,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  jellyfin_movies:
+    dependency: "direct main"
+    description:
+      path: "packages/features/jellyfin_movies"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_ui_kit:
     dependency: "direct main"
     description:

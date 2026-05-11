@@ -39,6 +39,10 @@ dependencies:
   jellyfin_media:
     path: packages/features/jellyfin_media
 
+  # 电影业务模块
+  jellyfin_movies:
+    path: packages/features/jellyfin_movies
+
   # HTTP客户端
   dio: ^5.9.0
 

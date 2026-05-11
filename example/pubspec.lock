@@ -330,6 +330,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  jellyfin_movies:
+    dependency: transitive
+    description:
+      path: "../packages/features/jellyfin_movies"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_service:
     dependency: "direct main"
     description:
