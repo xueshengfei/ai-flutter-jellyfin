@@ -51,6 +51,10 @@ dependencies:
   jellyfin_playback:
     path: packages/features/jellyfin_playback
 
+  # 音乐业务模块
+  jellyfin_music:
+    path: packages/features/jellyfin_music
+
   # HTTP客户端
   dio: ^5.9.0
 
