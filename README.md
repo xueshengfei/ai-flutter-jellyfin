@@ -228,7 +228,6 @@ for (final lib in libraries.libraries) {
 | `VideoPlayerPage` | 视频播放页，支持画质切换 |
 | `PlaybackService` | 播放控制、三种模式自动选择 |
 | `AudioPlaybackManager` | 全局单例，音频播放状态 + 底部 MiniPlayer |
-| `EpubReaderPage` | EPUB 阅读器，Isolate 解析 + 主题切换 + 进度恢复 |
 
 ### 页面一览
 
@@ -240,7 +239,6 @@ for (final lib in libraries.libraries) {
 | `SeasonsPage` → `EpisodesPage` | 剧集季 → 集列表 |
 | `VideoPlayerPage` | 视频播放 |
 | `MusicLibraryPage` → `AlbumDetailPage` → `LyricsPage` | 音乐浏览 → 专辑 → 歌词 |
-| `BookLibraryPage` → `EpubReaderPage` | 书籍浏览 → EPUB 阅读 |
 | `AIRecommendPage` | AI 推荐对话 |
 | `PersonDetailPage` | 演员/导演详情 |
 | `PersonalPage` | 个人中心 |
@@ -276,8 +274,7 @@ for (final lib in libraries.libraries) {
 │   ├── guide/                         # 使用指南
 │   │   ├── FEATURES.md
 │   │   ├── DEMO_GUIDE.md
-│   │   ├── WINDOWS_SETUP.md
-│   │   └── KNOWN_ISSUES.md
+│   │   └── WINDOWS_SETUP.md
 │   └── debug/                         # 调试记录
 │       ├── DEBUG_ISSUE.md
 │       ├── DEBUG_MOVIE_FILTER.md
@@ -318,7 +315,6 @@ for (final lib in libraries.libraries) {
 | HTTP | Dio ^5.9.0 |
 | 视频 | video_player + chewie |
 | 音频 | just_audio |
-| EPUB | epubx ^4.0.0 |
 | 图片 | cached_network_image ^3.4.0 |
 | 动画 | flutter_animate ^4.5.2 |
 
