@@ -1,0 +1,25 @@
+name: video_gesture_controls
+description: 视频播放器手势控制插件 - 支持滑动快进/快退、亮度/音量调节、双击、长按等手势操作
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  video_player: ^2.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.example.video_gesture_controls
+        pluginClass: VideoGestureControlsPlugin
