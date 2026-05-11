@@ -1223,7 +1223,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
           onTap: () {
             Navigator.push(context, MaterialPageRoute(
               builder: (_) => RvcPage(
-                rvcServerUrl: 'http://localhost:9880',
+                rvcServerUrl: widget.client.configuration.resolvedRvcServiceUrl,
                 audioPath: song.path,
               ),
             ));

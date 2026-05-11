@@ -7,6 +7,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 ///
 /// 使用ImageService来下载需要认证的图片
 class JellyfinImage extends StatefulWidget {
+  final JellyfinClient client;
   final String itemId;
   final String? imageTag;
   final int? fillWidth;
@@ -17,6 +18,7 @@ class JellyfinImage extends StatefulWidget {
 
   const JellyfinImage({
     super.key,
+    required this.client,
     required this.itemId,
     this.imageTag,
     this.fillWidth,
@@ -31,11 +33,6 @@ class JellyfinImage extends StatefulWidget {
 }
 
 class _JellyfinImageState extends State<JellyfinImage> {
-  final JellyfinClient _client = JellyfinClient(
-    serverUrl: 'http://localhost:8096',
-    enableLogging: false,
-  );
-
   Uint8List? _imageData;
   bool _isLoading = true;
   bool _hasError = false;
@@ -50,7 +47,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
     try {
       print('🖼️ JellyfinImage: 开始加载图片 ${widget.itemId}');
 
-      final imageData = await _client.image.getPrimaryImage(
+      final imageData = await widget.client.image.getPrimaryImage(
         itemId: widget.itemId,
         tag: widget.imageTag,
         fillWidth: widget.fillWidth,

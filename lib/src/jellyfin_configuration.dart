@@ -32,6 +32,21 @@ class JellyfinConfiguration {
   /// 是否启用HTTPS证书验证（生产环境建议启用）
   final bool validateCertificate;
 
+  /// AI 推荐服务地址（为空则从 serverUrl 推导，端口默认 5005）
+  final String? aiServiceUrl;
+
+  /// AI 推荐服务端口（仅当 aiServiceUrl 为空时使用，默认 5005）
+  final int aiServicePort;
+
+  /// RVC 语音转换服务地址（为空则从 serverUrl 推导，端口默认 9880）
+  final String? rvcServiceUrl;
+
+  /// RVC 服务端口（仅当 rvcServiceUrl 为空时使用，默认 9880）
+  final int rvcServicePort;
+
+  /// 登录页默认服务器地址
+  static const String defaultServerUrl = 'http://localhost:8096';
+
   /// 访问令牌（认证后设置）
   String? accessToken;
 
@@ -49,6 +64,10 @@ class JellyfinConfiguration {
     this.connectionTimeout = 30000, // 30秒
     this.receiveTimeout = 30000, // 30秒
     this.validateCertificate = true,
+    this.aiServiceUrl,
+    this.aiServicePort = 5005,
+    this.rvcServiceUrl,
+    this.rvcServicePort = 9880,
     this.accessToken,
     this.userId,
   });
@@ -65,6 +84,10 @@ class JellyfinConfiguration {
     int? connectionTimeout,
     int? receiveTimeout,
     bool? validateCertificate,
+    String? aiServiceUrl,
+    int? aiServicePort,
+    String? rvcServiceUrl,
+    int? rvcServicePort,
     String? accessToken,
     String? userId,
   }) {
@@ -79,6 +102,10 @@ class JellyfinConfiguration {
       connectionTimeout: connectionTimeout ?? this.connectionTimeout,
       receiveTimeout: receiveTimeout ?? this.receiveTimeout,
       validateCertificate: validateCertificate ?? this.validateCertificate,
+      aiServiceUrl: aiServiceUrl ?? this.aiServiceUrl,
+      aiServicePort: aiServicePort ?? this.aiServicePort,
+      rvcServiceUrl: rvcServiceUrl ?? this.rvcServiceUrl,
+      rvcServicePort: rvcServicePort ?? this.rvcServicePort,
       accessToken: accessToken ?? this.accessToken,
       userId: userId ?? this.userId,
     );
@@ -88,6 +115,20 @@ class JellyfinConfiguration {
   String get baseUrl {
     final url = serverUrl.trim();
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+  }
+
+  /// 获取 AI 服务完整地址
+  String get resolvedAiServiceUrl {
+    if (aiServiceUrl != null && aiServiceUrl!.isNotEmpty) return aiServiceUrl!;
+    final uri = Uri.parse(serverUrl);
+    return '${uri.scheme}://${uri.host}:$aiServicePort';
+  }
+
+  /// 获取 RVC 服务完整地址
+  String get resolvedRvcServiceUrl {
+    if (rvcServiceUrl != null && rvcServiceUrl!.isNotEmpty) return rvcServiceUrl!;
+    final uri = Uri.parse(serverUrl);
+    return '${uri.scheme}://${uri.host}:$rvcServicePort';
   }
 
   /// 检查是否已认证
