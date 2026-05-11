@@ -9,9 +9,10 @@ const String _gradioApiPrefix = '/gradio_api';
 /// 雨落TTS SDK 客户端
 ///
 /// 封装 Gradio v5 两步协议（POST 提交 → SSE 轮询结果）。
+/// 匹配 IndexTTS 2.0 服务端 32 参数 API。
 ///
 /// ```dart
-/// final client = RainfallTTS(baseUrl: 'http://192.168.1.100:7860');
+/// final client = RainfallTTS(baseUrl: 'http://192.168.1.100:7861');
 /// try {
 ///   final voices = await client.listVoices();
 ///   final result = await client.generate('你好，这是测试');
@@ -26,10 +27,10 @@ final class RainfallTTS {
 
   final HttpClient _httpClient = HttpClient();
 
-  /// [baseUrl] Gradio 服务地址，默认 http://127.0.0.1:7860
+  /// [baseUrl] Gradio 服务地址，默认 http://127.0.0.1:7861
   /// [timeoutSeconds] API 请求超时秒数，默认 300
   RainfallTTS({
-    String baseUrl = 'http://127.0.0.1:7860',
+    String baseUrl = 'http://127.0.0.1:7861',
     int timeoutSeconds = 300,
   })  : baseUrl = baseUrl.endsWith('/')
             ? baseUrl.substring(0, baseUrl.length - 1)
@@ -38,7 +39,7 @@ final class RainfallTTS {
     _httpClient.connectionTimeout = const Duration(seconds: 30);
   }
 
-  /// 默认输出目录（相对路径，由服务端解析为其工作目录下的 outputs）
+  /// 默认输出目录（服务端的 outputs，相对路径）
   String get _defaultOutputDir => 'outputs';
 
   // ===========================================================================
@@ -59,69 +60,116 @@ final class RainfallTTS {
   }
 
   // ===========================================================================
-  // 单条语音合成
+  // 单条语音合成 (IndexTTS 2.0, 32 参数)
   // ===========================================================================
 
   /// 单条文本语音合成
   ///
   /// [text] 待合成文本
   /// [voice] 参考音色文件名或 wav 全路径
+  /// [emoHappy] 高兴情感强度 (0.0~1.0)
+  /// [emoAngry] 愤怒情感强度 (0.0~1.0)
+  /// [emoSad] 悲伤情感强度 (0.0~1.0)
+  /// [emoAfraid] 害怕情感强度 (0.0~1.0)
+  /// [emoDisgusted] 厌恶情感强度 (0.0~1.0)
+  /// [emoMelancholic] 忧郁情感强度 (0.0~1.0)
+  /// [emoSurprised] 惊讶情感强度 (0.0~1.0)
+  /// [emoCalm] 平静情感强度 (0.0~1.0)
+  /// [emoText] 情感参考文本
+  /// [emoAlpha] 情感强度系数 (0.0~1.0)
+  /// [useEmoText] 是否使用文本控制情感
+  /// [emoAudio] 情感参考音频路径
+  /// [useRandom] 是否使用随机情感
   /// [maxTokensPerSegment] 每段最大 token 数 (10-300)
+  /// [intervalSilence] 段内静音间隔，毫秒 (0~)
   /// [verbose] 是否在控制台显示详细信息
   /// [generateSubtitle] 是否生成字幕文件
   /// [speed] 语速调节，1.0 = 原速 (0.2-3.0)
   /// [volumeDb] 音量调节，单位分贝 (-20 ~ 20)
-  /// [outputDir] 保存路径，为空则使用服务端默认
+  /// [outputDir] 保存路径，为空则使用服务端默认 outputs
   /// [outputFilename] 保存文件名（不含后缀），为空则自动生成
   /// [outputFormat] 文件格式，"wav" 或 "mp3"
   /// [doSample] 是否采样
-  /// [topP] top-p 采样参数 (0.0-1.0)
-  /// [topK] top-k 采样参数 (0-100)
   /// [temperature] 温度参数 (0.1-2.0)
+  /// [topK] top-k 采样参数 (0-100)
+  /// [topP] top-p 采样参数 (0.0-1.0)
   /// [lengthPenalty] 长度惩罚 (-2.0 ~ 2.0)
   /// [numBeams] beam search 宽度 (1-10)
   /// [repetitionPenalty] 重复惩罚 (0.1-20.0)
-  /// [maxMelTokens] 最大 mel token 数 (50-800)
+  /// [maxMelTokens] 最大 mel token 数 (50-1500)
   Future<TTSResult> generate(
     String text, {
     String voice = 'demo_boy.wav',
+    // 情感向量
+    double emoHappy = 0.0,
+    double emoAngry = 0.0,
+    double emoSad = 0.0,
+    double emoAfraid = 0.0,
+    double emoDisgusted = 0.0,
+    double emoMelancholic = 0.0,
+    double emoSurprised = 0.0,
+    double emoCalm = 0.0,
+    // 情感配置
+    String emoText = '',
+    double emoAlpha = 0.65,
+    bool useEmoText = false,
+    String? emoAudio,
+    bool useRandom = false,
+    // 生成参数
     int maxTokensPerSegment = 120,
+    int intervalSilence = 200,
     bool verbose = false,
     bool generateSubtitle = false,
     double speed = 1.0,
-    int volumeDb = 0,
+    double volumeDb = 0,
+    // 输出
     String outputDir = '',
     String outputFilename = '',
     String outputFormat = 'wav',
+    // 高级参数
     bool doSample = true,
-    double topP = 0.8,
-    int topK = 30,
     double temperature = 0.8,
+    int topK = 30,
+    double topP = 0.8,
     double lengthPenalty = 0.0,
     int numBeams = 3,
     double repetitionPenalty = 10.0,
-    int maxMelTokens = 600,
+    int maxMelTokens = 1500,
   }) async {
-    // 按组件 ID 顺序组装参数: 7,18,24,22,23,27,28,11,14,15,33,35,36,34,41,37,40,42
+    // IndexTTS 2.0 服务端 Gradio v5 32 参数，严格按顺序
     final params = <dynamic>[
-      voice, // id=7
-      text, // id=18
-      maxTokensPerSegment, // id=24
-      _boolToCn(verbose, '显示', '不显示'), // id=22
-      _boolToCn(generateSubtitle, '生成', '不生成'), // id=23
-      speed, // id=27
-      volumeDb, // id=28
-      outputDir.isEmpty ? _defaultOutputDir : outputDir, // id=11
-      outputFilename, // id=14
-      outputFormat, // id=15
-      doSample, // id=33
-      topP, // id=35
-      topK, // id=36
-      temperature, // id=34
-      lengthPenalty, // id=41
-      numBeams, // id=37
-      repetitionPenalty, // id=40
-      maxMelTokens, // id=42
+      voice, // [1]  prompt 参考音色
+      text, // [2]  text 待处理文本
+      emoHappy, // [3]  emo_vector1 高兴
+      emoAngry, // [4]  emo_vector2 愤怒
+      emoSad, // [5]  emo_vector3 悲伤
+      emoAfraid, // [6]  emo_vector4 害怕
+      emoDisgusted, // [7]  emo_vector5 厌恶
+      emoMelancholic, // [8]  emo_vector6 忧郁
+      emoSurprised, // [9]  emo_vector7 惊讶
+      emoCalm, // [10] emo_vector8 平静
+      emoText, // [11] single_emo_text
+      emoAlpha, // [12] single_emo_alpha
+      _boolToCn(useEmoText, '使用', '不使用'), // [13] single_use_emo_text
+      emoAudio, // [14] single_emo_audio
+      _boolToCn(useRandom, '使用', '不使用'), // [15] single_use_random
+      maxTokensPerSegment, // [16] max_text_tokens_per_segment
+      intervalSilence, // [17] interval_silence
+      _boolToCn(verbose, '显示', '不显示'), // [18] single_verbose
+      _boolToCn(generateSubtitle, '生成', '不生成'), // [19] single_need_srt
+      speed, // [20] single_speed
+      volumeDb, // [21] single_volume
+      outputDir.isEmpty ? _defaultOutputDir : outputDir, // [22] output_dir
+      outputFilename, // [23] output_file_name
+      outputFormat, // [24] single_file_suffix
+      doSample, // [25] do_sample
+      temperature, // [26] temperature
+      topK, // [27] top_k
+      topP, // [28] top_p
+      lengthPenalty, // [29] length_penalty
+      numBeams, // [30] num_beams
+      repetitionPenalty, // [31] repetition_penalty
+      maxMelTokens, // [32] max_mel_tokens
     ];
 
     final payload = await _callGradio('rainfall_gen_single', params);
@@ -174,31 +222,25 @@ final class RainfallTTS {
   // ===========================================================================
 
   /// 批量文本语音合成（从 txt 文件目录）
-  ///
-  /// [inputDir] txt 文件所在目录
-  /// [voice] 参考音色文件名或 wav 全路径
-  /// [outputDir] 保存路径，为空使用服务端默认
-  /// [lineInterval] 单文件内每行对话间隔（秒）
-  /// [mergeLines] 连续多行是否合并
-  /// [generateSubtitle] 是否生成字幕文件
-  /// [maxTokensPerSegment] 每段最大 token 数 (10-300)
   Future<String> batchGenerate(
     String inputDir, {
     String voice = 'demo_boy.wav',
     String outputDir = '',
     double lineInterval = 0.1,
+    bool useEmo = false,
     bool mergeLines = true,
     bool generateSubtitle = false,
     int maxTokensPerSegment = 120,
   }) async {
     final params = <dynamic>[
-      voice, // id=54
-      outputDir.isEmpty ? _defaultOutputDir : outputDir, // id=58
-      inputDir, // id=61
-      lineInterval, // id=64
-      _boolToCn(mergeLines, '合并', '不合并'), // id=65
-      _boolToCn(generateSubtitle, '生成', '不生成'), // id=68
-      maxTokensPerSegment, // id=69
+      voice, // [1] 参考音色
+      outputDir.isEmpty ? _defaultOutputDir : outputDir, // [2] 保存路径
+      inputDir, // [3] txt目录
+      lineInterval, // [4] 行间隔
+      _boolToCn(useEmo, '使用', '不使用'), // [5] 是否使用情感
+      _boolToCn(mergeLines, '合并', '不合并'), // [6] 是否合并
+      _boolToCn(generateSubtitle, '生成', '不生成'), // [7] 是否生成字幕
+      maxTokensPerSegment, // [8] 每段最大token
     ];
 
     final payload =
@@ -206,6 +248,10 @@ final class RainfallTTS {
     if (payload is List) {
       for (final item in payload) {
         if (item is String) return item;
+        if (item is Map) {
+          final val = item['value'];
+          if (val is String) return val;
+        }
       }
     }
     return payload != null ? payload.toString() : '';
@@ -218,13 +264,6 @@ final class RainfallTTS {
   /// 多角色对话语音合成
   ///
   /// 文本格式: "小帅：你好啊！ 小美：你好，很高兴认识你。"
-  ///
-  /// [text] 对话文本，格式为 "角色名：台词"
-  /// [roles] 角色音色分配列表（最多 10 个角色）
-  /// [outputDir] 保存路径
-  /// [outputFilename] 保存文件名（不含后缀）
-  /// [outputFormat] 文件格式
-  /// [dialogueInterval] 对话间隔（秒）
   Future<TTSResult> multiRoleGenerate(
     String text, {
     List<RoleAssignment> roles = const [],
@@ -233,7 +272,6 @@ final class RainfallTTS {
     String outputFormat = 'wav',
     double dialogueInterval = 0.1,
   }) async {
-    // 10 个 (角色名, 参考音频) 对 + 用户输入 + 保存路径 + 文件名 + 格式 + 间隔
     final params = <dynamic>[];
 
     for (var i = 0; i < 10; i++) {
@@ -247,11 +285,11 @@ final class RainfallTTS {
     }
 
     params.addAll([
-      text, // id=123 用户输入
-      outputDir.isEmpty ? _defaultOutputDir : outputDir, // id=125 保存路径
-      outputFilename, // id=128 文件名
-      outputFormat, // id=129 格式
-      dialogueInterval, // id=132 对话间隔
+      text,
+      outputDir.isEmpty ? _defaultOutputDir : outputDir,
+      outputFilename,
+      outputFormat,
+      dialogueInterval,
     ]);
 
     final payload = await _callGradio(
@@ -264,10 +302,6 @@ final class RainfallTTS {
   // ===========================================================================
 
   /// 从服务端下载音频文件到本地
-  ///
-  /// [result] generate 或 multiRoleGenerate 的返回结果
-  /// [localPath] 本地保存路径
-  /// 返回下载后的本地文件绝对路径。
   Future<String> downloadAudio(TTSResult result, String localPath) async {
     if (result.audioUrl.isEmpty) {
       throw RainfallSynthesisError('没有可下载的音频 URL，请先调用 generate()');
@@ -286,7 +320,7 @@ final class RainfallTTS {
       await file.parent.create(recursive: true);
       final sink = file.openWrite();
       await resp.pipe(sink);
-      await sink.close();
+      // pipe() 已关闭 sink，无需再次 close
 
       return file.absolute.path;
     } on RainfallTTSError {
@@ -311,9 +345,6 @@ final class RainfallTTS {
       value ? trueStr : falseStr;
 
   /// Gradio v5 两步协议调用
-  ///
-  /// 第一步: POST /gradio_api/call/<endpoint>  提交任务，获取 event_id
-  /// 第二步: GET  /gradio_api/call/<endpoint>/<event_id>  轮询 SSE 结果
   Future<dynamic> _callGradio(
     String endpoint,
     List<dynamic> data, {
@@ -423,64 +454,89 @@ final class RainfallTTS {
     return lastData;
   }
 
-  /// 解析 Gradio 返回的音频结果
+  /// 解析 Gradio v5 返回的音频结果
+  ///
+  /// 已知格式:
+  ///   - {"visible": true, "value": "/path/to/file.wav", "__type__": "update"}
+  ///   - {"visible": true, "value": {"path": "...", "url": "..."}, "__type__": "update"}
+  ///   - [以上 dict]
+  ///   - 字符串路径
   TTSResult _parseAudioResult(dynamic payload) {
-    var audioPath = '';
-    var audioUrl = '';
-
     if (payload == null) {
       throw RainfallSynthesisError('服务端返回空结果');
     }
 
-    // Gradio v5 返回: [{"visible": true, "value": {"path": "...", "url": "..."}, "__type__": "update"}]
     if (payload is List) {
       for (final item in payload) {
-        if (item is Map) {
-          final val = item['value'];
-          if (val is Map) {
-            audioPath = (val['path'] ?? '').toString();
-            audioUrl = (val['url'] ?? '').toString();
-            if (audioPath.isNotEmpty || audioUrl.isNotEmpty) break;
-          } else if (val is String &&
-              (val.endsWith('.wav') || val.endsWith('.mp3'))) {
-            audioPath = val;
-            break;
-          }
-          if (item.containsKey('path') || item.containsKey('url')) {
-            audioPath = (item['path'] ?? '').toString();
-            audioUrl = (item['url'] ?? '').toString();
-            if (audioPath.isNotEmpty || audioUrl.isNotEmpty) break;
-          }
-        }
-        if (item is String &&
-            (item.endsWith('.wav') || item.endsWith('.mp3'))) {
-          audioPath = item;
-          break;
-        }
+        final result = _extractAudioFromItem(item);
+        if (result != null) return result;
       }
-    } else if (payload is Map) {
-      final val = payload['value'];
-      if (val is Map) {
-        audioPath = (val['path'] ?? '').toString();
-        audioUrl = (val['url'] ?? '').toString();
-      } else {
-        audioPath = (payload['path'] ?? '').toString();
-        audioUrl = (payload['url'] ?? '').toString();
+    } else {
+      final result = _extractAudioFromItem(payload);
+      if (result != null) return result;
+    }
+
+    throw RainfallSynthesisError('无法解析音频结果: $payload');
+  }
+
+  /// 从单个 Gradio 返回项中提取音频信息
+  TTSResult? _extractAudioFromItem(dynamic item) {
+    // 字符串路径
+    if (item is String && (item.endsWith('.wav') || item.endsWith('.mp3'))) {
+      return TTSResult(
+        audioPath: item,
+        audioUrl: _buildAudioUrl(item),
+      );
+    }
+
+    if (item is! Map) return null;
+
+    // Gradio v5: {"visible": true, "value": <path_or_dict>, "__type__": "update"}
+    final val = item['value'];
+
+    // value 是字符串路径
+    if (val is String && (val.endsWith('.wav') || val.endsWith('.mp3'))) {
+      return TTSResult(
+        audioPath: val,
+        audioUrl: _buildAudioUrl(val),
+      );
+    }
+
+    // value 是文件信息 dict
+    if (val is Map) {
+      final audioPath = (val['path'] ?? '').toString();
+      final audioUrl = (val['url'] ?? '').toString();
+      if (audioPath.isNotEmpty || audioUrl.isNotEmpty) {
+        return TTSResult(
+          audioPath: audioPath,
+          audioUrl: audioUrl.isNotEmpty
+              ? audioUrl
+              : _buildAudioUrl(audioPath),
+        );
       }
-    } else if (payload is String) {
-      audioPath = payload;
     }
 
-    if (audioPath.isEmpty && audioUrl.isEmpty) {
-      throw RainfallSynthesisError('无法解析音频结果: $payload');
+    // 兜底：item 本身包含 path/url
+    final audioPath = (item['path'] ?? '').toString();
+    final audioUrl = (item['url'] ?? '').toString();
+    if (audioPath.isNotEmpty || audioUrl.isNotEmpty) {
+      return TTSResult(
+        audioPath: audioPath,
+        audioUrl:
+            audioUrl.isNotEmpty ? audioUrl : _buildAudioUrl(audioPath),
+      );
     }
 
-    if (audioUrl.isEmpty && audioPath.isNotEmpty) {
-      final encoded = Uri.encodeComponent(audioPath);
-      audioUrl = '$baseUrl$_gradioApiPrefix/file=$encoded';
-    }
+    return null;
+  }
 
-    return TTSResult(audioPath: audioPath, audioUrl: audioUrl);
+  /// 根据音频路径构建下载 URL（保留 / 不编码）
+  String _buildAudioUrl(String audioPath) {
+    if (audioPath.isEmpty) return '';
+    // 逐段编码路径，保留 / 分隔符
+    final segments = audioPath.split('/');
+    final encoded = segments.map(Uri.encodeComponent).join('/');
+    return '$baseUrl$_gradioApiPrefix/file=$encoded';
   }
 
   static Future<String> _readBody(HttpClientResponse resp) =>
