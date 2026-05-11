@@ -9,7 +9,7 @@
 用法示例:
     from rainfall_tts_sdk import RainfallTTS
 
-    client = RainfallTTS("http://127.0.0.1:7860")
+    client = RainfallTTS("http://127.0.0.1:7861")
     if client.is_server_alive():
         result = client.generate("你好，这是测试")
         client.download_audio(result, "output.wav")
@@ -124,7 +124,7 @@ def _call_gradio(
     第二步: GET  /gradio_api/call/<endpoint>/<event_id>  轮询 SSE 结果
 
     Args:
-        base_url: 服务地址，如 http://127.0.0.1:7860
+        base_url: 服务地址，如 http://127.0.0.1:7861
         endpoint: API 名称，如 rainfall_gen_single
         data:     参数列表，顺序与 Gradio 组件 ID 一致
         timeout:  总超时秒数
@@ -190,17 +190,15 @@ class RainfallTTS:
     """雨落TTS SDK 客户端
 
     Args:
-        base_url: Gradio 服务地址，默认 http://127.0.0.1:7860
+        base_url: Gradio 服务地址，默认 http://127.0.0.1:7861
         timeout:  API 请求超时秒数，默认 300 (合成较长文本时需要足够时间)
     """
 
-    def __init__(self, base_url: str = "http://127.0.0.1:7860", timeout: float = 300.0):
+    def __init__(self, base_url: str = "http://127.0.0.1:7861", timeout: float = 300.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        # 默认输出目录：SDK 所在目录的 ../outputs
-        self.default_output_dir = os.path.abspath(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "outputs")
-        )
+        # 默认输出目录：服务端的 outputs（相对路径，由服务端解析）
+        self.default_output_dir = "outputs"
 
     # ---- 健康检查 ----
 
@@ -218,73 +216,118 @@ class RainfallTTS:
         self,
         text: str,
         voice: str = "demo_boy.wav",
+        # 情感向量 (0.0 ~ 1.0)
+        emo_happy: float = 0.0,
+        emo_angry: float = 0.0,
+        emo_sad: float = 0.0,
+        emo_afraid: float = 0.0,
+        emo_disgusted: float = 0.0,
+        emo_melancholic: float = 0.0,
+        emo_surprised: float = 0.0,
+        emo_calm: float = 0.0,
+        # 情感配置
+        emo_text: str = "",
+        emo_alpha: float = 0.65,
+        use_emo_text: bool = False,
+        emo_audio: Optional[str] = None,
+        use_random: bool = False,
+        # 生成参数
         max_tokens_per_segment: int = 120,
+        interval_silence: int = 200,
         verbose: bool = False,
         generate_subtitle: bool = False,
         speed: float = 1.0,
-        volume_db: int = 0,
+        volume_db: float = 0,
+        # 输出
         output_dir: str = "",
         output_filename: str = "",
         output_format: str = "wav",
+        # 高级参数
         do_sample: bool = True,
-        top_p: float = 0.8,
-        top_k: int = 30,
         temperature: float = 0.8,
+        top_k: int = 30,
+        top_p: float = 0.8,
         length_penalty: float = 0.0,
         num_beams: int = 3,
         repetition_penalty: float = 10.0,
-        max_mel_tokens: int = 600,
+        max_mel_tokens: int = 1500,
     ) -> TTSResult:
-        """单条文本语音合成
+        """单条文本语音合成 (IndexTTS 2.0, Gradio v5, 32 参数)
 
         Args:
             text: 待合成文本
             voice: 参考音色文件名或 wav 全路径
+            emo_happy: 高兴情感强度 (0.0~1.0)
+            emo_angry: 愤怒情感强度 (0.0~1.0)
+            emo_sad: 悲伤情感强度 (0.0~1.0)
+            emo_afraid: 害怕情感强度 (0.0~1.0)
+            emo_disgusted: 厌恶情感强度 (0.0~1.0)
+            emo_melancholic: 忧郁情感强度 (0.0~1.0)
+            emo_surprised: 惊讶情感强度 (0.0~1.0)
+            emo_calm: 平静情感强度 (0.0~1.0)
+            emo_text: 情感参考文本（为空则使用主文本）
+            emo_alpha: 情感强度系数 (0.0~1.0)
+            use_emo_text: 是否使用文本控制情感
+            emo_audio: 情感参考音频路径
+            use_random: 是否使用随机情感
             max_tokens_per_segment: 每段最大 token 数 (10-300)
+            interval_silence: 段内静音间隔，单位毫秒 (0~)
             verbose: 是否在控制台显示详细信息
             generate_subtitle: 是否生成字幕文件
             speed: 语速调节，1.0 = 原速 (0.2-3.0)
-            volume_db: 音量调节，单位分贝 (−20 ~ 20)
-            output_dir: 保存路径，为空则使用服务端默认
+            volume_db: 音量调节，单位分贝 (-20 ~ 20)
+            output_dir: 保存路径，为空则使用服务端默认 outputs
             output_filename: 保存文件名（不含后缀），为空则自动生成
             output_format: 文件格式，"wav" 或 "mp3"
             do_sample: 是否采样
-            top_p: top-p 采样参数 (0.0-1.0)
-            top_k: top-k 采样参数 (0-100)
             temperature: 温度参数 (0.1-2.0)
-            length_penalty: 长度惩罚 (−2.0 ~ 2.0)
+            top_k: top-k 采样参数 (0-100)
+            top_p: top-p 采样参数 (0.0-1.0)
+            length_penalty: 长度惩罚 (-2.0 ~ 2.0)
             num_beams: beam search 宽度 (1-10)
             repetition_penalty: 重复惩罚 (0.1-20.0)
-            max_mel_tokens: 最大 mel token 数 (50-800)
+            max_mel_tokens: 最大 mel token 数 (50-1500)
 
         Returns:
             TTSResult 包含音频路径和下载 URL
         """
-        # 按组件 ID 顺序组装参数: 7, 18, 24, 22, 23, 27, 28, 11, 14, 15, 33, 35, 36, 34, 41, 37, 40, 42
+        # IndexTTS 2.0 服务端 Gradio v5 32 参数，严格按顺序
         params = [
-            voice,                                       # id=7  参考音色
-            text,                                        # id=18 待处理文本
-            max_tokens_per_segment,                      # id=24 每段最大token数
-            _bool_to_cn(verbose, "显示", "不显示"),      # id=22 是否显示详细信息
-            _bool_to_cn(generate_subtitle, "生成", "不生成"),  # id=23 是否生成字幕
-            speed,                                       # id=27 语速
-            volume_db,                                   # id=28 音量
-            output_dir or self.default_output_dir,       # id=11 保存路径
-            output_filename,                             # id=14 文件名
-            output_format,                               # id=15 格式
-            do_sample,                                   # id=33 do_sample
-            top_p,                                       # id=35 top_p
-            top_k,                                       # id=36 top_k
-            temperature,                                 # id=34 temperature
-            length_penalty,                              # id=41 length_penalty
-            num_beams,                                   # id=37 num_beams
-            repetition_penalty,                          # id=40 repetition_penalty
-            max_mel_tokens,                              # id=42 max_mel_tokens
+            voice,                                                    # [1]  prompt 参考音色
+            text,                                                     # [2]  text 待处理文本
+            emo_happy,                                                # [3]  emo_vector1 高兴
+            emo_angry,                                                # [4]  emo_vector2 愤怒
+            emo_sad,                                                  # [5]  emo_vector3 悲伤
+            emo_afraid,                                               # [6]  emo_vector4 害怕
+            emo_disgusted,                                            # [7]  emo_vector5 厌恶
+            emo_melancholic,                                          # [8]  emo_vector6 忧郁
+            emo_surprised,                                            # [9]  emo_vector7 惊讶
+            emo_calm,                                                 # [10] emo_vector8 平静
+            emo_text,                                                 # [11] single_emo_text
+            emo_alpha,                                                # [12] single_emo_alpha
+            _bool_to_cn(use_emo_text, "使用", "不使用"),              # [13] single_use_emo_text
+            emo_audio,                                                # [14] single_emo_audio
+            _bool_to_cn(use_random, "使用", "不使用"),                # [15] single_use_random
+            max_tokens_per_segment,                                   # [16] max_text_tokens_per_segment
+            interval_silence,                                         # [17] interval_silence
+            _bool_to_cn(verbose, "显示", "不显示"),                   # [18] single_verbose
+            _bool_to_cn(generate_subtitle, "生成", "不生成"),         # [19] single_need_srt
+            speed,                                                    # [20] single_speed
+            volume_db,                                                # [21] single_volume
+            output_dir or self.default_output_dir,                    # [22] output_dir
+            output_filename,                                          # [23] output_file_name
+            output_format,                                            # [24] single_file_suffix
+            do_sample,                                                # [25] do_sample
+            temperature,                                              # [26] temperature
+            top_k,                                                    # [27] top_k
+            top_p,                                                    # [28] top_p
+            length_penalty,                                           # [29] length_penalty
+            num_beams,                                                # [30] num_beams
+            repetition_penalty,                                       # [31] repetition_penalty
+            max_mel_tokens,                                           # [32] max_mel_tokens
         ]
 
         payload = _call_gradio(self.base_url, "rainfall_gen_single", params, self.timeout)
-
-        # payload 通常是服务端返回的音频信息
         return self._parse_audio_result(payload)
 
     # ---- 音色列表 ----
@@ -325,6 +368,7 @@ class RainfallTTS:
         voice: str = "demo_boy.wav",
         output_dir: str = "",
         line_interval: float = 0.1,
+        use_emo: bool = False,
         merge_lines: bool = True,
         generate_subtitle: bool = False,
         max_tokens_per_segment: int = 120,
@@ -336,6 +380,7 @@ class RainfallTTS:
             voice: 参考音色文件名或 wav 全路径
             output_dir: 保存路径，为空使用服务端默认
             line_interval: 单文件内每行对话间隔（秒）
+            use_emo: 是否使用文本情感
             merge_lines: 连续多行是否合并
             generate_subtitle: 是否生成字幕文件
             max_tokens_per_segment: 每段最大 token 数 (10-300)
@@ -344,13 +389,14 @@ class RainfallTTS:
             服务端返回的消息字符串
         """
         params = [
-            voice,                                              # id=54 参考音色
-            output_dir,                                         # id=58 保存路径
-            input_dir,                                          # id=61 txt目录
-            line_interval,                                      # id=64 行间隔
-            _bool_to_cn(merge_lines, "合并", "不合并"),         # id=65 是否合并
-            _bool_to_cn(generate_subtitle, "生成", "不生成"),   # id=68 是否生成字幕
-            max_tokens_per_segment,                             # id=69 每段最大token
+            voice,                                                    # [1] 参考音色
+            output_dir or self.default_output_dir,                    # [2] 保存路径
+            input_dir,                                                # [3] txt目录
+            line_interval,                                            # [4] 行间隔
+            _bool_to_cn(use_emo, "使用", "不使用"),                   # [5] 是否使用情感
+            _bool_to_cn(merge_lines, "合并", "不合并"),               # [6] 是否合并
+            _bool_to_cn(generate_subtitle, "生成", "不生成"),         # [7] 是否生成字幕
+            max_tokens_per_segment,                                   # [8] 每段最大token
         ]
 
         payload = _call_gradio(self.base_url, "single_batch_txt_generate", params, self.timeout)
@@ -359,6 +405,10 @@ class RainfallTTS:
             for item in payload:
                 if isinstance(item, str):
                     return item
+                if isinstance(item, dict):
+                    val = item.get("value")
+                    if isinstance(val, str):
+                        return val
         return str(payload) if payload else ""
 
     # ---- 多角色合成 ----
@@ -437,7 +487,9 @@ class RainfallTTS:
             raise ConnectionError(f"下载音频失败: {e}") from e
 
         local_path = os.path.abspath(local_path)
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        parent = os.path.dirname(local_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
 
         with open(local_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=8192):
@@ -449,43 +501,29 @@ class RainfallTTS:
     # ---- 内部工具 ----
 
     def _parse_audio_result(self, payload: object) -> TTSResult:
-        """解析 Gradio 返回的音频结果"""
+        """解析 Gradio v5 返回的音频结果
+
+        已知返回格式:
+          - dict: {"visible": True, "value": "/path/to/file.wav", "__type__": "update"}
+          - dict: {"visible": True, "value": {"path": "...", "url": "..."}, "__type__": "update"}
+          - list: [以上 dict]
+          - str: 直接文件路径
+        """
         audio_path = ""
         audio_url = ""
 
         if payload is None:
             raise TTSError("服务端返回空结果")
 
-        # Gradio v5 音频组件返回格式:
-        #   [{"visible": true, "value": {"path": "...", "url": "...", ...}, "__type__": "update"}]
-        #   也可能直接是 {"path": "...", "url": "..."} 或字符串路径
         if isinstance(payload, list):
             for item in payload:
-                if isinstance(item, dict):
-                    # 优先取 value 字段（Gradio v5 标准）
-                    val = item.get("value")
-                    if isinstance(val, dict):
-                        audio_path = val.get("path", "")
-                        audio_url = val.get("url", "")
-                        if audio_path or audio_url:
-                            break
-                    elif isinstance(val, str) and (val.endswith(".wav") or val.endswith(".mp3")):
-                        audio_path = val
-                        break
-                    # 兜底：item 本身就是文件信息
-                    if "path" in item or "url" in item:
-                        audio_path = item.get("path", "")
-                        audio_url = item.get("url", "")
-                        if audio_path or audio_url:
-                            break
+                result = self._extract_audio_from_item(item)
+                if result:
+                    return result
         elif isinstance(payload, dict):
-            val = payload.get("value", payload)
-            if isinstance(val, dict):
-                audio_path = val.get("path", "")
-                audio_url = val.get("url", "")
-            else:
-                audio_path = payload.get("path", "")
-                audio_url = payload.get("url", "")
+            result = self._extract_audio_from_item(payload)
+            if result:
+                return result
         elif isinstance(payload, str):
             audio_path = payload
 
@@ -497,6 +535,46 @@ class RainfallTTS:
             audio_url = f"{self.base_url}/gradio_api/file={encoded}"
 
         return TTSResult(audio_path=audio_path, audio_url=audio_url)
+
+    def _extract_audio_from_item(self, item: object) -> Optional[TTSResult]:
+        """从单个 Gradio 返回项中提取音频信息"""
+        if not isinstance(item, dict):
+            if isinstance(item, str) and (item.endswith(".wav") or item.endswith(".mp3")):
+                audio_path = item
+                encoded = urllib.parse.quote(audio_path, safe="/")
+                audio_url = f"{self.base_url}/gradio_api/file={encoded}"
+                return TTSResult(audio_path=audio_path, audio_url=audio_url)
+            return None
+
+        # Gradio v5: {"visible": True, "value": <path_or_dict>, "__type__": "update"}
+        val = item.get("value")
+
+        if isinstance(val, str) and (val.endswith(".wav") or val.endswith(".mp3")):
+            audio_path = val
+            encoded = urllib.parse.quote(audio_path, safe="/")
+            audio_url = f"{self.base_url}/gradio_api/file={encoded}"
+            return TTSResult(audio_path=audio_path, audio_url=audio_url)
+
+        if isinstance(val, dict):
+            audio_path = val.get("path", "")
+            audio_url = val.get("url", "")
+            if audio_path or audio_url:
+                if not audio_url and audio_path:
+                    encoded = urllib.parse.quote(audio_path, safe="/")
+                    audio_url = f"{self.base_url}/gradio_api/file={encoded}"
+                return TTSResult(audio_path=audio_path, audio_url=audio_url)
+
+        # 兜底：item 本身包含 path/url
+        if "path" in item or "url" in item:
+            audio_path = item.get("path", "")
+            audio_url = item.get("url", "")
+            if audio_path or audio_url:
+                if not audio_url and audio_path:
+                    encoded = urllib.parse.quote(audio_path, safe="/")
+                    audio_url = f"{self.base_url}/gradio_api/file={encoded}"
+                return TTSResult(audio_path=audio_path, audio_url=audio_url)
+
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -513,7 +591,7 @@ try:
         需要安装 aiohttp: pip install aiohttp
         """
 
-        def __init__(self, base_url: str = "http://127.0.0.1:7860", timeout: float = 300.0):
+        def __init__(self, base_url: str = "http://127.0.0.1:7861", timeout: float = 300.0):
             self.base_url = base_url.rstrip("/")
             self.timeout = timeout
 
@@ -559,29 +637,40 @@ try:
 
         async def generate(self, text: str, voice: str = "demo_boy.wav", **kwargs) -> TTSResult:
             sync_client = RainfallTTS(self.base_url, self.timeout)
-            verbose = kwargs.get("verbose", False)
-            generate_subtitle = kwargs.get("generate_subtitle", False)
-            merge_lines = kwargs.get("merge_lines", True)
 
             params = [
                 voice,
                 text,
+                kwargs.get("emo_happy", 0.0),
+                kwargs.get("emo_angry", 0.0),
+                kwargs.get("emo_sad", 0.0),
+                kwargs.get("emo_afraid", 0.0),
+                kwargs.get("emo_disgusted", 0.0),
+                kwargs.get("emo_melancholic", 0.0),
+                kwargs.get("emo_surprised", 0.0),
+                kwargs.get("emo_calm", 0.0),
+                kwargs.get("emo_text", ""),
+                kwargs.get("emo_alpha", 0.65),
+                _bool_to_cn(kwargs.get("use_emo_text", False), "使用", "不使用"),
+                kwargs.get("emo_audio", None),
+                _bool_to_cn(kwargs.get("use_random", False), "使用", "不使用"),
                 kwargs.get("max_tokens_per_segment", 120),
-                _bool_to_cn(verbose, "显示", "不显示"),
-                _bool_to_cn(generate_subtitle, "生成", "不生成"),
+                kwargs.get("interval_silence", 200),
+                _bool_to_cn(kwargs.get("verbose", False), "显示", "不显示"),
+                _bool_to_cn(kwargs.get("generate_subtitle", False), "生成", "不生成"),
                 kwargs.get("speed", 1.0),
                 kwargs.get("volume_db", 0),
-                kwargs.get("output_dir", ""),
+                kwargs.get("output_dir", "outputs"),
                 kwargs.get("output_filename", ""),
                 kwargs.get("output_format", "wav"),
                 kwargs.get("do_sample", True),
-                kwargs.get("top_p", 0.8),
-                kwargs.get("top_k", 30),
                 kwargs.get("temperature", 0.8),
+                kwargs.get("top_k", 30),
+                kwargs.get("top_p", 0.8),
                 kwargs.get("length_penalty", 0.0),
                 kwargs.get("num_beams", 3),
                 kwargs.get("repetition_penalty", 10.0),
-                kwargs.get("max_mel_tokens", 600),
+                kwargs.get("max_mel_tokens", 1500),
             ]
             payload = await self._call("rainfall_gen_single", params)
             return sync_client._parse_audio_result(payload)
@@ -602,7 +691,9 @@ try:
                 async with session.get(result.audio_url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
                     resp.raise_for_status()
                     local_path = os.path.abspath(local_path)
-                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                    parent = os.path.dirname(local_path)
+                    if parent:
+                        os.makedirs(parent, exist_ok=True)
                     with open(local_path, "wb") as f:
                         async for chunk in resp.content.iter_chunked(8192):
                             f.write(chunk)
@@ -656,7 +747,7 @@ if __name__ == "__main__":
 
     sys.stdout.reconfigure(encoding="utf-8")
 
-    BASE_URL = "http://127.0.0.1:7860"
+    BASE_URL = "http://127.0.0.1:7861"
     client = RainfallTTS(BASE_URL)
 
     print(f"=== 雨落TTS SDK 测试 ===")

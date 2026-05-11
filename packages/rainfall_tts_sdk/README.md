@@ -16,7 +16,7 @@
 ```python
 from rainfall_tts_sdk import RainfallTTS, RoleAssignment
 
-client = RainfallTTS("http://127.0.0.1:7860")
+client = RainfallTTS("http://127.0.0.1:7861")
 
 # 健康检查
 if client.is_server_alive():
@@ -28,7 +28,7 @@ if client.is_server_alive():
 ```dart
 import 'rainfall_tts_sdk.dart';
 
-var client = RainfallTTS(baseUrl: 'http://127.0.0.1:7860');
+var client = RainfallTTS(baseUrl: 'http://127.0.0.1:7861');
 if (await client.isServerAlive()) {
   print('服务在线');
 }
@@ -74,7 +74,7 @@ result = client.generate("你好世界", voice="孙悟空.WAV")
 
 # 方式1: 获取 URL，前端直接播放
 print(result.audio_url)
-# → http://127.0.0.1:7860/gradio_api/file=C:\Users\...\generated_xxx.wav
+# → http://127.0.0.1:7861/gradio_api/file=C:\Users\...\generated_xxx.wav
 
 # 方式2: 下载到本地
 client.download_audio(result, "output.wav")
@@ -94,7 +94,7 @@ await client.downloadAudio(result, 'output.wav');
 **前端播放示例 (HTML/JS):**
 ```html
 <!-- 后端返回 audio_url 后，前端直接用 -->
-<audio controls src="http://127.0.0.1:7860/gradio_api/file=xxx/generated_xxx.wav"></audio>
+<audio controls src="http://127.0.0.1:7861/gradio_api/file=xxx/generated_xxx.wav"></audio>
 ```
 
 **前端播放示例 (Flutter):**
@@ -260,5 +260,5 @@ result = client.generate("你好", output_dir="E:/my_outputs")
 **Q: 远程服务器怎么用？**
 把 `127.0.0.1` 换成服务器 IP 即可：
 ```python
-client = RainfallTTS("http://192.168.1.100:7860")
+client = RainfallTTS("http://192.168.1.100:7861")
 ```
