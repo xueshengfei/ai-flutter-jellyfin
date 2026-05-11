@@ -1,7 +1,7 @@
 # 第二阶段模块化进展报告
 
 > 对应计划：`MODULARIZATION_EXECUTION_PLAN.md`
-> 更新日期：2026-05-12（Task 13 完成后更新）
+> 更新日期：2026-05-12（Task 14 完成后更新）
 
 ---
 
@@ -191,11 +191,53 @@ packages/features/jellyfin_series/
 
 ---
 
+### Task 14: 抽 jellyfin_playback
+
+**状态：完成**（2026-05-12）
+
+使用 `flutter create --template=package` 命令创建独立业务模块，完成视频播放器和画质切换的完整解耦。
+
+#### 模块结构
+
+```
+packages/features/jellyfin_playback/
+├── lib/
+│   ├── jellyfin_playback.dart                (barrel — 模型)
+│   ├── jellyfin_playback_pages.dart          (sub-barrel — 页面)
+│   └── src/
+│       ├── models/
+│       │   ├── video_quality_models.dart     (178行) VideoQuality/NetworkQualityMonitor/AutoQualityDecider
+│       │   └── playback_models.dart          (64行) PlaybackInfo/PlaybackDelegate
+│       └── pages/video_player_page.dart      (520行) 解耦后的视频播放页
+├── test/jellyfin_playback_test.dart          (205行) 19个测试
+└── pubspec.yaml
+```
+
+**依赖关系：** `jellyfin_models` + `video_player` + `chewie`。不依赖 `jellyfin_dart`。
+
+#### 业务解耦设计（PlaybackDelegate 模式）
+
+与之前的模块不同，播放模块使用 **委托类模式** 而非独立回调函数。`PlaybackDelegate` 将 6 个操作聚合为一个类型：
+
+| 解耦点 | 原始耦合 | 解耦方式 |
+|--------|---------|---------|
+| 获取播放 URL | `PlaybackService(client).getPlaybackUrl()` | `delegate.getPlaybackUrl` |
+| 开始播放会话 | `PlaybackService(client).startPlaybackSession()` | `delegate.startSession` |
+| 切换画质 | `PlaybackService(client).switchQuality()` | `delegate.switchQuality` |
+| 停止转码 | `PlaybackService(client).stopActiveEncodings()` | `delegate.stopEncoding` |
+| 停止会话 | `PlaybackService(client).stopPlaybackSession()` | `delegate.stopSession` |
+| 资源清理 | `PlaybackService(client).dispose()` | `delegate.dispose` |
+
+**PlaybackService 保留在根包**：深度耦合 `jellyfin_dart`（DeviceProfile、PlaybackInfoDto、PlaybackProgressInfo 等），不随模块外移。
+
+**根包集成**：`media_libraries_page.dart` 新增 `_createPlaybackDelegate()` 工厂方法，将 `PlaybackService` 实例包装为 `PlaybackDelegate`，处理类型转换（root `PlaybackInfo` ↔ playback `PlaybackInfo`，root `VideoQuality` ↔ playback `VideoQuality`）。
+
+---
+
 ## 二、未完成内容
 
 - **Task 11 jellyfin_home** — 首页独立成包（**延后至 Round 4**，依赖 Auth/App Shell 稳定，Leader 建议）
-- **Task 14 jellyfin_playback** — 播放模块（依赖 Task 10）
-- **Task 15 jellyfin_music** — 音乐业务模块（依赖 Task 14）
+- **Task 15 jellyfin_music** — 音乐业务模块（依赖 Task 14，现已解锁）
 - 根包旧文件保留在原位作为兼容层（Task 18 facade 收敛时清理）
 
 ---
@@ -212,7 +254,11 @@ packages/features/jellyfin_series/
 
 ### 问题 3：barrel export 与根包旧版同名类（当前方案：hide + 子 barrel）
 
-**方案：** 根包 `jellyfin_service.dart` 使用 `hide` 隐藏同名类型（如 `hide MovieFilter, MovieFilterResult, MovieDetailPage`）。新模块通过子 barrel（`jellyfin_movies_pages.dart`）导出页面。Task 18 facade 收敛时统一处理。
+**方案：** 根包 `jellyfin_service.dart` 使用 `hide` 隐藏同名类型（如 `hide MovieFilter, MovieFilterResult, MovieDetailPage`；`hide VideoQuality, NetworkQualityMonitor, AutoQualityDecider, PlaybackInfo, VideoPlayerPage`）。新模块通过子 barrel 导出页面。Task 18 facade 收敛时统一处理。
+
+### 问题 4：PlaybackDelegate 类型桥接（已解决）
+
+**方案：** 根包 `_createPlaybackDelegate()` 工厂方法将 root 的 `PlaybackService` 包装为 playback 包的 `PlaybackDelegate`。通过 `.name` 属性匹配完成 `VideoQuality` 枚举跨包转换，通过手动构造完成 `PlaybackInfo` 类型转换。
 
 ---
 
@@ -226,15 +272,16 @@ packages/features/jellyfin_series/
 | `packages/features/jellyfin_media/**` | 6 lib + 1 test | 1280 行 lib + 425 行 test | 通用媒体业务模块 |
 | `packages/features/jellyfin_movies/**` | 5 lib + 1 test | 1058 行 lib + 201 行 test | 电影业务模块 |
 | `packages/features/jellyfin_series/**` | 7 lib + 1 test | 786 行 lib + 340 行 test | 剧集业务模块 |
+| `packages/features/jellyfin_playback/**` | 5 lib + 1 test | 762 行 lib + 205 行 test | 播放业务模块 |
 
 ### 根包改动
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `pubspec.yaml` | 修改 | 新增 `jellyfin_ai_recommendation` + `jellyfin_media` + `jellyfin_movies` + `jellyfin_series` 依赖 |
+| `pubspec.yaml` | 修改 | 新增 5 个 feature 包依赖 |
 | `lib/jellyfin_service.dart` | 修改 | 新增各 feature 包 export（hide 同名类型避免 ambiguous_export） |
 | `lib/src/adapters/media_item_mapper.dart` | 新增 | 统一 DTO 映射器（MediaItem/Person/Season/Episode） |
-| `lib/src/ui/pages/media_libraries_page.dart` | 修改 | 集成点切换到新模块页面（AI/Media/Movies/Series） |
+| `lib/src/ui/pages/media_libraries_page.dart` | 修改 | 集成点切换到新模块页面（AI/Media/Movies/Series/Playback） |
 
 ### 根包保留（兼容层，未删除）
 
@@ -249,6 +296,7 @@ packages/features/jellyfin_series/
 | `lib/src/ui/pages/episodes_page.dart` | 旧版集列表页（接收 `JellyfinClient`） |
 | `lib/src/ui/pages/movie_detail_page.dart` | 旧版电影详情页（接收 `JellyfinClient`） |
 | `lib/src/ui/pages/movie_filter_page.dart` | 旧版电影筛选页（接收 `JellyfinClient`） |
+| `lib/src/ui/pages/video_player_page.dart` | 旧版视频播放页（接收 `JellyfinClient`） |
 | `lib/src/ui/widgets/person_avatar_card.dart` | 旧版人物头像卡片 |
 | `lib/src/models/person_models.dart` | 旧版人物模型（`type` 为 `jellyfin_dart.PersonKind`） |
 | `lib/src/ui/pages/ai_recommend_page.dart` | 旧版 AI 页面 |
@@ -265,22 +313,22 @@ packages/features/jellyfin_series/
 | `jellyfin_media` 独立 `flutter test` | 19/19 通过 |
 | `jellyfin_movies` 独立 `flutter test` | 11/11 通过 |
 | `jellyfin_series` 独立 `flutter test` | 11/11 通过 |
+| `jellyfin_playback` 独立 `flutter test` | 19/19 通过 |
 | `jellyfin_core` 独立 `flutter test` | 17/17 通过 |
 | `jellyfin_api` 独立 `flutter test` | 8/8 通过 |
 | `jellyfin_models` 独立 `flutter test` | 8/8 通过 |
 | `jellyfin_ui_kit` 独立 `flutter test` | 14/14 通过 |
 | 根包 `flutter test` | 24/24 通过 |
-| `jellyfin_series` 不依赖 `jellyfin_dart` | **确认** — 零 vendor 依赖 |
-| `jellyfin_series` 不依赖 `JellyfinClient` | **确认** — 通过回调解耦 |
-| **9 包总测试数** | **131 个全部通过** |
+| `jellyfin_playback` 不依赖 `jellyfin_dart` | **确认** — 零 vendor 依赖 |
+| `jellyfin_playback` 不依赖 `JellyfinClient` | **确认** — 通过 PlaybackDelegate 解耦 |
+| **10 包总测试数** | **150 个全部通过** |
 
 ---
 
 ## 六、下一步
 
-1. Task 14（jellyfin_playback）— 播放模块
-2. Task 15（jellyfin_music）— 音乐业务模块
-3. Task 11（jellyfin_home）— **Round 4**（依赖 Auth/App Shell）
+1. Task 15（jellyfin_music）— 音乐业务模块
+2. Task 11（jellyfin_home）— **Round 4**（依赖 Auth/App Shell）
 
 ---
 
@@ -300,13 +348,15 @@ jellyfin_ai_recommendation ──→ jellyfin_core + jellyfin_models + jellyfin_
 jellyfin_media ──→ jellyfin_models + jellyfin_ui_kit
 jellyfin_movies ──→ jellyfin_models
 jellyfin_series ──→ jellyfin_models
+jellyfin_playback ──→ jellyfin_models + video_player + chewie
 
 根包 jellyfin_service ──→ 上述所有包
     ├── jellyfin_service.dart export 旧版页面/组件（兼容层，hide 同名类型）
     ├── media_libraries_page.dart → AiRecommendPage（已切换）
     ├── media_libraries_page.dart → jellyfin_media pages（已切换）
     ├── media_libraries_page.dart → jellyfin_movies pages（已切换）
-    └── media_libraries_page.dart → jellyfin_series pages（已切换）
+    ├── media_libraries_page.dart → jellyfin_series pages（已切换）
+    └── media_libraries_page.dart → jellyfin_playback pages（已切换）
 ```
 
 ---
@@ -321,5 +371,6 @@ jellyfin_series ──→ jellyfin_models
 | Phase 2-A：AI 推荐业务解耦 | **完成** | Task 16 |
 | Phase 2-B：通用媒体能力解耦 | **完成** | Task 10, 10.5 |
 | Phase 2-C：电影/剧集模块 | **完成** | Task 12, 13 |
-| Phase 2-D：播放/音乐模块 | **待开始** | Task 14, 15 |
-| Phase 2-E：首页模块 | **Round 4** | Task 11（延后，依赖 Auth/App Shell） |
+| Phase 2-D：播放模块 | **完成** | Task 14 |
+| Phase 2-E：音乐模块 | **待开始** | Task 15 |
+| Phase 2-F：首页模块 | **Round 4** | Task 11（延后，依赖 Auth/App Shell） |
