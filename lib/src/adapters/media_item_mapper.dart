@@ -120,4 +120,49 @@ class MediaItemMapper {
       id: a.id,
     )).toList();
   }
+
+  /// 根包 Season → 共享 Season
+  static models.Season toSharedSeason(local.Season src) {
+    return models.Season(
+      id: src.id,
+      seriesId: src.seriesId,
+      name: src.name,
+      indexNumber: src.indexNumber,
+      serverUrl: src.serverUrl,
+      primaryImageTag: src.primaryImageTag,
+      overview: src.overview,
+      episodeCount: src.episodeCount,
+      accessToken: src.accessToken,
+    );
+  }
+
+  /// 根包 Episode → 共享 Episode
+  static models.Episode toSharedEpisode(local.Episode src) {
+    return models.Episode(
+      id: src.id,
+      seriesId: src.seriesId,
+      seasonId: src.seasonId,
+      name: src.name,
+      serverUrl: src.serverUrl,
+      seasonNumber: src.seasonNumber,
+      episodeNumber: src.episodeNumber,
+      primaryImageTag: src.primaryImageTag,
+      overview: src.overview,
+      runTimeTicks: src.runTimeTicks,
+      runTimeMinutes: src.runTimeMinutes,
+      communityRating: src.communityRating,
+      playedPercentage: src.playedPercentage,
+      played: src.played,
+      accessToken: src.accessToken,
+    );
+  }
+
+  /// 根包 EpisodeListResult → 共享 EpisodeListResult
+  static models.EpisodeListResult toSharedEpisodeListResult(local.EpisodeListResult src) {
+    return models.EpisodeListResult(
+      episodes: src.episodes.map(toSharedEpisode).toList(),
+      totalCount: src.totalCount,
+      startIndex: src.startIndex,
+    );
+  }
 }
