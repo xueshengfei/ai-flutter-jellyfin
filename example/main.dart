@@ -5,14 +5,22 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 /// 这是一个简单的示例，展示如何使用简化版的 Jellyfin Service SDK
 /// 进行用户认证
 void main() async {
-  // 1. 创建客户端
+  // 1. 创建客户端（可自定义 AI/RVC 服务地址）
   final client = JellyfinClient(
-    serverUrl: 'http://localhost:8096',
+    serverUrl: JellyfinConfiguration.defaultServerUrl,
     enableLogging: true,
+    // AI 推荐服务（不设则从 serverUrl 推导，默认端口 5005）
+    // aiServiceUrl: 'http://192.168.1.100:5005',
+    // aiServicePort: 5005,
+    // RVC 语音转换服务（不设则从 serverUrl 推导，默认端口 9880）
+    // rvcServiceUrl: 'http://192.168.1.100:9880',
+    // rvcServicePort: 9880,
   );
 
   print('✓ 客户端创建成功');
   print('  服务器: ${client.configuration.serverUrl}');
+  print('  AI 服务: ${client.configuration.resolvedAiServiceUrl}');
+  print('  RVC 服务: ${client.configuration.resolvedRvcServiceUrl}');
 
   // 2. 用户认证
   try {
@@ -57,9 +65,12 @@ class FlutterExample {
   static Future<JellyfinClient> loginAndAuthenticate() async {
     // 创建客户端
     final client = JellyfinClient(
-      serverUrl: 'http://localhost:8096',
+      serverUrl: JellyfinConfiguration.defaultServerUrl,
       applicationName: 'My Flutter App',
       enableLogging: true,
+      // 自定义 AI/RVC 地址（可选）
+      // aiServiceUrl: 'http://192.168.1.100:5005',
+      // rvcServiceUrl: 'http://192.168.1.100:9880',
     );
 
     // 认证

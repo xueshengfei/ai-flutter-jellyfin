@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/src/jellyfin_client.dart';
+import 'package:jellyfin_service/src/jellyfin_configuration.dart';
 import 'package:jellyfin_service/src/exceptions/authentication_exception.dart';
 import 'package:jellyfin_service/src/services/server_discovery_service.dart';
 import 'package:jellyfin_service/src/models/server_discovery_models.dart';
@@ -15,7 +16,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _serverController = TextEditingController(text: 'http://localhost:8096');
+  final _serverController = TextEditingController(text: JellyfinConfiguration.defaultServerUrl);
   final _usernameController = TextEditingController(text: 'xue13');
   final _passwordController = TextEditingController(text: '123456');
 

@@ -52,6 +52,10 @@ class JellyfinClient {
     String? deviceId,
     String clientName = 'Jellyfin Flutter',
     bool enableLogging = false,
+    String? aiServiceUrl,
+    int aiServicePort = 5005,
+    String? rvcServiceUrl,
+    int rvcServicePort = 9880,
     List<Interceptor>? interceptors,
   }) {
     final config = JellyfinConfiguration(
@@ -62,6 +66,10 @@ class JellyfinClient {
       deviceId: deviceId,
       clientName: clientName,
       enableLogging: enableLogging,
+      aiServiceUrl: aiServiceUrl,
+      aiServicePort: aiServicePort,
+      rvcServiceUrl: rvcServiceUrl,
+      rvcServicePort: rvcServicePort,
     );
 
     return JellyfinClient._internal(config, interceptors);
