@@ -4,13 +4,12 @@ import 'package:jellyfin_service/src/models/user_models.dart';
 import 'package:jellyfin_service/src/models/media_library_models.dart';
 import 'package:jellyfin_service/src/models/media_item_models.dart' as local;
 import 'package:jellyfin_service/src/models/movie_filter_models.dart' as movie_models;
-import 'package:jellyfin_service/src/ui/pages/episodes_page.dart';
 import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
+import 'package:jellyfin_series/jellyfin_series_pages.dart' as series_pages;
 import 'package:jellyfin_service/src/models/music_models.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
 import 'package:jellyfin_service/src/ui/pages/login_page.dart';
 import 'package:jellyfin_service/src/ui/pages/personal_page.dart';
-import 'package:jellyfin_service/src/ui/pages/movie_filter_page.dart' as old_movie;
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_movies/jellyfin_movies_pages.dart' as movies_pages;
 import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
@@ -419,21 +418,9 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
             _buildNewPersonDetailPage(personId, personName, personType)));
       },
       onNavigateToEpisodes: (ctx, series, season) {
-        // 剧集列表仍使用旧页面（待 Task 13 抽 jellyfin_series）
-        final localSeries = MediaItemMapper.toLocal(series);
-        final localSeason = local.Season(
-          id: season.id,
-          seriesId: season.seriesId,
-          name: season.name,
-          indexNumber: season.indexNumber,
-          serverUrl: season.serverUrl,
-          primaryImageTag: season.primaryImageTag,
-          overview: season.overview,
-          episodeCount: season.episodeCount,
-          accessToken: season.accessToken,
-        );
+        // 使用新的 jellyfin_series 模块页面
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
-            EpisodesPage(client: widget.client, series: localSeries, season: localSeason)));
+            _buildNewEpisodesPage(series, season)));
       },
       onStartPlayback: (ctx, item) {
         final localItem = MediaItemMapper.toLocal(item);
@@ -473,6 +460,35 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       onNavigateToMediaItem: (ctx, item) {
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             _buildNewMediaItemDetailPage(item)));
+      },
+    );
+  }
+
+  /// 构建 jellyfin_series::EpisodesPage
+  Widget _buildNewEpisodesPage(models.MediaItem series, models.Season season) {
+    return series_pages.EpisodesPage(
+      series: series,
+      season: season,
+      fetchEpisodes: ({required seasonId, required seriesId}) async {
+        final result = await widget.client.mediaLibrary.getEpisodes(
+          seasonId: seasonId,
+          seriesId: seriesId,
+        );
+        return MediaItemMapper.toSharedEpisodeListResult(result);
+      },
+      onStartPlayback: (ctx, episode) {
+        final localItem = local.MediaItem(
+          id: episode.id,
+          name: episode.name,
+          type: 'Episode',
+          primaryImageTag: episode.primaryImageTag,
+          runTimeTicks: episode.runTimeTicks,
+          runTimeMinutes: episode.runTimeMinutes,
+          overview: episode.overview,
+          serverUrl: episode.serverUrl,
+        );
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            VideoPlayerPage(client: widget.client, item: localItem)));
       },
     );
   }

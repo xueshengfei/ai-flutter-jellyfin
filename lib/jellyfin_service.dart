@@ -124,7 +124,11 @@ export 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 export 'package:jellyfin_media/jellyfin_media.dart';
 
 // 电影业务模块（已解耦为独立 feature 包）
-export 'package:jellyfin_movies/jellyfin_movies.dart';
+// hide 与根包同名的类型（MovieFilter / MovieDetailPage），避免 ambiguous_export
+export 'package:jellyfin_movies/jellyfin_movies.dart' hide MovieFilter, MovieFilterResult, MovieDetailPage;
+
+// 剧集业务模块（已解耦为独立 feature 包）
+export 'package:jellyfin_series/jellyfin_series.dart';
 
 // RVC 语音转换
 export 'package:rvc_flutter/rvc_flutter.dart';

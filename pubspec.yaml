@@ -43,6 +43,10 @@ dependencies:
   jellyfin_movies:
     path: packages/features/jellyfin_movies
 
+  # 剧集业务模块
+  jellyfin_series:
+    path: packages/features/jellyfin_series
+
   # HTTP客户端
   dio: ^5.9.0
 

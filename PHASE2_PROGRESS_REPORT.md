@@ -1,7 +1,7 @@
 # 第二阶段模块化进展报告
 
 > 对应计划：`MODULARIZATION_EXECUTION_PLAN.md`
-> 更新日期：2026-05-12
+> 更新日期：2026-05-12（Task 13 完成后更新）
 
 ---
 
@@ -81,9 +81,12 @@ import 'audio_playback_manager.dart';
 ```
 packages/features/jellyfin_media/
 ├── lib/
-│   ├── jellyfin_media.dart                  (barrel export — 仅导出 typedef，不导出页面/组件)
+│   ├── jellyfin_media.dart                  (barrel — 仅导出 typedef)
+│   ├── jellyfin_media_pages.dart            (sub-barrel — 页面)
+│   ├── jellyfin_media_models.dart           (sub-barrel — 子模型)
+│   ├── jellyfin_media_widgets.dart          (sub-barrel — 组件)
 │   └── src/
-│       ├── models/person_models.dart        (83行) Person, PersonCreditsResult（使用 String 替代 jellyfin_dart.PersonKind）
+│       ├── models/person_models.dart        (83行) Person, PersonCreditsResult
 │       ├── pages/
 │       │   ├── media_item_detail_page.dart  (393行) 解耦后的通用媒体详情页
 │       │   ├── person_detail_page.dart      (281行) 解耦后的人物详情页
@@ -93,167 +96,123 @@ packages/features/jellyfin_media/
 └── pubspec.yaml
 ```
 
-**依赖关系：**
+**依赖关系：** `jellyfin_models` + `jellyfin_ui_kit`。不依赖 `jellyfin_dart`、`jellyfin_core`、`jellyfin_api`。
 
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  equatable: ^2.0.5
-  jellyfin_models:
-    path: ../../shared/jellyfin_models
-  jellyfin_ui_kit:
-    path: ../../shared/jellyfin_ui_kit
+---
+
+### Task 10.5: Media 契约与集成收敛
+
+**状态：完成**（2026-05-12）
+
+在 Task 10 基础上收敛跨模块共享契约，完成真实页面链路切换。
+
+#### 关键改动
+
+1. **共享 typedef 提取到 jellyfin_models**：新建 `media_contracts.dart`，集中定义 `MediaItemDetailFetcher`、`MediaItemsFetcher`、`SeasonsFetcher`
+2. **统一 MediaItem DTO 映射器**：新建 `lib/src/adapters/media_item_mapper.dart`，提供 `toShared()` / `toLocal()` / `toSharedPerson()` / `toSharedSeason()` / `toSharedEpisode()` 方法
+3. **子 barrel 模式**：各 feature 包拆分为模型/页面/组件独立 barrel
+4. **集成点切换**：`media_libraries_page.dart` 已切换为使用新模块页面
+
+---
+
+### Task 12: 抽 jellyfin_movies
+
+**状态：完成**（2026-05-12）
+
+使用 `flutter create --template=package` 命令创建独立业务模块，完成电影筛选和详情功能的完整解耦。
+
+#### 模块结构
+
+```
+packages/features/jellyfin_movies/
+├── lib/
+│   ├── jellyfin_movies.dart                  (barrel — 模型 + MovieDetailPage)
+│   ├── jellyfin_movies_pages.dart            (sub-barrel — 两个页面)
+│   └── src/
+│       ├── models/movie_filter_models.dart   (173行) 纯 Dart 枚举 + MovieFilter
+│       ├── pages/movie_filter_page.dart      (648行) 解耦后的电影筛选页
+│       └── pages/movie_detail_page.dart      (237行) 解耦后的电影详情页
+├── test/jellyfin_movies_test.dart            (201行) 11个测试
+└── pubspec.yaml
 ```
 
-注意：不依赖 `jellyfin_core`、`jellyfin_api`、`jellyfin_dart`，也不依赖 `dio`/`cached_network_image` 等网络库。所有数据和图片通过网络 URL 字符串由调用方注入。
+**依赖关系：** `jellyfin_models`。不依赖 `jellyfin_dart`（纯 Dart `MovieSortField`/`MovieSortOrder` 枚举替代）。
 
 #### 业务解耦设计
 
-**解耦前** — 根包 3 个页面直接依赖 JellyfinClient 和其他 feature 页面：
+| 解耦点 | 原始耦合 | 解耦方式 |
+|--------|---------|---------|
+| 电影列表获取 | `JellyfinClient.mediaLibrary.getMovies()` | `MoviesFetcher` 回调 |
+| 电影详情获取 | `JellyfinClient.mediaLibrary.getMediaItemDetail()` | `MovieDetailFetcher` 回调 |
+| 播放跳转 | `Navigator.push(VideoPlayerPage(...))` | `onStartPlayback` 回调 |
+| 列表布局 | `MediaListBuilder(client, ...)` | `listBuilder` 回调注入 |
+| 排序/过滤类型 | `jellyfin_dart.ItemSortBy`/`ItemFilter` | 纯 Dart 枚举 |
+
+---
+
+### Task 13: 抽 jellyfin_series
+
+**状态：完成**（2026-05-12）
+
+使用 `flutter create --template=package` 命令创建独立业务模块，完成季/集导航的完整解耦。
+
+#### 模块结构
 
 ```
-MediaItemDetailPage(client, item)
-  ├── widget.client.mediaLibrary.getMediaItemDetail()
-  ├── widget.client.mediaLibrary.getSeasons()
-  ├── Navigator.push(VideoPlayerPage(client, item))
-  ├── Navigator.push(PersonDetailPage(client, ...))
-  └── Navigator.push(EpisodesPage(client, ...))
-
-PersonDetailPage(client, personId, personName, personType)
-  ├── widget.client.mediaLibrary.getPersonDetail()
-  ├── widget.client.mediaLibrary.getPersonCredits()
-  └── Navigator.push(MediaItemDetailPage(client, item))
-
-MediaItemsPage(client, library)
-  ├── widget.client.mediaLibrary.getMediaItems()
-  └── Navigator.push(MediaItemDetailPage(client, item))
+packages/features/jellyfin_series/
+├── lib/
+│   ├── jellyfin_series.dart                  (barrel — 模型/typedef)
+│   ├── jellyfin_series_pages.dart            (sub-barrel — 页面)
+│   └── src/
+│       ├── models/series_models.dart         (8行) EpisodesFetcher typedef
+│       ├── pages/seasons_page.dart           (167行) 解耦后的季列表页
+│       ├── pages/episodes_page.dart          (215行) 解耦后的集列表页
+│       └── widgets/
+│           ├── season_card.dart              (130行) 季卡片组件
+│           ├── episode_card.dart             (143行) 集卡片（无 JellyfinClient）
+│           └── episode_detail_sheet.dart     (123行) 集详情底部弹窗
+├── test/jellyfin_series_test.dart            (340行) 11个测试
+└── pubspec.yaml
 ```
 
-**解耦后** — 零 JellyfinClient 依赖，零页面间 import：
+**依赖关系：** `jellyfin_models`。不依赖 `jellyfin_dart`。
 
-```dart
-// MediaItemDetailPage — 7 个回调注入
-class MediaItemDetailPage extends StatefulWidget {
-  final MediaItem item;
-  final MediaItemDetailFetcher fetchDetail;       // Future<MediaItem> Function(String)
-  final SeasonsFetcher? fetchSeasons;              // Future<SeasonListResult> Function(String)
-  final void Function(BuildContext, MediaItem)? onStartPlayback;
-  final void Function(BuildContext, String, String, String)? onNavigateToPerson;
-  final void Function(BuildContext, MediaItem, Season)? onNavigateToEpisodes;
-}
-
-// PersonDetailPage — 4 个回调 + 1 个抽象接口
-class PersonDetailPage extends StatefulWidget {
-  final String personId;
-  final String personName;
-  final String personType;                         // "actor" / "director" / "writer"
-  final PersonDetailFetcher fetchPersonDetail;     // Future<Person> Function(String, String)
-  final PersonCreditsFetcher fetchPersonCredits;   // Future<PersonCreditsResult> Function(String, ...)
-  final JellyfinImageProvider imageProvider;       // 抽象图片接口
-  final void Function(BuildContext, MediaItem)? onNavigateToMediaItem;
-}
-
-// MediaItemsPage — 2 个回调 + 可选自定义列表构建器
-class MediaItemsPage extends StatefulWidget {
-  final MediaLibrary library;
-  final MediaItemsFetcher fetchMediaItems;         // Future<MediaItemListResult> Function(...)
-  final void Function(BuildContext, MediaItem)? onNavigateToMediaItem;
-  final Widget Function(List<MediaItem>, ValueChanged<MediaItem>)? listBuilder;
-}
-```
+#### 业务解耦设计
 
 | 解耦点 | 原始耦合 | 解耦方式 |
 |--------|---------|---------|
-| 媒体详情获取 | `JellyfinClient.mediaLibrary.getMediaItemDetail()` | `MediaItemDetailFetcher` 回调 |
-| 季列表获取 | `JellyfinClient.mediaLibrary.getSeasons()` | `SeasonsFetcher` 回调 |
-| 播放跳转 | `Navigator.push(VideoPlayerPage(...))` | `onStartPlayback` 回调 |
-| 人物详情跳转 | `Navigator.push(PersonDetailPage(...))` | `onNavigateToPerson` 回调 |
-| 剧集列表跳转 | `Navigator.push(EpisodesPage(...))` | `onNavigateToEpisodes` 回调 |
-| 人物详情数据 | `JellyfinClient.mediaLibrary.getPersonDetail()` | `PersonDetailFetcher` 回调 |
-| 人物作品数据 | `JellyfinClient.mediaLibrary.getPersonCredits()` | `PersonCreditsFetcher` 回调 |
-| 图片加载（人物页） | `MediaItemCard(client: widget.client, item: item)` | `JellyfinImageProvider` + `MediaItemCard`（来自 jellyfin_ui_kit） |
-| 媒体列表数据 | `JellyfinClient.mediaLibrary.getMediaItems()` | `MediaItemsFetcher` 回调 |
-| 列表布局 | `MediaListBuilder(client: widget.client, ...)` | `listBuilder` 回调（调用方注入布局组件） |
-| Person.type 类型 | `jellyfin_dart.PersonKind`（依赖 jellyfin_dart） | `String`（"actor"/"director"/"writer"） |
+| 季列表获取 | `JellyfinClient.mediaLibrary.getSeasons()` | `SeasonsFetcher` 回调（来自 jellyfin_models） |
+| 集列表获取 | `JellyfinClient.mediaLibrary.getEpisodes()` | `EpisodesFetcher` 回调 |
+| 季→集导航 | `Navigator.push(EpisodesPage(client, ...))` | `onNavigateToEpisodes` 回调 |
+| 集播放 | `Navigator.push(VideoPlayerPage(client, ...))` | `onStartPlayback` 回调 |
+| 列表布局 | `MediaListBuilder(client, ...)` + ViewModeManager | `listBuilder` 回调注入 |
+| 视图模式 | `ViewModeSelector` + `ViewModeManager` | `appBarActions` 回调注入 |
+| 集卡片图片 | `JellyfinClient` 传参 | 移除，Episode 模型自带 `getThumbnailImageUrl()` |
 
 ---
 
 ## 二、未完成内容
 
-- **Task 11 jellyfin_home** — 首页独立成包（依赖 Task 9 Auth，Task 9 未开始）
-- **Task 12 jellyfin_movies** — 电影业务模块（依赖 Task 10，可开始）
-- **Task 13 jellyfin_series** — 剧集业务模块（依赖 Task 10，可开始）
+- **Task 11 jellyfin_home** — 首页独立成包（**延后至 Round 4**，依赖 Auth/App Shell 稳定，Leader 建议）
 - **Task 14 jellyfin_playback** — 播放模块（依赖 Task 10）
 - **Task 15 jellyfin_music** — 音乐业务模块（依赖 Task 14）
 - 根包旧文件保留在原位作为兼容层（Task 18 facade 收敛时清理）
 
 ---
 
-## 三、遇到的问题
+## 三、已解决的问题
 
-### 问题 1：根包 MediaItem 与 jellyfin_models MediaItem 类型冲突
+### 问题 1：根包 MediaItem 与 jellyfin_models MediaItem 类型冲突（已解决）
 
-**背景：** Phase 1 遗留问题。根包 `lib/src/models/media_item_models.dart` 有自己的 `MediaItem`（含 `fromDto()` 工厂方法，依赖 `jellyfin_dart`），`jellyfin_models` 包也有同名 `MediaItem`（纯模型，无 DTO 依赖）。两者结构相似但属于不同 Dart 类型。
+**方案：** 创建统一 `MediaItemMapper`（`lib/src/adapters/media_item_mapper.dart`），提供 `toShared()` / `toLocal()` / `toSharedPerson()` / `toSharedSeason()` / `toSharedEpisode()` 方法。所有集成点统一使用此映射器。
 
-**现象：** 新模块页面使用 `jellyfin_models.MediaItem`，根包 `JellyfinClient` 服务返回根包 `MediaItem`。在新模块的回调中直接传递会导致类型不匹配编译错误。
+### 问题 2：typedef 跨模块重复定义（已解决）
 
-**当前临时方案：** 在集成点（`media_libraries_page.dart`）中通过 `as local` / `as models` 前缀导入 + 手写转换函数 `toModelsMediaItem()` 适配。
+**方案：** 提取通用 typedef 到 `jellyfin_models/media_contracts.dart`。`MediaItemDetailFetcher`、`MediaItemsFetcher`、`SeasonsFetcher` 等共享一份定义。
 
-**需要决策：** 这个双类型问题贯穿所有 feature 模块（每个模块的回调都会涉及 MediaItem 类型转换）。手动写转换函数可维护性差。建议统一为单一 MediaItem 类型：
+### 问题 3：barrel export 与根包旧版同名类（当前方案：hide + 子 barrel）
 
-- **方案 A**：根包 `MediaItem` 删除 `fromDto()` 工厂方法，统一使用 `jellyfin_models.MediaItem`，将 `fromDto()` 逻辑下沉到 `jellyfin_api` 层。所有业务模块直接使用 `jellyfin_models.MediaItem`。
-- **方案 B**：保留双类型，在根包提供统一的 `MediaItemAdapter` 工具类，所有集成点复用。
-
-### 问题 2：Person.type 从 jellyfin_dart.PersonKind 解耦为 String
-
-**背景：** 根包 `Person` 模型的 `type` 字段使用 `jellyfin_dart.PersonKind` 枚举，这导致新模块必须依赖 `jellyfin_dart`（vendor 包），破坏分层。
-
-**当前方案：** 新模块 `Person.type` 改为 `String`（"actor"/"director"/"writer" 等），在根包集成层完成 `jellyfin_dart.PersonKind` → `String` 的映射。
-
-**需要确认：** 这个 String 方案是否可接受？还是有更好的抽象方式？
-
-### 问题 3：barrel export 与根包旧版同名类 ambiguous_export
-
-**背景：** 新模块中的页面（`MediaItemDetailPage`、`PersonDetailPage`、`MediaItemsPage`）和组件（`PersonAvatarCard`、`PersonListRow`）与根包旧文件同名。当根包 `jellyfin_service.dart` 同时 export 旧文件和新模块的 barrel 时，Dart 编译器报 `ambiguous_export` 错误。
-
-**当前临时方案：** 新模块 `jellyfin_media.dart` 的 barrel export **不导出**页面、组件和模型类，仅导出不冲突的 typedef（`SeasonsFetcher`、`PersonDetailFetcher`、`PersonCreditsFetcher`、`MediaItemsFetcher`）。使用者需要通过直接 import 路径访问页面和组件：
-
-```dart
-import 'package:jellyfin_media/src/pages/media_item_detail_page.dart';
-import 'package:jellyfin_media/src/models/person_models.dart';
-```
-
-根包 `jellyfin_service.dart` 保持导出根包旧版文件不变。
-
-**需要决策：** 这个"barrel 不导出同名类"方案是否可接受？后续每个 feature 模块都会遇到同样问题。可选方案：
-
-- **方案 A**（当前方案）：barrel 仅导出 typedef，页面/组件通过直接路径 import。简单但不够优雅。
-- **方案 B**：根包旧文件在模块抽取后**立即删除**，所有引用改为使用新模块。一步到位但有风险。
-- **方案 C**：在新模块中**重命名类**（如 `MediaMediaItemDetailPage`），避免与根包冲突。但命名冗长。
-- **方案 D**：等到 Task 18（facade 收敛）统一处理。在此之前所有模块采用方案 A。
-
-### 问题 4：MediaItemsPage 的列表布局组件（MediaListBuilder）未迁移
-
-**背景：** 根包 `MediaItemsPage` 使用 `MediaListBuilder`（依赖 4 种布局组件：`BannerListView`、`VerticalListView`、`PosterGridView`、`CardGridView`），这些布局组件直接使用 `JellyfinImageWithClient(client: widget.client)` 加载图片，与 `JellyfinClient` 强耦合。同时 `ViewModeManager` 依赖 `shared_preferences`。
-
-**当前方案：** 新模块的 `MediaItemsPage` 不包含 `MediaListBuilder`，改为通过 `listBuilder` 回调注入列表布局。如果调用方不提供 `listBuilder`，使用默认的简单网格布局。
-
-**需要确认：** 后续是否需要将 `MediaListBuilder` + 4 种布局 + `ViewModeManager` 也迁移到 `jellyfin_media`？这会引入 `shared_preferences` 依赖和 `JellyfinClient` 解耦工作。
-
-### 问题 5：typedef MediaItemDetailFetcher 跨模块重复定义
-
-**背景：** `jellyfin_ai_recommendation` 和 `jellyfin_media` 都定义了 `MediaItemDetailFetcher`（签名完全相同：`Future<MediaItem> Function(String itemId)`）。当两个模块同时被根包 `jellyfin_service.dart` export 时，Dart 编译器报 `ambiguous_export`。
-
-**当前方案：** `jellyfin_media` 的 barrel 不导出 `MediaItemDetailFetcher`，仅由 `jellyfin_ai_recommendation` 导出。模块内部直接使用自己的定义，不冲突。
-
-**需要确认：** 后续是否应该将通用 typedef 提取到 `jellyfin_core` 或 `jellyfin_models`？这样所有 feature 模块共享一份定义，避免未来更多重复。
-
-### 问题 6：根包旧文件仍然互相引用，形成"双轨并行"
-
-**背景：** 根包的 `media_item_detail_page.dart`（旧版）仍然 `import 'package:jellyfin_service/jellyfin_service.dart'`，并且直接 import `person_detail_page.dart`、`person_avatar_card.dart` 等旧文件。新模块有同名但签名不同的版本。两套代码并存，集成点（`media_libraries_page.dart`）目前仍使用旧版。
-
-**影响：** 新模块代码已通过独立测试验证，但尚未有任何页面实际切换到使用新模块。需要决策何时切换集成点。
+**方案：** 根包 `jellyfin_service.dart` 使用 `hide` 隐藏同名类型（如 `hide MovieFilter, MovieFilterResult, MovieDetailPage`）。新模块通过子 barrel（`jellyfin_movies_pages.dart`）导出页面。Task 18 facade 收敛时统一处理。
 
 ---
 
@@ -265,13 +224,17 @@ import 'package:jellyfin_media/src/models/person_models.dart';
 |----|--------|--------|------|
 | `packages/features/jellyfin_ai_recommendation/**` | 9 lib + 1 test | 1534 行 lib + 211 行 test | AI 推荐业务模块 |
 | `packages/features/jellyfin_media/**` | 6 lib + 1 test | 1280 行 lib + 425 行 test | 通用媒体业务模块 |
+| `packages/features/jellyfin_movies/**` | 5 lib + 1 test | 1058 行 lib + 201 行 test | 电影业务模块 |
+| `packages/features/jellyfin_series/**` | 7 lib + 1 test | 786 行 lib + 340 行 test | 剧集业务模块 |
 
 ### 根包改动
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `pubspec.yaml` | 修改 | 新增 `jellyfin_ai_recommendation` + `jellyfin_media` 依赖 |
-| `lib/jellyfin_service.dart` | 修改 | 新增 `export 'package:jellyfin_media/jellyfin_media.dart'`（仅导出 typedef） |
+| `pubspec.yaml` | 修改 | 新增 `jellyfin_ai_recommendation` + `jellyfin_media` + `jellyfin_movies` + `jellyfin_series` 依赖 |
+| `lib/jellyfin_service.dart` | 修改 | 新增各 feature 包 export（hide 同名类型避免 ambiguous_export） |
+| `lib/src/adapters/media_item_mapper.dart` | 新增 | 统一 DTO 映射器（MediaItem/Person/Season/Episode） |
+| `lib/src/ui/pages/media_libraries_page.dart` | 修改 | 集成点切换到新模块页面（AI/Media/Movies/Series） |
 
 ### 根包保留（兼容层，未删除）
 
@@ -282,6 +245,10 @@ import 'package:jellyfin_media/src/models/person_models.dart';
 | `lib/src/ui/pages/media_item_detail_page.dart` | 旧版媒体详情页（接收 `JellyfinClient`） |
 | `lib/src/ui/pages/person_detail_page.dart` | 旧版人物详情页（接收 `JellyfinClient`） |
 | `lib/src/ui/pages/media_items_page.dart` | 旧版媒体列表页（接收 `JellyfinClient`） |
+| `lib/src/ui/pages/seasons_page.dart` | 旧版季列表页（接收 `JellyfinClient`） |
+| `lib/src/ui/pages/episodes_page.dart` | 旧版集列表页（接收 `JellyfinClient`） |
+| `lib/src/ui/pages/movie_detail_page.dart` | 旧版电影详情页（接收 `JellyfinClient`） |
+| `lib/src/ui/pages/movie_filter_page.dart` | 旧版电影筛选页（接收 `JellyfinClient`） |
 | `lib/src/ui/widgets/person_avatar_card.dart` | 旧版人物头像卡片 |
 | `lib/src/models/person_models.dart` | 旧版人物模型（`type` 为 `jellyfin_dart.PersonKind`） |
 | `lib/src/ui/pages/ai_recommend_page.dart` | 旧版 AI 页面 |
@@ -294,63 +261,30 @@ import 'package:jellyfin_media/src/models/person_models.dart';
 
 | 检查项 | 结果 |
 |--------|------|
-| `jellyfin_ai_recommendation` 独立 `flutter analyze` | 0 error, 0 warning |
 | `jellyfin_ai_recommendation` 独立 `flutter test` | 19/19 通过 |
-| `jellyfin_media` 独立 `flutter analyze` | 0 error, 0 warning（15 info） |
 | `jellyfin_media` 独立 `flutter test` | 19/19 通过 |
+| `jellyfin_movies` 独立 `flutter test` | 11/11 通过 |
+| `jellyfin_series` 独立 `flutter test` | 11/11 通过 |
 | `jellyfin_core` 独立 `flutter test` | 17/17 通过 |
 | `jellyfin_api` 独立 `flutter test` | 8/8 通过 |
 | `jellyfin_models` 独立 `flutter test` | 8/8 通过 |
 | `jellyfin_ui_kit` 独立 `flutter test` | 14/14 通过 |
-| 根包 `flutter test` | 19/19 通过 |
-| 根包 `flutter analyze lib/` | 0 error（64 info 均为既有问题） |
-| `jellyfin_media` 不 import 任何 feature 页面 | **确认** — 零直接 feature import |
-| `jellyfin_media` 不依赖 `JellyfinClient` | **确认** — 通过回调 + `JellyfinImageProvider` 解耦 |
-| `jellyfin_media` 不依赖 `jellyfin_dart` | **确认** — Person.type 使用 String |
-| **7 包总测试数** | **104 个全部通过** |
+| 根包 `flutter test` | 24/24 通过 |
+| `jellyfin_series` 不依赖 `jellyfin_dart` | **确认** — 零 vendor 依赖 |
+| `jellyfin_series` 不依赖 `JellyfinClient` | **确认** — 通过回调解耦 |
+| **9 包总测试数** | **131 个全部通过** |
 
 ---
 
-## 六、需要决策的问题（请 Leader 确认）
+## 六、下一步
 
-### 决策 1：MediaItem 双类型统一方案
-
-| 方案 | 描述 | 工作量 | 风险 |
-|------|------|--------|------|
-| **A（推荐）** | 删除根包 `MediaItem`，统一用 `jellyfin_models.MediaItem`；`fromDto()` 下沉到 `jellyfin_api` | 中 | 需要修改所有引用根包 MediaItem 的地方 |
-| **B** | 保留双类型，根包提供统一 `MediaItemAdapter` 工具类 | 低 | 长期维护两套模型，类型转换散落各处 |
-
-### 决策 2：barrel export 策略
-
-| 方案 | 描述 | 工作量 | 风险 |
-|------|------|--------|------|
-| **D（推荐）** | Task 18 前，barrel 仅导出 typedef；Task 18 统一清理旧文件后恢复完整 barrel | 低 | 开发者需要记住直接 import 路径 |
-| **B** | 每个模块抽取后立即删除根包旧文件 | 高 | 一次性大改动，回归测试压力大 |
-
-### 决策 3：typedef 提取位置
-
-| 方案 | 描述 |
-|------|------|
-| 提取到 `jellyfin_core` | 通用回调类型定义集中管理，但 core 不依赖 jellyfin_models，需改为泛型或移到新位置 |
-| 提取到 `jellyfin_models` | models 已有 MediaItem，可以放 MediaItemDetailFetcher 等 |
-| 保持各模块各自定义 | 简单但会有重复，barrel export 需要隐藏 |
-
-### 决策 4：MediaListBuilder 迁移范围
-
-是否将 `MediaListBuilder` + 4 种布局 + `ViewModeManager` 迁移到 `jellyfin_media`？这会引入 `shared_preferences` 依赖和大量 `JellyfinClient` 解耦工作。
+1. Task 14（jellyfin_playback）— 播放模块
+2. Task 15（jellyfin_music）— 音乐业务模块
+3. Task 11（jellyfin_home）— **Round 4**（依赖 Auth/App Shell）
 
 ---
 
-## 七、下一步建议
-
-1. **等待 Leader 对决策 1-4 的确认**
-2. 确认后继续 Task 12（jellyfin_movies）和 Task 13（jellyfin_series）— 可并行
-3. 然后 Task 14（jellyfin_playback）
-4. 最后 Task 15（jellyfin_music）
-
----
-
-## 八、依赖关系图（当前实际）
+## 七、依赖关系图（当前实际）
 
 ```
 jellyfin_dart (vendor)
@@ -364,18 +298,20 @@ jellyfin_testing ──→ jellyfin_models + jellyfin_core
 jellyfin_ai_recommendation ──→ jellyfin_core + jellyfin_models + jellyfin_ui_kit
     ↑
 jellyfin_media ──→ jellyfin_models + jellyfin_ui_kit
+jellyfin_movies ──→ jellyfin_models
+jellyfin_series ──→ jellyfin_models
 
 根包 jellyfin_service ──→ 上述所有包
-    ├── jellyfin_service.dart export 旧版页面/组件（兼容层）
-    ├── jellyfin_service.dart export jellyfin_ai_recommendation（完整 barrel）
-    ├── jellyfin_service.dart export jellyfin_media（仅 typedef）
-    ├── media_libraries_page.dart 注入回调到 AiRecommendPage（已切换）
-    └── 其他页面仍使用旧版 MediaItemDetailPage / PersonDetailPage / MediaItemsPage（未切换）
+    ├── jellyfin_service.dart export 旧版页面/组件（兼容层，hide 同名类型）
+    ├── media_libraries_page.dart → AiRecommendPage（已切换）
+    ├── media_libraries_page.dart → jellyfin_media pages（已切换）
+    ├── media_libraries_page.dart → jellyfin_movies pages（已切换）
+    └── media_libraries_page.dart → jellyfin_series pages（已切换）
 ```
 
 ---
 
-## 九、阶段评估
+## 八、阶段评估
 
 | 子阶段 | 状态 | 内容 |
 |--------|------|------|
@@ -383,5 +319,7 @@ jellyfin_media ──→ jellyfin_models + jellyfin_ui_kit
 | Phase 1-B：API/UI Kit/Testing 补齐 | **完成** | Task 3, 5, 6, 7 |
 | Phase 1-C：App Shell + Auth 验证闭环 | **待开始** | Task 8, 9 |
 | Phase 2-A：AI 推荐业务解耦 | **完成** | Task 16 |
-| Phase 2-B：通用媒体能力解耦 | **完成** | Task 10 |
-| Phase 2-C：电影/剧集/播放/音乐 | **待开始** | Task 12, 13, 14, 15（等 Leader 决策） |
+| Phase 2-B：通用媒体能力解耦 | **完成** | Task 10, 10.5 |
+| Phase 2-C：电影/剧集模块 | **完成** | Task 12, 13 |
+| Phase 2-D：播放/音乐模块 | **待开始** | Task 14, 15 |
+| Phase 2-E：首页模块 | **Round 4** | Task 11（延后，依赖 Auth/App Shell） |
