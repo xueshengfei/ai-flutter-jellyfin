@@ -123,5 +123,8 @@ export 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 // 通用媒体业务模块（已解耦为独立 feature 包）
 export 'package:jellyfin_media/jellyfin_media.dart';
 
+// 电影业务模块（已解耦为独立 feature 包）
+export 'package:jellyfin_movies/jellyfin_movies.dart';
+
 // RVC 语音转换
 export 'package:rvc_flutter/rvc_flutter.dart';

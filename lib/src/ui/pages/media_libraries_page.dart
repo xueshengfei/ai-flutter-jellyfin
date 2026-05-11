@@ -3,13 +3,16 @@ import 'package:jellyfin_service/src/jellyfin_client.dart';
 import 'package:jellyfin_service/src/models/user_models.dart';
 import 'package:jellyfin_service/src/models/media_library_models.dart';
 import 'package:jellyfin_service/src/models/media_item_models.dart' as local;
+import 'package:jellyfin_service/src/models/movie_filter_models.dart' as movie_models;
 import 'package:jellyfin_service/src/ui/pages/episodes_page.dart';
 import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
 import 'package:jellyfin_service/src/models/music_models.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
 import 'package:jellyfin_service/src/ui/pages/login_page.dart';
 import 'package:jellyfin_service/src/ui/pages/personal_page.dart';
-import 'package:jellyfin_service/src/ui/pages/movie_filter_page.dart';
+import 'package:jellyfin_service/src/ui/pages/movie_filter_page.dart' as old_movie;
+import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
+import 'package:jellyfin_movies/jellyfin_movies_pages.dart' as movies_pages;
 import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
 import 'package:jellyfin_service/src/ui/pages/album_detail_page.dart';
 import 'package:jellyfin_service/src/ui/pages/artist_detail_page.dart';
@@ -17,6 +20,8 @@ import 'package:jellyfin_service/src/ui/widgets/library_card.dart';
 import 'package:jellyfin_service/src/ui/widgets/continue_watching_card.dart';
 import 'package:jellyfin_service/src/ui/widgets/mini_player_card.dart';
 import 'package:jellyfin_service/src/ui/services/jellyfin_client_image_provider.dart';
+import 'package:jellyfin_service/src/ui/widgets/media_list_builder.dart';
+import 'package:jellyfin_service/src/ui/models/view_mode_models.dart';
 import 'package:jellyfin_service/src/adapters/media_item_mapper.dart';
 import 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
@@ -211,7 +216,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
   void _navigateToLibrary(MediaLibrary library) {
     Widget page;
     if (library.type == MediaLibraryType.movies) {
-      page = MovieFilterPage(client: widget.client, libraryId: library.id, libraryName: library.name);
+      page = _buildNewMovieFilterPage(library);
     } else if (library.type == MediaLibraryType.music) {
       page = MusicLibraryPage(client: widget.client, libraryId: library.id, libraryName: library.name);
     } else {
@@ -222,6 +227,125 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
   }
 
   // ==================== 新模块页面构建 ====================
+
+  /// 构建 jellyfin_movies::MovieFilterPage
+  Widget _buildNewMovieFilterPage(MediaLibrary library) {
+    return movies_pages.MovieFilterPage(
+      libraryId: library.id,
+      libraryName: library.name,
+      fetchMovies: (filter) async {
+        // 将纯 Dart MovieFilter 转为根包的 MovieFilter（含 jellyfin_dart 类型）
+        final rootFilter = _convertMovieFilter(filter);
+        final result = await widget.client.mediaLibrary.getMovies(rootFilter);
+        return movies.MovieFilterResult(
+          movies: result.items.map((item) => MediaItemMapper.toShared(item,
+            serverUrl: widget.client.configuration.serverUrl,
+            accessToken: widget.client.configuration.accessToken,
+          )).toList(),
+          totalCount: result.totalCount,
+          startIndex: result.startIndex,
+        );
+      },
+      onNavigateToMovie: (ctx, item) {
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            _buildNewMovieDetailPage(item)));
+      },
+      listBuilder: ({required items, required onTap}) {
+        // 注入根包的 MediaListBuilder
+        return SizedBox(
+          height: _calculateMovieListHeight(items.length),
+          child: MediaListBuilder(
+            client: widget.client,
+            items: items.map((i) => MediaItemMapper.toLocal(i)).toList(),
+            config: const ViewModeConfig(),
+            onTap: (localItem) {
+              final shared = MediaItemMapper.toShared(localItem,
+                serverUrl: widget.client.configuration.serverUrl,
+                accessToken: widget.client.configuration.accessToken);
+              onTap(shared);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// 构建 jellyfin_movies::MovieDetailPage
+  Widget _buildNewMovieDetailPage(models.MediaItem item) {
+    return movies_pages.MovieDetailPage(
+      movie: item,
+      fetchDetail: (itemId) async {
+        final src = await widget.client.mediaLibrary.getMediaItemDetail(itemId);
+        return MediaItemMapper.toShared(src,
+          serverUrl: widget.client.configuration.serverUrl,
+          accessToken: widget.client.configuration.accessToken,
+        );
+      },
+      onStartPlayback: (ctx, movie) {
+        final localItem = MediaItemMapper.toLocal(movie);
+        Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
+            VideoPlayerPage(client: widget.client, item: localItem)));
+      },
+    );
+  }
+
+  /// 将纯 Dart MovieFilter 转换为根包 MovieFilter（含 jellyfin_dart 类型）
+  movie_models.MovieFilter _convertMovieFilter(movies.MovieFilter filter) {
+    return movie_models.MovieFilter(
+      parentId: filter.parentId,
+      startIndex: filter.startIndex,
+      limit: filter.limit,
+      genres: filter.genres,
+      tags: filter.tags,
+      years: filter.years,
+      nameStartsWith: filter.nameStartsWith,
+      studios: filter.studios,
+      productionLocations: filter.productionLocations,
+      minCommunityRating: filter.minCommunityRating,
+      minOfficialRating: filter.minOfficialRating,
+      maxOfficialRating: filter.maxOfficialRating,
+      isHD: filter.isHD,
+      is4K: filter.is4K,
+      recursive: filter.recursive,
+      filters: filter.isUnplayed == true
+          ? const [jellyfin_dart.ItemFilter.isUnplayed]
+          : null,
+      sortBy: filter.sortBy?.map(_convertSortField).toList(),
+      sortOrder: filter.sortOrder?.map(_convertSortOrder).toList(),
+      fields: const [
+        jellyfin_dart.ItemFields.primaryImageAspectRatio,
+        jellyfin_dart.ItemFields.mediaSourceCount,
+        jellyfin_dart.ItemFields.genres,
+        jellyfin_dart.ItemFields.studios,
+        jellyfin_dart.ItemFields.people,
+        jellyfin_dart.ItemFields.overview,
+        jellyfin_dart.ItemFields.productionLocations,
+      ],
+    );
+  }
+
+  jellyfin_dart.ItemSortBy _convertSortField(movies.MovieSortField field) {
+    switch (field) {
+      case movies.MovieSortField.dateCreated: return jellyfin_dart.ItemSortBy.dateCreated;
+      case movies.MovieSortField.sortName: return jellyfin_dart.ItemSortBy.sortName;
+      case movies.MovieSortField.productionYear: return jellyfin_dart.ItemSortBy.productionYear;
+      case movies.MovieSortField.premiereDate: return jellyfin_dart.ItemSortBy.premiereDate;
+      case movies.MovieSortField.random: return jellyfin_dart.ItemSortBy.random;
+      case movies.MovieSortField.communityRating: return jellyfin_dart.ItemSortBy.communityRating;
+    }
+  }
+
+  jellyfin_dart.SortOrder _convertSortOrder(movies.MovieSortOrder order) {
+    switch (order) {
+      case movies.MovieSortOrder.ascending: return jellyfin_dart.SortOrder.ascending;
+      case movies.MovieSortOrder.descending: return jellyfin_dart.SortOrder.descending;
+    }
+  }
+
+  double _calculateMovieListHeight(int count) {
+    if (count == 0) return 400;
+    return count * 300.0 + 32;
+  }
 
   /// 构建 jellyfin_media::MediaItemsPage
   Widget _buildNewMediaItemsPage(MediaLibrary library) {
