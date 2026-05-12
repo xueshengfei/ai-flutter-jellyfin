@@ -8,6 +8,7 @@
 /// 4. hide 数量阈值检查（>20 时 fail）
 /// 5. shared 包禁止 import feature 包
 /// 6. foundation 包禁止 import feature 包
+/// 7. 根 UI 页面 MaterialPageRoute 使用报告（信息性）
 ///
 /// 用法：dart scripts/check_module_boundaries.dart
 
@@ -19,6 +20,33 @@ const foundationDir = 'packages/foundation';
 
 /// hide 类型数量阈值（超过则 fail）
 const hideThreshold = 20;
+
+/// MaterialPageRoute 使用基线数量
+/// 超过此基线时 fail，迁移完成后更新此值
+const materialPageRouteBaseline = 41;
+
+/// 需要检查跨模块 MaterialPageRoute 的根 UI 目录
+const rootUiDir = 'lib/src/ui';
+
+/// 检查根 UI 页面中是否有直接使用 MaterialPageRoute 的跨模块导航
+///
+/// 已迁移到 AppNavigator 的页面不报告。只报告仍使用旧
+/// Navigator.push(MaterialPageRoute(...)) 的页面，作为迁移进度追踪。
+List<String> _checkMaterialPageRoute(File file, String relativePath) {
+  final violations = <String>[];
+  final lines = file.readAsLinesSync();
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i].trim();
+    if (line.contains('MaterialPageRoute') &&
+        !line.startsWith('//') &&
+        !line.startsWith('///')) {
+      violations.add('  $relativePath L${i + 1}: $line');
+    }
+  }
+
+  return violations;
+}
 
 /// 检查单个文件的 import 是否违规
 List<String> _checkFile(File file, String packageName) {
@@ -250,6 +278,37 @@ void main() {
   print('');
 
   totalViolations += foundationViolations;
+
+  // 规则 7：根 UI 页面使用直接 MaterialPageRoute 的基线守卫
+  print('检查根 UI 页面是否使用直接 MaterialPageRoute（基线: $materialPageRouteBaseline）...');
+  final rootUi = Directory(rootUiDir);
+  final materialPageRouteUsages = <String>[];
+  if (rootUi.existsSync()) {
+    for (final file in _listDartFiles(rootUi)) {
+      final relativePath = file.path.replaceFirst(
+        'lib${Platform.pathSeparator}src${Platform.pathSeparator}ui${Platform.pathSeparator}',
+        '',
+      );
+      materialPageRouteUsages.addAll(
+        _checkMaterialPageRoute(file, relativePath),
+      );
+    }
+  }
+  if (materialPageRouteUsages.isEmpty) {
+    print('  ✓ 无直接 MaterialPageRoute');
+  } else if (materialPageRouteUsages.length <= materialPageRouteBaseline) {
+    print('  ℹ ${materialPageRouteUsages.length}/$materialPageRouteBaseline 处仍使用 MaterialPageRoute（待迁移）');
+    for (final usage in materialPageRouteUsages) {
+      print(usage);
+    }
+  } else {
+    print('  ✗ ${materialPageRouteUsages.length} 处 MaterialPageRoute 超过基线 $materialPageRouteBaseline（需迁移或更新基线）');
+    for (final usage in materialPageRouteUsages) {
+      print(usage);
+    }
+    totalViolations++;
+  }
+  print('');
 
   // 总结
   print('=== 结果 ===');

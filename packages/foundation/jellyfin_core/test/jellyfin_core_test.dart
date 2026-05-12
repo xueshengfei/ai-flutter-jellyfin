@@ -38,12 +38,16 @@ void main() {
     });
 
     test('应正确推导 AI 服务地址', () {
-      final config = JellyfinConfiguration(serverUrl: 'http://192.168.1.100:8096');
+      final config = JellyfinConfiguration(
+        serverUrl: 'http://192.168.1.100:8096',
+      );
       expect(config.resolvedAiServiceUrl, 'http://192.168.1.100:5005');
     });
 
     test('应正确推导 RVC 服务地址', () {
-      final config = JellyfinConfiguration(serverUrl: 'http://192.168.1.100:8096');
+      final config = JellyfinConfiguration(
+        serverUrl: 'http://192.168.1.100:8096',
+      );
       expect(config.resolvedRvcServiceUrl, 'http://192.168.1.100:9880');
     });
 
@@ -127,6 +131,22 @@ void main() {
       const intent = GenericNavigationIntent(action: 'test');
       expect(intent, isA<NavigationIntent>());
     });
+
+    test('JellyfinRouteNames should expose stable names', () {
+      expect(JellyfinRouteNames.login, 'auth.login');
+      expect(JellyfinRouteNames.playbackVideo, 'playback.video');
+    });
+
+    test('RouteNavigationIntent should carry route name and arguments', () {
+      const intent = RouteNavigationIntent(
+        routeName: JellyfinRouteNames.playbackVideo,
+        arguments: {'itemId': 'item-1'},
+      );
+
+      expect(intent.routeName, JellyfinRouteNames.playbackVideo);
+      expect(intent.arg<String>('itemId'), 'item-1');
+      expect(intent, isA<NavigationIntent>());
+    });
   });
 
   group('RouteDescriptor', () {
@@ -154,6 +174,60 @@ void main() {
       expect(entry.routePath, '/movies');
       expect(entry.iconName, 'movie');
       expect(entry.order, 1);
+    });
+  });
+
+  group('JellyfinRouteIntents', () {
+    test('playbackVideo 应携带 itemId', () {
+      final intent = JellyfinRouteIntents.playbackVideo(itemId: 'item-1');
+      expect(intent.routeName, JellyfinRouteNames.playbackVideo);
+      expect(intent.arg<String>('itemId'), 'item-1');
+    });
+
+    test('movieDetail 应携带 itemId', () {
+      final intent = JellyfinRouteIntents.movieDetail(itemId: 'movie-1');
+      expect(intent.routeName, JellyfinRouteNames.movieDetail);
+      expect(intent.arg<String>('itemId'), 'movie-1');
+    });
+
+    test('mediaDetail 应携带 itemId', () {
+      final intent = JellyfinRouteIntents.mediaDetail(itemId: 'media-1');
+      expect(intent.routeName, JellyfinRouteNames.mediaDetail);
+      expect(intent.arg<String>('itemId'), 'media-1');
+    });
+
+    test('seriesSeasons 应携带 seriesId', () {
+      final intent = JellyfinRouteIntents.seriesSeasons(seriesId: 'series-1');
+      expect(intent.routeName, JellyfinRouteNames.seriesSeasons);
+      expect(intent.arg<String>('seriesId'), 'series-1');
+    });
+
+    test('seriesEpisodes 应携带 seriesId 和 seasonId', () {
+      final intent = JellyfinRouteIntents.seriesEpisodes(
+        seriesId: 'series-1',
+        seasonId: 'season-1',
+      );
+      expect(intent.routeName, JellyfinRouteNames.seriesEpisodes);
+      expect(intent.arg<String>('seriesId'), 'series-1');
+      expect(intent.arg<String>('seasonId'), 'season-1');
+    });
+
+    test('library 应携带 libraryId', () {
+      final intent = JellyfinRouteIntents.library(libraryId: 'lib-1');
+      expect(intent.routeName, JellyfinRouteNames.library);
+      expect(intent.arg<String>('libraryId'), 'lib-1');
+    });
+
+    test('musicAlbum 应携带 albumId', () {
+      final intent = JellyfinRouteIntents.musicAlbum(albumId: 'album-1');
+      expect(intent.routeName, JellyfinRouteNames.musicAlbum);
+      expect(intent.arg<String>('albumId'), 'album-1');
+    });
+
+    test('musicArtist 应携带 artistId', () {
+      final intent = JellyfinRouteIntents.musicArtist(artistId: 'artist-1');
+      expect(intent.routeName, JellyfinRouteNames.musicArtist);
+      expect(intent.arg<String>('artistId'), 'artist-1');
     });
   });
 }

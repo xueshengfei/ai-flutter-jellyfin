@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_service/src/app_shell/app_session.dart';
 import 'package:jellyfin_service/src/app_shell/movie_filter_adapter.dart';
 import 'package:jellyfin_service/src/app_shell/playback_delegate_factory.dart';
@@ -31,9 +32,11 @@ import 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 /// 根包模型 → feature 模块模型的转换和页面组装。
 class FeaturePageFactory {
   final AppSession _session;
+  final AppNavigator? _navigator;
   late final PlaybackDelegateFactory _playbackFactory;
 
-  FeaturePageFactory(this._session) {
+  FeaturePageFactory(this._session, {AppNavigator? navigator})
+      : _navigator = navigator {
     _playbackFactory = PlaybackDelegateFactory(_session.client);
   }
 
@@ -74,6 +77,12 @@ class FeaturePageFactory {
         );
       },
       onNavigateToMovie: (ctx, item) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.movieDetail,
+              arguments: {'itemId': item.id});
+          return;
+        }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             movieDetailPage(item)));
       },
@@ -108,6 +117,12 @@ class FeaturePageFactory {
         );
       },
       onStartPlayback: (ctx, movie) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.playbackVideo,
+              arguments: {'itemId': movie.id});
+          return;
+        }
         final localItem = MediaItemMapper.toLocal(movie);
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             playback_pages.VideoPlayerPage(
@@ -158,6 +173,12 @@ class FeaturePageFactory {
         );
       },
       onNavigateToMediaItem: (ctx, item) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.mediaDetail,
+              arguments: {'itemId': item.id});
+          return;
+        }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             mediaItemDetailPage(item)));
       },
@@ -193,14 +214,27 @@ class FeaturePageFactory {
         );
       },
       onNavigateToPerson: (ctx, personId, personName, personType) {
+        // personDetail 暂无路由注册，保留旧路径
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             personDetailPage(personId, personName, personType)));
       },
       onNavigateToEpisodes: (ctx, series, season) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.seriesEpisodes,
+              arguments: {'seriesId': series.id, 'seasonId': season.id});
+          return;
+        }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             episodesPage(series, season)));
       },
       onStartPlayback: (ctx, item) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.playbackVideo,
+              arguments: {'itemId': item.id});
+          return;
+        }
         final localItem = MediaItemMapper.toLocal(item);
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             playback_pages.VideoPlayerPage(
@@ -238,6 +272,12 @@ class FeaturePageFactory {
       },
       imageProvider: JellyfinClientImageProvider(_session.client),
       onNavigateToMediaItem: (ctx, item) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.mediaDetail,
+              arguments: {'itemId': item.id});
+          return;
+        }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             mediaItemDetailPage(item)));
       },
@@ -259,6 +299,12 @@ class FeaturePageFactory {
         return MediaItemMapper.toSharedEpisodeListResult(result);
       },
       onStartPlayback: (ctx, episode) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.playbackVideo,
+              arguments: {'itemId': episode.id});
+          return;
+        }
         final localItem = local.MediaItem(
           id: episode.id,
           name: episode.name,
@@ -324,6 +370,12 @@ class FeaturePageFactory {
         return MusicPlaybackAdapter.toMusicAlbumListResult(rootResult);
       },
       onNavigateToAlbum: (ctx, album) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.musicAlbum,
+              arguments: {'albumId': album.id});
+          return;
+        }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             albumDetailPage(album)));
       },
@@ -345,10 +397,22 @@ class FeaturePageFactory {
         );
       },
       onNavigateToMediaItem: (ctx, item) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.mediaDetail,
+              arguments: {'itemId': item.id});
+          return;
+        }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
             mediaItemDetailPage(item)));
       },
       onNavigateToAlbum: (ctx, item) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.musicAlbum,
+              arguments: {'albumId': item.id});
+          return;
+        }
         final musicAlbum = music.MusicAlbum(
           id: item.id,
           name: item.name,
@@ -363,6 +427,12 @@ class FeaturePageFactory {
             albumDetailPage(musicAlbum)));
       },
       onNavigateToArtist: (ctx, item) {
+        final nav = _navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.musicArtist,
+              arguments: {'artistId': item.id});
+          return;
+        }
         final musicArtist = music.MusicArtist(
           id: item.id,
           name: item.name,

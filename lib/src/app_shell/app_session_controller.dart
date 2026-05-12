@@ -12,6 +12,15 @@ class AppSessionController extends ChangeNotifier {
   AppSession? get currentSession => _currentSession;
   bool get isLoggedIn => _currentSession != null;
 
+  /// Stores an externally-created session.
+  ///
+  /// This lets LoginPage keep credential collection while AppShell owns session
+  /// state and go_router redirection.
+  void setSession(AppSession session) {
+    _currentSession = session;
+    notifyListeners();
+  }
+
   /// 登录：创建 client、认证、存 session
   Future<AppSession> login({
     required String serverUrl,

@@ -26,5 +26,31 @@ class GenericNavigationIntent extends NavigationIntent {
   T? arg<T>(String key) => arguments[key] as T?;
 
   @override
-  String toString() => 'GenericNavigationIntent(action: $action, args: $arguments)';
+  String toString() =>
+      'GenericNavigationIntent(action: $action, args: $arguments)';
+}
+
+/// Route-based navigation intent.
+///
+/// This is the preferred intent for module-to-module navigation. The caller
+/// names a stable route and passes small arguments. The app shell decides which
+/// page handles the route and how dependencies are injected.
+class RouteNavigationIntent extends NavigationIntent {
+  /// Stable route name from JellyfinRouteNames.
+  final String routeName;
+
+  /// Route arguments, usually ids such as itemId/libraryId/seasonId.
+  final Map<String, Object?> arguments;
+
+  const RouteNavigationIntent({
+    required this.routeName,
+    this.arguments = const {},
+  });
+
+  /// Gets a typed argument.
+  T? arg<T>(String key) => arguments[key] as T?;
+
+  @override
+  String toString() =>
+      'RouteNavigationIntent(routeName: $routeName, args: $arguments)';
 }

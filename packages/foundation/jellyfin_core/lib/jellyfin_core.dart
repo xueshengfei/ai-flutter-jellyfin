@@ -13,3 +13,5 @@ export 'src/exceptions/jellyfin_exception.dart';
 export 'src/module/jellyfin_feature_module.dart';
 export 'src/module/navigation_intent.dart';
 export 'src/module/app_navigator.dart';
+export 'src/module/jellyfin_route_names.dart';
+export 'src/module/jellyfin_route_intents.dart';

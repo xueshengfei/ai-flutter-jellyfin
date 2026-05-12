@@ -4,3 +4,6 @@ export 'movie_filter_adapter.dart';
 export 'playback_delegate_factory.dart';
 export 'music_playback_adapter.dart';
 export 'feature_page_factory.dart';
+export 'go_router_app_navigator.dart';
+export 'jellyfin_go_router.dart';
+export 'jellyfin_app_shell.dart';
