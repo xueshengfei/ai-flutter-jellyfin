@@ -38,6 +38,8 @@ dependencies:
     path: ../../packages/foundation/jellyfin_core
   jellyfin_api:
     path: ../../packages/foundation/jellyfin_api
+  jellyfin_dart:
+    path: ../../packages/vendor/jellyfin_dart_3.8
   jellyfin_models:
     path: ../../packages/shared/jellyfin_models
   jellyfin_ui_kit:
@@ -56,9 +58,6 @@ dependencies:
     path: ../../packages/features/jellyfin_ai_recommendation
   jellyfin_auth:
     path: ../../packages/features/jellyfin_auth
-  # 短期 SDK 桥，仅供 LegacyJellyfinGateway 使用
-  jellyfin_service:
-    path: ../..
 
 dev_dependencies:
   flutter_test:
