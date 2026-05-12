@@ -5,6 +5,7 @@ import 'media_item_models.dart' show MediaItem;
 /// 个人详细信息（业务模型）
 ///
 /// 封装人员（演员、导演、编剧等）的详细信息
+@Deprecated('使用 jellyfin_media 包中的 Person')
 class Person extends Equatable {
   /// 人员ID
   final String id;

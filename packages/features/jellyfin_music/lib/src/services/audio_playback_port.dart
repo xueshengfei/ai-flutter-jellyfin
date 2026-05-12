@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 
@@ -49,6 +50,9 @@ class AudioTrack extends Equatable {
   List<Object?> get props => [id, name, streamUrl];
 }
 
+/// 播放模式（UI 展示）
+enum PlayMode { sequential, shuffle, repeatOne }
+
 /// 音频播放器抽象接口
 ///
 /// 根包 [AudioPlaybackManager] 实现此接口。
@@ -82,6 +86,12 @@ abstract class AudioPlaybackPort extends ChangeNotifier {
   /// 是否正在播放
   bool get isPlaying;
 
+  /// 是否正在加载
+  bool get isLoading;
+
+  /// 错误信息
+  String? get error;
+
   /// 当前播放位置
   Duration get position;
 
@@ -94,14 +104,33 @@ abstract class AudioPlaybackPort extends ChangeNotifier {
   /// 播放列表
   List<AudioTrack> get playlist;
 
+  /// 播放列表长度
+  int get playlistLength;
+
   /// 当前播放索引
   int get currentIndex;
 
   // ==================== 播放模式 ====================
+
+  /// 当前播放模式
+  PlayMode get playMode;
 
   /// 切换随机播放
   void toggleShuffle();
 
   /// 循环切换重复模式
   void cycleRepeatMode();
+
+  /// 循环切换播放模式：顺序 → 随机 → 单曲循环 → 顺序
+  void cyclePlayMode();
+
+  // ==================== 事件流 ====================
+
+  /// 位置变化流（供歌词同步等场景使用）
+  Stream<Duration> get onPositionChanged;
+
+  // ==================== 播放列表操作 ====================
+
+  /// 更新播放列表中指定音轨的收藏状态（乐观更新）
+  void updateTrackFavorite(String trackId, bool isFavorite);
 }

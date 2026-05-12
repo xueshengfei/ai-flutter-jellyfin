@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_music/jellyfin_music.dart';
 import 'package:jellyfin_music/jellyfin_music_pages.dart';
 
+
 void main() {
   group('MusicAlbum', () {
     test('构造和字段访问', () {
@@ -352,8 +353,12 @@ class _FakePlaybackPort extends AudioPlaybackPort {
   final List<AudioTrack> _playlist = [];
   int _currentIndex = 0;
   bool _isPlaying = false;
+  bool _isLoading = false;
+  String? _error;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  PlayMode _playMode = PlayMode.sequential;
+  final _positionController = StreamController<Duration>.broadcast();
 
   @override
   AudioTrack? get currentTrack =>
@@ -361,6 +366,12 @@ class _FakePlaybackPort extends AudioPlaybackPort {
 
   @override
   bool get isPlaying => _isPlaying;
+
+  @override
+  bool get isLoading => _isLoading;
+
+  @override
+  String? get error => _error;
 
   @override
   Duration get position => _position;
@@ -375,7 +386,16 @@ class _FakePlaybackPort extends AudioPlaybackPort {
   List<AudioTrack> get playlist => List.unmodifiable(_playlist);
 
   @override
+  int get playlistLength => _playlist.length;
+
+  @override
   int get currentIndex => _currentIndex;
+
+  @override
+  PlayMode get playMode => _playMode;
+
+  @override
+  Stream<Duration> get onPositionChanged => _positionController.stream;
 
   @override
   Future<void> playSong(AudioTrack track, List<AudioTrack> playlist, int startIndex) async {
@@ -416,4 +436,17 @@ class _FakePlaybackPort extends AudioPlaybackPort {
 
   @override
   void cycleRepeatMode() {}
+
+  @override
+  void cyclePlayMode() {
+    _playMode = switch (_playMode) {
+      PlayMode.sequential => PlayMode.shuffle,
+      PlayMode.shuffle => PlayMode.repeatOne,
+      PlayMode.repeatOne => PlayMode.sequential,
+    };
+    notifyListeners();
+  }
+
+  @override
+  void updateTrackFavorite(String trackId, bool isFavorite) {}
 }

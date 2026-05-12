@@ -7,9 +7,6 @@ import 'package:jellyfin_music/jellyfin_music.dart' as music;
 /// 循环模式（内部使用）
 enum RepeatMode { off, repeatAll, repeatOne }
 
-/// 播放模式（UI 展示）
-enum PlayMode { sequential, shuffle, repeatOne }
-
 /// 全局音频播放管理器（ChangeNotifier 单例）
 ///
 /// 持有 [AudioPlayer] + 播放列表 + 当前索引 + shuffle/repeat 状态，
@@ -79,10 +76,11 @@ class AudioPlaybackManager extends ChangeNotifier implements music.AudioPlayback
       _playlist.map(_songToTrack).toList();
 
   /// 当前播放模式
-  PlayMode get playMode {
-    if (_shuffleMode) return PlayMode.shuffle;
-    if (_repeatMode == RepeatMode.repeatOne) return PlayMode.repeatOne;
-    return PlayMode.sequential;
+  @override
+  music.PlayMode get playMode {
+    if (_shuffleMode) return music.PlayMode.shuffle;
+    if (_repeatMode == RepeatMode.repeatOne) return music.PlayMode.repeatOne;
+    return music.PlayMode.sequential;
   }
 
   /// 位置变化流（替代原 audioplayers 的 onPositionChanged）
@@ -195,16 +193,17 @@ class AudioPlaybackManager extends ChangeNotifier implements music.AudioPlayback
   }
 
   /// 循环切换播放模式：顺序 → 随机 → 单曲循环 → 顺序
+  @override
   void cyclePlayMode() {
     switch (playMode) {
-      case PlayMode.sequential:
+      case music.PlayMode.sequential:
         _shuffleMode = true;
         _repeatMode = RepeatMode.off;
         _initShuffleOrder();
-      case PlayMode.shuffle:
+      case music.PlayMode.shuffle:
         _shuffleMode = false;
         _repeatMode = RepeatMode.repeatOne;
-      case PlayMode.repeatOne:
+      case music.PlayMode.repeatOne:
         _shuffleMode = false;
         _repeatMode = RepeatMode.off;
     }
@@ -258,6 +257,12 @@ class AudioPlaybackManager extends ChangeNotifier implements music.AudioPlayback
       trackNumber: track.trackNumber,
       isFavorite: track.isFavorite,
     );
+  }
+
+  /// 更新播放列表中指定音轨的收藏状态（AudioPlaybackPort 接口）
+  @override
+  void updateTrackFavorite(String trackId, bool isFavorite) {
+    updateSongFavorite(trackId, isFavorite);
   }
 
   /// 更新播放列表中指定歌曲的收藏状态（乐观更新用）
