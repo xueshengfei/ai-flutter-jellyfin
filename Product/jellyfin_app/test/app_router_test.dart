@@ -94,7 +94,7 @@ void main() {
       return paths;
     }
 
-    test('5 个新路由已注册', () {
+    test('媒体与播放路由已注册', () {
       final sessionController = AppSessionController();
       addTearDown(sessionController.dispose);
 
@@ -108,6 +108,7 @@ void main() {
       expect(paths, contains('/media/items/:itemId'));
       expect(paths, contains('/series/:seriesId/seasons'));
       expect(paths, contains('/series/:seriesId/seasons/:seasonId/episodes'));
+      expect(paths, contains('/playback/video/:itemId'));
     });
   });
 }
