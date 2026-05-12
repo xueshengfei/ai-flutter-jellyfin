@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
+import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
 /// 全局迷你播放卡片
 ///
@@ -10,14 +11,17 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 class MiniPlayerCard extends StatelessWidget {
   final JellyfinClient client;
 
-  const MiniPlayerCard({super.key, required this.client});
+  /// 可选的音频播放端口，null 时使用 AudioPlaybackManager.instance
+  final music.AudioPlaybackPort? audioPlayback;
+
+  const MiniPlayerCard({super.key, required this.client, this.audioPlayback});
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: AudioPlaybackManager.instance,
+      listenable: audioPlayback ?? AudioPlaybackManager.instance,
       builder: (context, _) {
-        final manager = AudioPlaybackManager.instance;
+        final manager = audioPlayback as AudioPlaybackManager? ?? AudioPlaybackManager.instance;
         final song = manager.currentSong;
         if (song == null) return const SizedBox.shrink();
 
