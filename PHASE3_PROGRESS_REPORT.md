@@ -154,6 +154,51 @@ packages/features/jellyfin_music/lib/src/services/
 
 ---
 
+### Task 18-B：旧模型 deprecated + 接口扩展
+
+**状态：完成**（2026-05-12）
+
+#### 3.6 旧模型 @Deprecated 标记
+
+以下根包模型类已添加 `@Deprecated` 注解（18 个 hide 类型对应的旧模型）：
+
+- `movie_filter_models.dart`：`MovieFilter`、`MovieFilterResult`
+- `video_quality_models.dart`：`VideoQuality`（枚举）、`NetworkQualityMonitor`、`AutoQualityDecider`
+- `person_models.dart`：`Person`
+- `music_models.dart`：`MusicAlbum`、`MusicArtist`、`MusicSong`、`ArtistRef`、`MusicGenre`、`MusicAlbumListResult`、`MusicArtistListResult`、`MusicSongListResult`
+
+`dart analyze` 确认：deprecated 警告为 `info` 级别，不影响编译和集成。主要使用者集中在 `music_service.dart` 和 `media_library_service.dart`，后续 Task 15-B 迁移时逐步切换。
+
+#### 3.7 AudioPlaybackPort 接口扩展
+
+为满足 `MusicLibraryPage` / `AudioPlayerPage` 的完整需求，扩展接口：
+
+新增属性：
+- `isLoading` — 是否正在加载音轨
+- `error` — 播放错误信息
+- `playlistLength` — 播放列表长度
+- `playMode` — 当前播放模式（新增 `PlayMode` 枚举）
+- `onPositionChanged` — 位置变化流（歌词同步等场景）
+
+新增方法：
+- `cyclePlayMode()` — 循环切换播放模式
+- `updateTrackFavorite()` — 更新音轨收藏状态（乐观更新）
+
+`PlayMode` 枚举从根包 `audio_playback_manager.dart` 迁移到接口层（`audio_playback_port.dart`），消除跨包类型冲突。
+
+#### 3.8 dart analyze 验证
+
+```
+225 issues found.
+- 0 errors
+- 7 warnings（预先存在的 unnecessary_non_null_assertion 等）
+- 218 info（deprecated_member_use_from_same_package + withOpacity 等）
+```
+
+deprecated 警告全部为 `info` 级别，**不影响编译和运行**。
+
+---
+
 ## 四、Leader 指出的下一步方向
 
 按 Leader 策略文档的优先级排序：
