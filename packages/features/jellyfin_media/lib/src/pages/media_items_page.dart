@@ -192,25 +192,20 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    child: Container(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
-                            const SizedBox(height: 8),
-                            Text(
-                              item.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                    child: item.hasCoverImage
+                        ? Image.network(
+                            item.getCoverImageUrl()!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          )
+                        : Container(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            child: Center(
+                              child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
+                            ),
+                          ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
