@@ -1069,7 +1069,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
 
   /// 预加载相邻歌曲封面到 CachedNetworkImage 缓存
   void _preloadAdjacentSongs() {
-    final playlist = _manager.playlist;
+    final playlist = _manager.musicPlaylist;
     final idx = _manager.currentIndex;
     for (final i in [idx - 1, idx + 1]) {
       if (i < 0 || i >= playlist.length) continue;

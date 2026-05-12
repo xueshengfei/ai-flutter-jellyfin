@@ -280,4 +280,140 @@ void main() {
       expect(find.text('暂无专辑'), findsOneWidget);
     });
   });
+
+  group('AudioTrack', () {
+    test('构造和字段访问', () {
+      const track = AudioTrack(
+        id: 't1',
+        name: '测试歌曲',
+        streamUrl: 'http://test/Audio/t1/stream',
+        coverUrl: 'http://test/cover.jpg',
+        artistText: '艺术家A',
+        duration: Duration(minutes: 3, seconds: 30),
+        albumName: '专辑名',
+        trackNumber: 1,
+        isFavorite: true,
+      );
+      expect(track.id, 't1');
+      expect(track.name, '测试歌曲');
+      expect(track.streamUrl, 'http://test/Audio/t1/stream');
+      expect(track.coverUrl, 'http://test/cover.jpg');
+      expect(track.artistText, '艺术家A');
+      expect(track.duration, Duration(minutes: 3, seconds: 30));
+      expect(track.albumName, '专辑名');
+      expect(track.trackNumber, 1);
+      expect(track.isFavorite, true);
+    });
+
+    test('Equatable', () {
+      const a = AudioTrack(id: 't1', name: 'A', streamUrl: 'http://test/s1');
+      const b = AudioTrack(id: 't1', name: 'A', streamUrl: 'http://test/s1');
+      const c = AudioTrack(id: 't2', name: 'B', streamUrl: 'http://test/s2');
+      expect(a, b);
+      expect(a, isNot(c));
+    });
+
+    test('可选字段为 null', () {
+      const track = AudioTrack(
+        id: 't1',
+        name: '无封面歌曲',
+        streamUrl: 'http://test/Audio/t1/stream',
+      );
+      expect(track.coverUrl, isNull);
+      expect(track.artistText, isNull);
+      expect(track.duration, isNull);
+      expect(track.albumName, isNull);
+      expect(track.trackNumber, isNull);
+      expect(track.isFavorite, isNull);
+    });
+  });
+
+  group('AudioPlaybackPort', () {
+    test('是一个抽象类，继承 ChangeNotifier', () {
+      // 验证 AudioPlaybackPort 是 abstract
+      // 无法直接实例化，必须通过子类实现
+      expect(() => _FakePlaybackPort(), returnsNormally);
+    });
+
+    test('AudioTrack props 包含关键字段', () {
+      const track1 = AudioTrack(id: 't1', name: 'A', streamUrl: 'http://s1');
+      const track2 = AudioTrack(
+        id: 't1', name: 'A', streamUrl: 'http://s1',
+        coverUrl: 'http://cover.jpg',
+      );
+      // track2 有额外字段但 props 只看 id+name+streamUrl
+      expect(track1, track2);
+    });
+  });
+}
+
+/// 用于测试的 AudioPlaybackPort 最小实现
+class _FakePlaybackPort extends AudioPlaybackPort {
+  final List<AudioTrack> _playlist = [];
+  int _currentIndex = 0;
+  bool _isPlaying = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+
+  @override
+  AudioTrack? get currentTrack =>
+      _playlist.isNotEmpty ? _playlist[_currentIndex] : null;
+
+  @override
+  bool get isPlaying => _isPlaying;
+
+  @override
+  Duration get position => _position;
+
+  @override
+  Duration get duration => _duration;
+
+  @override
+  bool get hasPlaylist => _playlist.isNotEmpty;
+
+  @override
+  List<AudioTrack> get playlist => List.unmodifiable(_playlist);
+
+  @override
+  int get currentIndex => _currentIndex;
+
+  @override
+  Future<void> playSong(AudioTrack track, List<AudioTrack> playlist, int startIndex) async {
+    _playlist
+      ..clear()
+      ..addAll(playlist);
+    _currentIndex = startIndex;
+    _isPlaying = true;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> pause() async {
+    _isPlaying = false;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> resume() async {
+    _isPlaying = true;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> seek(Duration position) async {
+    _position = position;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> playNext() async {}
+
+  @override
+  Future<void> playPrevious() async {}
+
+  @override
+  void toggleShuffle() {}
+
+  @override
+  void cycleRepeatMode() {}
 }

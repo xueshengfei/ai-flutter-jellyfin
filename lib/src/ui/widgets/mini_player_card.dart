@@ -33,7 +33,7 @@ class MiniPlayerCard extends StatelessWidget {
               builder: (_) => AudioPlayerPage(
                 client: client,
                 song: song,
-                playlist: manager.playlist,
+                playlist: manager.musicPlaylist,
                 initialIndex: manager.currentIndex,
               ),
             ),
