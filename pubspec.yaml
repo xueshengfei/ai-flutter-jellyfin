@@ -90,6 +90,7 @@ dependencies:
   # RVC 语音转换，AI翻唱
   rvc_flutter:
     path: packages/features/rvc_flutter
+  go_router: ^17.2.3
 
 dev_dependencies:
   flutter_test:

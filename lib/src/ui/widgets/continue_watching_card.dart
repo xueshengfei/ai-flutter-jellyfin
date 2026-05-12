@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_service/src/jellyfin_client.dart';
 import 'package:jellyfin_service/src/models/media_item_models.dart';
 import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
@@ -7,11 +8,13 @@ import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
 class ContinueWatchingCard extends StatelessWidget {
   final MediaItem item;
   final JellyfinClient client;
+  final AppNavigator? navigator;
 
   const ContinueWatchingCard({
     super.key,
     required this.item,
     required this.client,
+    this.navigator,
   });
 
   @override
@@ -21,6 +24,12 @@ class ContinueWatchingCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
+        final nav = navigator;
+        if (nav != null) {
+          nav.push(JellyfinRouteNames.playbackVideo,
+              arguments: {'itemId': item.id});
+          return;
+        }
         Navigator.push(context, MaterialPageRoute(
           builder: (_) => VideoPlayerPage(client: client, item: item),
         ));
