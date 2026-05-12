@@ -64,4 +64,30 @@ abstract final class JellyfinRouteIntents {
         routeName: JellyfinRouteNames.musicArtist,
         arguments: {'artistId': artistId},
       );
+
+  /// 音乐媒体库
+  static RouteNavigationIntent musicLibrary({required String libraryId}) =>
+      RouteNavigationIntent(
+        routeName: JellyfinRouteNames.musicLibrary,
+        arguments: {'libraryId': libraryId},
+      );
+
+  /// 音乐搜索
+  static RouteNavigationIntent musicSearch({String? libraryId}) =>
+      RouteNavigationIntent(
+        routeName: JellyfinRouteNames.musicSearch,
+        arguments: {if (libraryId != null) 'libraryId': libraryId},
+      );
+
+  /// 媒体库列表（无参）
+  static RouteNavigationIntent libraries() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.libraries,
+      );
+
+  /// 个人资料（无参）
+  static RouteNavigationIntent profile() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.profile,
+      );
 }

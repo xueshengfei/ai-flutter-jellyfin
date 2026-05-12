@@ -79,8 +79,7 @@ class FeaturePageFactory {
       onNavigateToMovie: (ctx, item) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.movieDetail,
-              arguments: {'itemId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.movieDetail(itemId: item.id));
           return;
         }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
@@ -119,8 +118,7 @@ class FeaturePageFactory {
       onStartPlayback: (ctx, movie) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.playbackVideo,
-              arguments: {'itemId': movie.id});
+          nav.pushIntent(JellyfinRouteIntents.playbackVideo(itemId: movie.id));
           return;
         }
         final localItem = MediaItemMapper.toLocal(movie);
@@ -175,8 +173,7 @@ class FeaturePageFactory {
       onNavigateToMediaItem: (ctx, item) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.mediaDetail,
-              arguments: {'itemId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.mediaDetail(itemId: item.id));
           return;
         }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
@@ -221,8 +218,8 @@ class FeaturePageFactory {
       onNavigateToEpisodes: (ctx, series, season) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.seriesEpisodes,
-              arguments: {'seriesId': series.id, 'seasonId': season.id});
+          nav.pushIntent(JellyfinRouteIntents.seriesEpisodes(
+              seriesId: series.id, seasonId: season.id));
           return;
         }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
@@ -231,8 +228,7 @@ class FeaturePageFactory {
       onStartPlayback: (ctx, item) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.playbackVideo,
-              arguments: {'itemId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.playbackVideo(itemId: item.id));
           return;
         }
         final localItem = MediaItemMapper.toLocal(item);
@@ -274,8 +270,7 @@ class FeaturePageFactory {
       onNavigateToMediaItem: (ctx, item) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.mediaDetail,
-              arguments: {'itemId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.mediaDetail(itemId: item.id));
           return;
         }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
@@ -301,8 +296,7 @@ class FeaturePageFactory {
       onStartPlayback: (ctx, episode) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.playbackVideo,
-              arguments: {'itemId': episode.id});
+          nav.pushIntent(JellyfinRouteIntents.playbackVideo(itemId: episode.id));
           return;
         }
         final localItem = local.MediaItem(
@@ -372,8 +366,7 @@ class FeaturePageFactory {
       onNavigateToAlbum: (ctx, album) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.musicAlbum,
-              arguments: {'albumId': album.id});
+          nav.pushIntent(JellyfinRouteIntents.musicAlbum(albumId: album.id));
           return;
         }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
@@ -399,8 +392,7 @@ class FeaturePageFactory {
       onNavigateToMediaItem: (ctx, item) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.mediaDetail,
-              arguments: {'itemId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.mediaDetail(itemId: item.id));
           return;
         }
         Navigator.push(ctx, MaterialPageRoute(builder: (_) =>
@@ -409,8 +401,7 @@ class FeaturePageFactory {
       onNavigateToAlbum: (ctx, item) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.musicAlbum,
-              arguments: {'albumId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.musicAlbum(albumId: item.id));
           return;
         }
         final musicAlbum = music.MusicAlbum(
@@ -429,8 +420,7 @@ class FeaturePageFactory {
       onNavigateToArtist: (ctx, item) {
         final nav = _navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.musicArtist,
-              arguments: {'artistId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.musicArtist(artistId: item.id));
           return;
         }
         final musicArtist = music.MusicArtist(

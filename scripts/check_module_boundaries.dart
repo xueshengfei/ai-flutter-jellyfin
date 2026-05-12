@@ -28,6 +28,24 @@ const materialPageRouteBaseline = 41;
 /// 需要检查跨模块 MaterialPageRoute 的根 UI 目录
 const rootUiDir = 'lib/src/ui';
 
+/// 从 allowlist 文件加载允许暂留的 MaterialPageRoute 位置
+Set<String> _loadAllowlist() {
+  final allowlistFile = File('scripts/module_boundary_allowlist.txt');
+  if (!allowlistFile.existsSync()) {
+    stderr.writeln('警告: 找不到 scripts/module_boundary_allowlist.txt，视为空 allowlist');
+    return {};
+  }
+
+  final entries = <String>{};
+  for (final line in allowlistFile.readAsLinesSync()) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
+    // 统一使用 / 作为路径分隔符
+    entries.add(trimmed.replaceAll('\\', '/'));
+  }
+  return entries;
+}
+
 /// 检查根 UI 页面中是否有直接使用 MaterialPageRoute 的跨模块导航
 ///
 /// 已迁移到 AppNavigator 的页面不报告。只报告仍使用旧
@@ -279,8 +297,9 @@ void main() {
 
   totalViolations += foundationViolations;
 
-  // 规则 7：根 UI 页面使用直接 MaterialPageRoute 的基线守卫
-  print('检查根 UI 页面是否使用直接 MaterialPageRoute（基线: $materialPageRouteBaseline）...');
+  // 规则 7：根 UI 页面使用直接 MaterialPageRoute 的 allowlist 守卫
+  print('检查根 UI 页面是否使用直接 MaterialPageRoute...');
+  final allowlist = _loadAllowlist();
   final rootUi = Directory(rootUiDir);
   final materialPageRouteUsages = <String>[];
   if (rootUi.existsSync()) {
@@ -294,19 +313,55 @@ void main() {
       );
     }
   }
+
   if (materialPageRouteUsages.isEmpty) {
     print('  ✓ 无直接 MaterialPageRoute');
-  } else if (materialPageRouteUsages.length <= materialPageRouteBaseline) {
-    print('  ℹ ${materialPageRouteUsages.length}/$materialPageRouteBaseline 处仍使用 MaterialPageRoute（待迁移）');
-    for (final usage in materialPageRouteUsages) {
-      print(usage);
-    }
   } else {
-    print('  ✗ ${materialPageRouteUsages.length} 处 MaterialPageRoute 超过基线 $materialPageRouteBaseline（需迁移或更新基线）');
+    // 从 usages 中解析出 file:line 格式用于 allowlist 匹配
+    final unallowed = <String>[];
     for (final usage in materialPageRouteUsages) {
-      print(usage);
+      // usage 格式: "  filename.dart L123: ..."
+      final match = RegExp(r'^\s+(\S+)\s+L(\d+):').firstMatch(usage);
+      if (match != null) {
+        final file = match.group(1)!.replaceAll('\\', '/');
+        final line = match.group(2)!;
+        final key = '$file:$line';
+        if (allowlist.contains(key)) {
+          // 在 allowlist 中 → 仅提示
+        } else {
+          unallowed.add(usage);
+        }
+      }
     }
-    totalViolations++;
+
+    if (unallowed.isNotEmpty) {
+      print('  ✗ 发现 ${unallowed.length} 处未在 allowlist 中的 MaterialPageRoute:');
+      for (final u in unallowed) {
+        print(u);
+      }
+      totalViolations++;
+    }
+
+    final allowlistCount = materialPageRouteUsages.length - unallowed.length;
+    if (allowlistCount > 0) {
+      print('  ℹ $allowlistCount 处在 allowlist 中（待迁移）');
+      // 打印 allowlist 内的条目
+      for (final usage in materialPageRouteUsages) {
+        final match = RegExp(r'^\s+(\S+)\s+L(\d+):').firstMatch(usage);
+        if (match != null) {
+          final key = '${match.group(1)!.replaceAll('\\', '/')}:${match.group(2)!}';
+          if (allowlist.contains(key) && unallowed.isNotEmpty == false) {
+            print(usage);
+          }
+        }
+      }
+    }
+
+    // 第二层守卫：总数不能超过基线
+    if (materialPageRouteUsages.length > materialPageRouteBaseline) {
+      print('  ✗ 总数 ${materialPageRouteUsages.length} 超过基线 $materialPageRouteBaseline');
+      totalViolations++;
+    }
   }
   print('');
 

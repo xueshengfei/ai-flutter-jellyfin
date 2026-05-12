@@ -8,13 +8,37 @@ import 'package:jellyfin_service/src/adapters/media_item_mapper.dart';
 import 'package:jellyfin_service/src/app_shell/app_session.dart';
 import 'package:jellyfin_service/src/app_shell/app_session_controller.dart';
 import 'package:jellyfin_service/src/app_shell/feature_page_factory.dart';
+import 'package:jellyfin_service/src/app_shell/music_playback_adapter.dart';
 import 'package:jellyfin_service/src/app_shell/playback_delegate_factory.dart';
 import 'package:jellyfin_service/src/models/media_library_models.dart';
 import 'package:jellyfin_service/src/models/media_item_models.dart' as local;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_service/src/ui/pages/login_page.dart';
 import 'package:jellyfin_service/src/ui/pages/media_libraries_page.dart';
+import 'package:jellyfin_service/src/ui/pages/music_library_page.dart';
+import 'package:jellyfin_service/src/ui/pages/music_search_page.dart';
 import 'package:jellyfin_service/src/ui/pages/personal_page.dart';
+import 'package:jellyfin_music/jellyfin_music.dart' as music;
+
+/// 纯函数：根据登录状态和当前路径决定重定向目标
+///
+/// [isLoggedIn] 当前是否已登录
+/// [matchedLocation] GoRouter 匹配到的路径
+/// [loginPath] 登录页路径
+/// [homePath] 首页路径
+///
+/// 返回 `null` 表示不重定向。
+String? resolveAuthRedirect({
+  required bool isLoggedIn,
+  required String matchedLocation,
+  String loginPath = '/login',
+  String homePath = '/libraries',
+}) {
+  final isLogin = matchedLocation == loginPath;
+  if (!isLoggedIn && !isLogin) return loginPath;
+  if (isLoggedIn && isLogin) return homePath;
+  return null;
+}
 
 /// Creates the single app-owned go_router instance.
 ///
@@ -28,14 +52,10 @@ GoRouter createJellyfinGoRouter({
   return GoRouter(
     initialLocation: initialLocation,
     refreshListenable: sessionController,
-    redirect: (context, state) {
-      final isLoggedIn = sessionController.isLoggedIn;
-      final isLogin = state.matchedLocation == '/login';
-
-      if (!isLoggedIn && !isLogin) return '/login';
-      if (isLoggedIn && isLogin) return '/libraries';
-      return null;
-    },
+    redirect: (context, state) => resolveAuthRedirect(
+      isLoggedIn: sessionController.isLoggedIn,
+      matchedLocation: state.matchedLocation,
+    ),
     routes: [
       GoRoute(
         name: JellyfinRouteNames.login,
@@ -144,6 +164,54 @@ GoRouter createJellyfinGoRouter({
             seriesId: state.pathParameters['seriesId']!,
             seasonId: state.pathParameters['seasonId']!,
             navigator: appNavigator,
+          );
+        },
+      ),
+      GoRoute(
+        name: JellyfinRouteNames.musicAlbum,
+        path: '/music/albums/:albumId',
+        builder: (context, state) {
+          final session = _requireSession(sessionController);
+          return _MusicAlbumRoutePage(
+            session: session,
+            albumId: state.pathParameters['albumId']!,
+            navigator: appNavigator,
+          );
+        },
+      ),
+      GoRoute(
+        name: JellyfinRouteNames.musicArtist,
+        path: '/music/artists/:artistId',
+        builder: (context, state) {
+          final session = _requireSession(sessionController);
+          return _MusicArtistRoutePage(
+            session: session,
+            artistId: state.pathParameters['artistId']!,
+            navigator: appNavigator,
+          );
+        },
+      ),
+      GoRoute(
+        name: JellyfinRouteNames.musicLibrary,
+        path: '/music/libraries/:libraryId',
+        builder: (context, state) {
+          final session = _requireSession(sessionController);
+          return _MusicLibraryRoutePage(
+            session: session,
+            libraryId: state.pathParameters['libraryId']!,
+            navigator: appNavigator,
+          );
+        },
+      ),
+      GoRoute(
+        name: JellyfinRouteNames.musicSearch,
+        path: '/music/search',
+        builder: (context, state) {
+          final session = _requireSession(sessionController);
+          final libraryId = state.uri.queryParameters['libraryId'];
+          return MusicSearchPage(
+            client: session.client,
+            libraryId: libraryId,
           );
         },
       ),
@@ -382,8 +450,8 @@ class _SeriesSeasonsRoutePage extends StatelessWidget {
           onNavigateToEpisodes: (ctx, series, season) {
             final nav = navigator;
             if (nav != null) {
-              nav.push(JellyfinRouteNames.seriesEpisodes,
-                  arguments: {'seriesId': series.id, 'seasonId': season.id});
+              nav.pushIntent(JellyfinRouteIntents.seriesEpisodes(
+                  seriesId: series.id, seasonId: season.id));
               return;
             }
           },
@@ -455,6 +523,124 @@ class _EpisodesRoutePage extends StatelessWidget {
 
         return FeaturePageFactory(session, navigator: navigator)
             .episodesPage(sharedSeries, sharedSeason);
+      },
+    );
+  }
+}
+
+class _MusicAlbumRoutePage extends StatelessWidget {
+  final AppSession session;
+  final String albumId;
+  final AppNavigator? navigator;
+
+  const _MusicAlbumRoutePage({
+    required this.session,
+    required this.albumId,
+    this.navigator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<music.MusicAlbum>(
+      future: _fetchAlbum(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _RouteLoadingPage();
+        }
+        if (snapshot.hasError) {
+          return _RouteErrorPage(message: '${snapshot.error}');
+        }
+
+        final album = snapshot.data;
+        if (album == null) {
+          return _RouteErrorPage(message: 'Album not found: $albumId');
+        }
+        return FeaturePageFactory(session, navigator: navigator)
+            .albumDetailPage(album);
+      },
+    );
+  }
+
+  Future<music.MusicAlbum> _fetchAlbum() async {
+    final rootAlbum = await session.client.music.getAlbumDetail(albumId);
+    return MusicPlaybackAdapter.toMusicAlbum(rootAlbum);
+  }
+}
+
+class _MusicArtistRoutePage extends StatelessWidget {
+  final AppSession session;
+  final String artistId;
+  final AppNavigator? navigator;
+
+  const _MusicArtistRoutePage({
+    required this.session,
+    required this.artistId,
+    this.navigator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<music.MusicArtist>(
+      future: _fetchArtist(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _RouteLoadingPage();
+        }
+        if (snapshot.hasError) {
+          return _RouteErrorPage(message: '${snapshot.error}');
+        }
+
+        final artist = snapshot.data;
+        if (artist == null) {
+          return _RouteErrorPage(message: 'Artist not found: $artistId');
+        }
+        return FeaturePageFactory(session, navigator: navigator)
+            .artistDetailPage(artist);
+      },
+    );
+  }
+
+  Future<music.MusicArtist> _fetchArtist() async {
+    final rootArtist = await session.client.music.getArtistDetail(artistId);
+    return MusicPlaybackAdapter.toMusicArtist(rootArtist);
+  }
+}
+
+class _MusicLibraryRoutePage extends StatelessWidget {
+  final AppSession session;
+  final String libraryId;
+  final AppNavigator? navigator;
+
+  const _MusicLibraryRoutePage({
+    required this.session,
+    required this.libraryId,
+    this.navigator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<MediaLibraryListResult>(
+      future: session.client.mediaLibrary.getMediaLibraries(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _RouteLoadingPage();
+        }
+        if (snapshot.hasError) {
+          return _RouteErrorPage(message: '${snapshot.error}');
+        }
+
+        final libraries = snapshot.data?.libraries ?? const <MediaLibrary>[];
+        final matches = libraries.where((item) => item.id == libraryId);
+        if (matches.isEmpty) {
+          return _RouteErrorPage(message: 'Music library not found: $libraryId');
+        }
+
+        final library = matches.first;
+        return MusicLibraryPage(
+          client: session.client,
+          libraryId: library.id,
+          libraryName: library.name,
+        );
       },
     );
   }
