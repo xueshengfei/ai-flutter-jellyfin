@@ -66,6 +66,20 @@ abstract class JellyfinGateway {
     String? sortBy,
   });
 
+  /// 获取艺术家列表
+  Future<music.MusicArtistListResult> fetchArtists({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  });
+
+  /// 获取歌曲列表
+  Future<music.MusicSongListResult> fetchSongs({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  });
+
   /// 获取专辑详情
   Future<music.MusicAlbum> getAlbumDetail(String albumId);
 

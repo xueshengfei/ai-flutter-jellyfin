@@ -276,6 +276,24 @@ class _StubGateway implements JellyfinGateway {
   }
 
   @override
+  Future<music.MusicArtistListResult> fetchArtists({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  }) async {
+    return const music.MusicArtistListResult(artists: []);
+  }
+
+  @override
+  Future<music.MusicSongListResult> fetchSongs({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  }) async {
+    return const music.MusicSongListResult(songs: []);
+  }
+
+  @override
   Future<music.MusicAlbum> getAlbumDetail(String albumId) {
     throw UnimplementedError('No gateway configured');
   }
