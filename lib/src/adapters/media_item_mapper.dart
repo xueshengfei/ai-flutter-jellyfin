@@ -1,6 +1,6 @@
 import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
-import 'package:jellyfin_media/src/models/person_models.dart' as media_person;
+import 'package:jellyfin_media/jellyfin_media_models.dart' as media_person;
 import 'package:jellyfin_service/src/models/media_item_models.dart' as local;
 import 'package:jellyfin_service/src/models/person_models.dart' as local_person;
 
