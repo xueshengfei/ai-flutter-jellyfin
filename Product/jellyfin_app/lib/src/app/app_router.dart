@@ -69,10 +69,8 @@ GoRouter createAppRouter({
                 case models.MediaLibraryType.movies:
                   context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
                 case models.MediaLibraryType.tvshows:
-                  // 剧集库暂时也跳到媒体详情
-                  context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
+                  context.push('/libraries/${library.id}/series');
                 default:
-                  // 其他类型暂用通用列表
                   context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
               }
             },
@@ -93,6 +91,23 @@ GoRouter createAppRouter({
             gateway: effectiveGateway,
             libraryId: libraryId,
             libraryName: libraryName,
+          );
+        },
+      ),
+      // 剧集列表页
+      GoRoute(
+        path: '/libraries/:libraryId/series',
+        builder: (context, state) {
+          final libraryId = state.pathParameters['libraryId']!;
+          final libraryName = state.uri.queryParameters['name'] ?? '剧集';
+          return SeriesListRoutePage(
+            gateway: effectiveGateway,
+            library: models.MediaLibrary(
+              id: libraryId,
+              name: libraryName,
+              type: models.MediaLibraryType.tvshows,
+              serverUrl: sessionController.currentSession?.serverUrl ?? '',
+            ),
           );
         },
       ),
@@ -196,5 +211,14 @@ class _StubGateway implements JellyfinGateway {
   @override
   Future<movies.MovieFilterResult> fetchMovies(movies.MovieFilter filter) {
     throw UnimplementedError('No gateway configured');
+  }
+
+  @override
+  Future<models.MediaItemListResult> fetchMediaItems({
+    required String parentId,
+    bool recursive = true,
+    int? limit,
+  }) async {
+    return models.MediaItemListResult(items: []);
   }
 }

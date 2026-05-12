@@ -233,6 +233,35 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
   }
 
+  @override
+  Future<models.MediaItemListResult> fetchMediaItems({
+    required String parentId,
+    bool recursive = true,
+    int? limit,
+  }) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      parentId: parentId,
+      recursive: recursive,
+      limit: limit,
+      includeItemTypes: [jellyfin_dart.BaseItemKind.series],
+      fields: [
+        jellyfin_dart.ItemFields.overview,
+        jellyfin_dart.ItemFields.genres,
+      ],
+    );
+
+    final items = response.data?.items ?? [];
+    return models.MediaItemListResult(
+      items: items.map((dto) => _mapMediaItem(dto, config.serverUrl))
+          .toList(),
+      totalCount: response.data?.totalRecordCount,
+    );
+  }
+
   void _requireClient() {
     if (_apiClient == null) {
       throw StateError('未登录，请先调用 login()');

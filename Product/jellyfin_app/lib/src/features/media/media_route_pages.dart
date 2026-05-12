@@ -13,6 +13,30 @@ import 'package:jellyfin_series/jellyfin_series_pages.dart';
 
 import '../../data/jellyfin_gateway.dart';
 
+// ──────────────────────────── 剧集列表页 ────────────────────────────
+
+class SeriesListRoutePage extends StatelessWidget {
+  final JellyfinGateway gateway;
+  final models.MediaLibrary library;
+
+  const SeriesListRoutePage({
+    super.key,
+    required this.gateway,
+    required this.library,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MediaItemsPage(
+      library: library,
+      fetchMediaItems: gateway.fetchMediaItems,
+      onNavigateToMediaItem: (context, item) {
+        context.push('/media/items/${item.id}');
+      },
+    );
+  }
+}
+
 // ──────────────────────────── 电影筛选页 ────────────────────────────
 
 class MoviesRoutePage extends StatelessWidget {
