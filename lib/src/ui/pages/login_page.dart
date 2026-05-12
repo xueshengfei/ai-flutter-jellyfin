@@ -4,12 +4,17 @@ import 'package:jellyfin_service/src/jellyfin_configuration.dart';
 import 'package:jellyfin_service/src/exceptions/authentication_exception.dart';
 import 'package:jellyfin_service/src/services/server_discovery_service.dart';
 import 'package:jellyfin_service/src/models/server_discovery_models.dart';
+import 'package:jellyfin_service/src/app_shell/app_session.dart';
 import 'package:jellyfin_service/src/ui/pages/media_libraries_page.dart';
 import 'package:jellyfin_service/src/debug/network_simulator.dart';
 
 /// 登录页面 - 演示 SDK 的最小接入方式
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  /// 登录/注册成功后的回调，接收 [AppSession]。
+  /// 为 null 时使用默认行为（跳转到 MediaLibrariesPage）。
+  final void Function(AppSession session)? onLoginSuccess;
+
+  const LoginPage({super.key, this.onLoginSuccess});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -113,15 +118,20 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MediaLibrariesPage(
-              client: client,
-              user: result.user,
+        final session = AppSession(client: client, user: result.user);
+        if (widget.onLoginSuccess != null) {
+          widget.onLoginSuccess!(session);
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MediaLibrariesPage(
+                client: client,
+                user: result.user,
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       setState(() {
@@ -181,15 +191,20 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MediaLibrariesPage(
-              client: client,
-              user: authResult.user,
+        final session = AppSession(client: client, user: authResult.user);
+        if (widget.onLoginSuccess != null) {
+          widget.onLoginSuccess!(session);
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MediaLibrariesPage(
+                client: client,
+                user: authResult.user,
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } on AuthenticationException catch (e) {
       setState(() {

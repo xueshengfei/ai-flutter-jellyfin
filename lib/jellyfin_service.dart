@@ -70,6 +70,9 @@ export 'src/jellyfin_client.dart';
 // 适配器
 export 'src/adapters/media_item_mapper.dart';
 
+// App Shell（编排层）
+export 'src/app_shell/app_shell.dart';
+
 // 调试工具
 export 'src/debug/network_simulator.dart';
 export 'src/debug/flutter_debug_panel.dart';
@@ -103,13 +106,7 @@ export 'src/ui/pages/login_page.dart';
 export 'src/ui/pages/media_libraries_page.dart';
 export 'src/ui/pages/video_player_page.dart';
 export 'src/ui/pages/media_item_detail_page.dart';
-export 'src/ui/pages/media_items_page.dart';
-export 'src/ui/pages/movie_detail_page.dart';
-export 'src/ui/pages/movie_filter_page.dart';
 export 'src/ui/pages/personal_page.dart';
-export 'src/ui/pages/person_detail_page.dart';
-export 'src/ui/pages/episodes_page.dart';
-export 'src/ui/pages/seasons_page.dart';
 export 'src/ui/pages/music_library_page.dart';
 export 'src/ui/pages/music_search_page.dart';
 export 'src/ui/pages/artist_detail_page.dart';

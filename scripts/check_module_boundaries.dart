@@ -5,15 +5,20 @@
 /// 1. 不 import 根包 `jellyfin_service`
 /// 2. 不 import 其他 feature 包的 `src/` 目录
 /// 3. 外部不 import feature 包的 `src/` 目录
+/// 4. hide 数量阈值检查（>20 时 fail）
+/// 5. shared 包禁止 import feature 包
+/// 6. foundation 包禁止 import feature 包
 ///
 /// 用法：dart scripts/check_module_boundaries.dart
 
 import 'dart:io';
 
 const featuresDir = 'packages/features';
+const sharedDir = 'packages/shared';
+const foundationDir = 'packages/foundation';
 
-// 合法的对外 import 路径（barrel 文件），不视为违规
-final _allowedPatterns = <RegExp>[];
+/// hide 类型数量阈值（超过则 fail）
+const hideThreshold = 20;
 
 /// 检查单个文件的 import 是否违规
 List<String> _checkFile(File file, String packageName) {
@@ -48,6 +53,25 @@ List<String> _checkFile(File file, String packageName) {
   return violations;
 }
 
+/// 检查单个文件是否 import 了任何 feature 包
+List<String> _checkFeatureImports(File file, String pkgLabel, Set<String> featureNames) {
+  final violations = <String>[];
+  final lines = file.readAsLinesSync();
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i].trim();
+    final importMatch = RegExp(r'''import\s+['"]package:(jellyfin_\w+)/''').firstMatch(line);
+    if (importMatch == null) continue;
+
+    final pkgName = importMatch.group(1)!;
+    if (featureNames.contains(pkgName)) {
+      violations.add('  L${i + 1}: import feature 包 $pkgName → ${importMatch.group(0)}');
+    }
+  }
+
+  return violations;
+}
+
 /// 递归获取目录下所有 .dart 文件
 List<File> _listDartFiles(Directory dir) {
   final files = <File>[];
@@ -61,6 +85,18 @@ List<File> _listDartFiles(Directory dir) {
   return files;
 }
 
+/// 统计 barrel 文件中的 hide 类型数量
+int _countHideTypes(File barrelFile) {
+  final content = barrelFile.readAsStringSync();
+  final hideMatches = RegExp(r'\bhide\s+([^;]+);').allMatches(content);
+  var count = 0;
+  for (final match in hideMatches) {
+    final hideList = match.group(1)!;
+    count += hideList.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).length;
+  }
+  return count;
+}
+
 void main() {
   final features = Directory(featuresDir);
   if (!features.existsSync()) {
@@ -72,6 +108,12 @@ void main() {
 
   var totalViolations = 0;
   final packageDirs = features.listSync().whereType<Directory>();
+
+  // 收集所有 feature 包名
+  final featureNames = <String>{};
+  for (final pkgDir in packageDirs) {
+    featureNames.add(pkgDir.path.split(Platform.pathSeparator).last);
+  }
 
   for (final pkgDir in packageDirs) {
     final packageName = pkgDir.path.split(Platform.pathSeparator).last;
@@ -115,12 +157,6 @@ void main() {
   final rootLib = Directory('lib');
   var rootViolations = 0;
 
-  // 收集所有 feature 包名
-  final featureNames = <String>{};
-  for (final pkgDir in packageDirs) {
-    featureNames.add(pkgDir.path.split(Platform.pathSeparator).last);
-  }
-
   if (rootLib.existsSync()) {
     for (final file in _listDartFiles(rootLib)) {
       final relativePath = file.path.replaceFirst('lib${Platform.pathSeparator}', '');
@@ -148,6 +184,72 @@ void main() {
   print('');
 
   totalViolations += rootViolations;
+
+  // 规则 4：hide 数量阈值检查
+  print('检查根包 barrel hide 数量 ...');
+  final barrelFile = File('lib/jellyfin_service.dart');
+  if (barrelFile.existsSync()) {
+    final hideCount = _countHideTypes(barrelFile);
+    if (hideCount > hideThreshold) {
+      print('  ✗ hide 类型数量 $hideCount > 阈值 $hideThreshold');
+      totalViolations++;
+    } else {
+      print('  ✓ hide 类型数量 $hideCount（阈值 $hideThreshold）');
+    }
+  }
+  print('');
+
+  // 规则 5：shared 包禁止 import feature 包
+  print('检查 shared 包是否 import feature 包 ...');
+  final sharedLib = Directory('$sharedDir/lib');
+  var sharedViolations = 0;
+  if (sharedLib.existsSync()) {
+    for (final file in _listDartFiles(sharedLib)) {
+      final violations = _checkFeatureImports(file, 'shared', featureNames);
+      if (violations.isNotEmpty) {
+        final relativePath = file.path.replaceFirst('$sharedDir${Platform.pathSeparator}', '');
+        print('  $relativePath');
+        for (final v in violations) {
+          print(v);
+        }
+        sharedViolations += violations.length;
+      }
+    }
+  }
+  if (sharedViolations == 0) {
+    print('  ✓ 无违规');
+  } else {
+    print('  ✗ $sharedViolations 个违规');
+  }
+  print('');
+
+  totalViolations += sharedViolations;
+
+  // 规则 6：foundation 包禁止 import feature 包
+  print('检查 foundation 包是否 import feature 包 ...');
+  final foundationLib = Directory('$foundationDir/lib');
+  var foundationViolations = 0;
+  if (foundationLib.existsSync()) {
+    for (final file in _listDartFiles(foundationLib)) {
+      final violations = _checkFeatureImports(file, 'foundation', featureNames);
+      if (violations.isNotEmpty) {
+        final relativePath = file.path.replaceFirst('$foundationDir${Platform.pathSeparator}', '');
+        print('  $relativePath');
+        for (final v in violations) {
+          print(v);
+        }
+        foundationViolations += violations.length;
+      }
+    }
+  }
+  if (foundationViolations == 0) {
+    print('  ✓ 无违规');
+  } else {
+    print('  ✗ $foundationViolations 个违规');
+  }
+  print('');
+
+  totalViolations += foundationViolations;
 
   // 总结
   print('=== 结果 ===');
