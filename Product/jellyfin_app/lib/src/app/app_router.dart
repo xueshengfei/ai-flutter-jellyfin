@@ -2,9 +2,11 @@ import 'package:go_router/go_router.dart';
 import 'package:jellyfin_auth/jellyfin_auth_pages.dart';
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
+import 'package:jellyfin_music/jellyfin_music.dart' as music;
 import '../data/jellyfin_gateway.dart';
 import '../features/home/media_libraries_page.dart';
 import '../features/media/media_route_pages.dart';
+import '../features/music/music_route_pages.dart';
 import '../features/playback/playback_route_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
@@ -70,6 +72,8 @@ GoRouter createAppRouter({
                   context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
                 case models.MediaLibraryType.tvshows:
                   context.push('/libraries/${library.id}/series');
+                case models.MediaLibraryType.music:
+                  context.push('/libraries/${library.id}/music');
                 default:
                   context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
               }
@@ -108,6 +112,45 @@ GoRouter createAppRouter({
               type: models.MediaLibraryType.tvshows,
               serverUrl: sessionController.currentSession?.serverUrl ?? '',
             ),
+          );
+        },
+      ),
+      // 音乐库列表页
+      GoRoute(
+        path: '/libraries/:libraryId/music',
+        builder: (context, state) {
+          final libraryId = state.pathParameters['libraryId']!;
+          final libraryName = state.uri.queryParameters['name'] ?? '音乐';
+          return MusicLibraryRoutePage(
+            gateway: effectiveGateway,
+            library: models.MediaLibrary(
+              id: libraryId,
+              name: libraryName,
+              type: models.MediaLibraryType.music,
+              serverUrl: sessionController.currentSession?.serverUrl ?? '',
+            ),
+          );
+        },
+      ),
+      // 专辑详情页
+      GoRoute(
+        path: '/music/albums/:albumId',
+        builder: (context, state) {
+          final albumId = state.pathParameters['albumId']!;
+          return AlbumDetailRoutePage(
+            gateway: effectiveGateway,
+            albumId: albumId,
+          );
+        },
+      ),
+      // 艺术家详情页
+      GoRoute(
+        path: '/music/artists/:artistId',
+        builder: (context, state) {
+          final artistId = state.pathParameters['artistId']!;
+          return ArtistDetailRoutePage(
+            gateway: effectiveGateway,
+            artistId: artistId,
           );
         },
       ),
@@ -220,5 +263,35 @@ class _StubGateway implements JellyfinGateway {
     int? limit,
   }) async {
     return models.MediaItemListResult(items: []);
+  }
+
+  @override
+  Future<music.MusicAlbumListResult> fetchAlbums({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+    String? sortBy,
+  }) async {
+    return const music.MusicAlbumListResult(albums: []);
+  }
+
+  @override
+  Future<music.MusicAlbum> getAlbumDetail(String albumId) {
+    throw UnimplementedError('No gateway configured');
+  }
+
+  @override
+  Future<music.MusicSongListResult> getAlbumSongs(String albumId) async {
+    return const music.MusicSongListResult(songs: []);
+  }
+
+  @override
+  Future<music.MusicArtist> getArtistDetail(String artistId) {
+    throw UnimplementedError('No gateway configured');
+  }
+
+  @override
+  Future<music.MusicAlbumListResult> getArtistAlbums(String artistId) async {
+    return const music.MusicAlbumListResult(albums: []);
   }
 }

@@ -2,6 +2,7 @@ import 'package:jellyfin_api/jellyfin_api.dart';
 import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
+import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
 import 'jellyfin_gateway.dart';
 import '../session/app_session.dart';
@@ -262,6 +263,117 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
   }
 
+  // ─── 音乐 ───
+
+  @override
+  Future<music.MusicAlbumListResult> fetchAlbums({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+    String? sortBy,
+  }) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      parentId: parentId,
+      includeItemTypes: [jellyfin_dart.BaseItemKind.musicAlbum],
+      recursive: true,
+      startIndex: startIndex,
+      limit: limit,
+      sortBy: sortBy != null ? [jellyfin_dart.ItemSortBy.sortName] : null,
+    );
+
+    final items = response.data?.items ?? [];
+    return music.MusicAlbumListResult(
+      albums: items.map((dto) => _mapMusicAlbum(dto, config.serverUrl)).toList(),
+      totalCount: response.data?.totalRecordCount,
+      startIndex: startIndex,
+    );
+  }
+
+  @override
+  Future<music.MusicAlbum> getAlbumDetail(String albumId) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      ids: [albumId],
+      fields: [
+        jellyfin_dart.ItemFields.overview,
+        jellyfin_dart.ItemFields.genres,
+      ],
+    );
+
+    final items = response.data?.items ?? [];
+    if (items.isEmpty) {
+      throw StateError('找不到专辑: $albumId');
+    }
+    return _mapMusicAlbum(items.first, config.serverUrl);
+  }
+
+  @override
+  Future<music.MusicSongListResult> getAlbumSongs(String albumId) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      parentId: albumId,
+      includeItemTypes: [jellyfin_dart.BaseItemKind.audio],
+      sortBy: [jellyfin_dart.ItemSortBy.sortName],
+    );
+
+    final items = response.data?.items ?? [];
+    return music.MusicSongListResult(
+      songs: items.map((dto) => _mapMusicSong(dto, config.serverUrl, config.accessToken)).toList(),
+      totalCount: response.data?.totalRecordCount,
+    );
+  }
+
+  @override
+  Future<music.MusicArtist> getArtistDetail(String artistId) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      ids: [artistId],
+      fields: [
+        jellyfin_dart.ItemFields.overview,
+        jellyfin_dart.ItemFields.genres,
+      ],
+    );
+
+    final items = response.data?.items ?? [];
+    if (items.isEmpty) {
+      throw StateError('找不到艺术家: $artistId');
+    }
+    return _mapMusicArtist(items.first, config.serverUrl);
+  }
+
+  @override
+  Future<music.MusicAlbumListResult> getArtistAlbums(String artistId) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      albumArtistIds: [artistId],
+      includeItemTypes: [jellyfin_dart.BaseItemKind.musicAlbum],
+      recursive: true,
+      sortBy: [jellyfin_dart.ItemSortBy.sortName],
+    );
+
+    final items = response.data?.items ?? [];
+    return music.MusicAlbumListResult(
+      albums: items.map((dto) => _mapMusicAlbum(dto, config.serverUrl)).toList(),
+      totalCount: response.data?.totalRecordCount,
+    );
+  }
+
   void _requireClient() {
     if (_apiClient == null) {
       throw StateError('未登录，请先调用 login()');
@@ -488,6 +600,115 @@ class LegacyJellyfinGateway implements JellyfinGateway {
   static String _seasonName(int indexNumber) {
     if (indexNumber == 0) return '特别篇';
     return '第 $indexNumber 季';
+  }
+
+  /// BaseItemDto → MusicAlbum
+  static music.MusicAlbum _mapMusicAlbum(
+    jellyfin_dart.BaseItemDto dto,
+    String serverUrl,
+  ) {
+    final imageTags = dto.imageTags;
+    final primaryImageTag = imageTags?['Primary'];
+    final hasImageTag = primaryImageTag != null && primaryImageTag.isNotEmpty;
+
+    // 提取艺术家
+    final artists = dto.albumArtist != null
+        ? [dto.albumArtist!]
+        : dto.albumArtists?.map((a) => a.name ?? '').toList();
+
+    // childCount 在专辑中代表歌曲数
+    return music.MusicAlbum(
+      id: dto.id ?? '',
+      name: dto.name ?? '未知专辑',
+      serverUrl: serverUrl,
+      productionYear: dto.productionYear,
+      artists: artists,
+      genres: dto.genres,
+      songCount: dto.childCount,
+      communityRating: dto.communityRating,
+      overview: dto.overview,
+      primaryImageTag: hasImageTag ? primaryImageTag : null,
+      backdropImageTag: dto.backdropImageTags?.firstOrNull,
+      parentId: dto.parentId,
+    );
+  }
+
+  /// BaseItemDto → MusicArtist
+  static music.MusicArtist _mapMusicArtist(
+    jellyfin_dart.BaseItemDto dto,
+    String serverUrl,
+  ) {
+    final imageTags = dto.imageTags;
+    final primaryImageTag = imageTags?['Primary'];
+    final hasImageTag = primaryImageTag != null && primaryImageTag.isNotEmpty;
+
+    return music.MusicArtist(
+      id: dto.id ?? '',
+      name: dto.name ?? '未知艺术家',
+      serverUrl: serverUrl,
+      albumCount: dto.childCount,
+      overview: dto.overview,
+      genres: dto.genres,
+      communityRating: dto.communityRating,
+      primaryImageTag: hasImageTag ? primaryImageTag : null,
+      backdropImageTag: dto.backdropImageTags?.firstOrNull,
+    );
+  }
+
+  /// BaseItemDto → MusicSong
+  static music.MusicSong _mapMusicSong(
+    jellyfin_dart.BaseItemDto dto,
+    String serverUrl,
+    String? accessToken,
+  ) {
+    // 提取艺术家
+    final artists = <String>[];
+    final artistRefs = <music.ArtistRef>[];
+    for (final artist in (dto.artistItems ?? [])) {
+      artists.add(artist.name ?? '');
+      artistRefs.add(music.ArtistRef(
+        id: artist.id ?? '',
+        name: artist.name ?? '',
+      ));
+    }
+
+    // 专辑信息
+    String? albumId;
+    String? albumName;
+    String? albumPrimaryImageTag;
+    if (dto.album != null) {
+      albumId = dto.albumId;
+      albumName = dto.album;
+    }
+    if (dto.albumPrimaryImageTag != null) {
+      albumPrimaryImageTag = dto.albumPrimaryImageTag;
+    }
+
+    final runTimeTicks = dto.runTimeTicks;
+    final runTimeSeconds = runTimeTicks != null
+        ? (runTimeTicks / 10000000).round()
+        : null;
+
+    return music.MusicSong(
+      id: dto.id ?? '',
+      name: dto.name ?? '未知歌曲',
+      serverUrl: serverUrl,
+      albumId: albumId,
+      albumName: albumName,
+      albumPrimaryImageTag: albumPrimaryImageTag,
+      artists: artists.isNotEmpty ? artists : null,
+      artistRefs: artistRefs.isNotEmpty ? artistRefs : null,
+      trackNumber: dto.indexNumber,
+      runTimeTicks: runTimeTicks,
+      runTimeSeconds: runTimeSeconds,
+      genres: dto.genres,
+      communityRating: dto.communityRating,
+      parentId: dto.parentId,
+      isFavorite: dto.userData?.isFavorite,
+      played: dto.userData?.played,
+      playCount: dto.userData?.playCount,
+      accessToken: accessToken,
+    );
   }
 
   // ─── 排序映射 ───
