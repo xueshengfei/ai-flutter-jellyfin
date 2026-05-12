@@ -6,6 +6,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 ///
 /// 布局：居中头像（大）→ 居中名字 → 信息chips → 专辑网格
 /// 专辑网格：Web/宽屏 4 列，移动端 2 列
+@Deprecated('使用 jellyfin_music 包中的 ArtistDetailPage')
 class ArtistDetailPage extends StatefulWidget {
   final JellyfinClient client;
   final MusicArtist artist;

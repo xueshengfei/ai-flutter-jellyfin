@@ -11,6 +11,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 /// 2. 直连后端 SSE 流式通信（POST /ask_stream）
 /// 3. 逐事件渲染（thinking/tool/token/card/done）
 /// 4. card 事件只含 id+reason，客户端并发调 getMediaItemDetail 获取详情
+@Deprecated('使用 jellyfin_ai_recommendation 包中的 AiRecommendPage')
 class AiRecommendPage extends StatefulWidget {
   final JellyfinClient client;
 

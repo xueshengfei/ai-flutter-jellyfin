@@ -9,6 +9,7 @@ import 'package:jellyfin_service/src/ui/pages/video_player_page.dart';
 /// 通用媒体项详情页面
 ///
 /// 支持所有媒体类型：Movie, Series, Episode 等
+@Deprecated('使用 jellyfin_media 包中的 MediaItemDetailPage')
 class MediaItemDetailPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaItem item;

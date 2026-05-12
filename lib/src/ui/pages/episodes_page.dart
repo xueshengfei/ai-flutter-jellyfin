@@ -9,6 +9,7 @@ import 'package:jellyfin_service/src/ui/widgets/media_list_builder.dart';
 /// 集列表页面
 ///
 /// 显示指定季的所有集
+@Deprecated('使用 jellyfin_series 包中的 EpisodesPage')
 class EpisodesPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaItem series;

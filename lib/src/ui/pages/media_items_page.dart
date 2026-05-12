@@ -9,6 +9,7 @@ import 'package:jellyfin_service/src/ui/widgets/media_list_builder.dart';
 /// 媒体项列表页面
 ///
 /// 显示指定媒体库中的所有媒体项（如电影、电视剧、音乐等）
+@Deprecated('使用 jellyfin_media 包中的 MediaItemsPage')
 class MediaItemsPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaLibrary library;
