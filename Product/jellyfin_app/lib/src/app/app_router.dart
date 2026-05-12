@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jellyfin_auth/jellyfin_auth_pages.dart';
 import '../data/jellyfin_gateway.dart';
+import '../features/home/media_libraries_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
 
@@ -57,9 +58,20 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: '/libraries',
-        builder: (context, state) => const Scaffold(
-          body: Center(child: Text('Libraries')),
-        ),
+        builder: (context, state) {
+          final session = sessionController.currentSession;
+          return MediaLibrariesPage(
+            gateway: effectiveGateway,
+            username: session?.username ?? '',
+            onLibraryTap: (libraryId, libraryName, libraryType) {
+              // 后续 milestone 接入具体 library 路由
+            },
+            onContinueWatchingTap: (itemId) {
+              // 后续 milestone 接入播放路由
+            },
+            onLogout: () => sessionController.clearSession(),
+          );
+        },
       ),
     ],
   );
@@ -79,4 +91,10 @@ class _StubGateway implements JellyfinGateway {
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<List<LibraryInfo>> getMediaLibraries() async => [];
+
+  @override
+  Future<List<ContinueWatchingItem>> getContinueWatching({int limit = 10}) async => [];
 }

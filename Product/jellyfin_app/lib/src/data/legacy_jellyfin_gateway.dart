@@ -57,4 +57,37 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     _client?.clearAuth();
     _client = null;
   }
+
+  @override
+  Future<List<LibraryInfo>> getMediaLibraries() async {
+    _requireClient();
+    final result = await _client!.mediaLibrary.getMediaLibraries();
+    return result.libraries.map((lib) => LibraryInfo(
+      id: lib.id,
+      name: lib.name,
+      type: lib.type.name,
+      itemCount: lib.itemCount,
+      primaryImageTag: lib.primaryImageTag,
+    )).toList();
+  }
+
+  @override
+  Future<List<ContinueWatchingItem>> getContinueWatching({int limit = 10}) async {
+    _requireClient();
+    final result = await _client!.user.getContinueWatching(limit: limit);
+    return result.items.map((item) => ContinueWatchingItem(
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      productionYear: item.productionYear,
+      playedPercentage: item.playedPercentage,
+      coverUrl: item.getCoverImageUrl(),
+    )).toList();
+  }
+
+  void _requireClient() {
+    if (_client == null) {
+      throw StateError('未登录，请先调用 login()');
+    }
+  }
 }
