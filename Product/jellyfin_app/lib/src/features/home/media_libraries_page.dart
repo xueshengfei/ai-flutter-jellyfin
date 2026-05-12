@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import '../../data/jellyfin_gateway.dart';
 
 /// 媒体库图标映射
-IconData _libraryIcon(String type) {
+IconData _libraryIcon(models.MediaLibraryType type) {
   switch (type) {
-    case 'movies': return Icons.movie;
-    case 'music': return Icons.music_note;
-    case 'tvshows': return Icons.tv;
+    case models.MediaLibraryType.movies: return Icons.movie;
+    case models.MediaLibraryType.music: return Icons.music_note;
+    case models.MediaLibraryType.tvshows: return Icons.tv;
     default: return Icons.folder;
   }
 }
@@ -15,8 +16,8 @@ IconData _libraryIcon(String type) {
 class MediaLibrariesPage extends StatefulWidget {
   final JellyfinGateway gateway;
   final String username;
-  final void Function(String libraryId, String libraryName, String libraryType) onLibraryTap;
-  final void Function(String itemId) onContinueWatchingTap;
+  final void Function(models.MediaLibrary library) onLibraryTap;
+  final void Function(models.MediaItem item) onContinueWatchingTap;
   final VoidCallback onLogout;
 
   const MediaLibrariesPage({
@@ -33,8 +34,8 @@ class MediaLibrariesPage extends StatefulWidget {
 }
 
 class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
-  List<LibraryInfo> _libraries = [];
-  List<ContinueWatchingItem> _continueWatching = [];
+  List<models.MediaLibrary> _libraries = [];
+  List<models.MediaItem> _continueWatching = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -56,8 +57,8 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       ]);
       if (mounted) {
         setState(() {
-          _libraries = results[0] as List<LibraryInfo>;
-          _continueWatching = results[1] as List<ContinueWatchingItem>;
+          _libraries = results[0] as List<models.MediaLibrary>;
+          _continueWatching = results[1] as List<models.MediaItem>;
           _isLoading = false;
         });
       }
@@ -141,7 +142,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
             runSpacing: 10,
             children: _libraries.map((lib) => _LibraryCard(
               library: lib,
-              onTap: () => widget.onLibraryTap(lib.id, lib.name, lib.type),
+              onTap: () => widget.onLibraryTap(lib),
             )).toList(),
           ),
           // 继续观看
@@ -159,7 +160,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (context, index) => _ContinueWatchingCard(
                   item: _continueWatching[index],
-                  onTap: () => widget.onContinueWatchingTap(_continueWatching[index].id),
+                  onTap: () => widget.onContinueWatchingTap(_continueWatching[index]),
                 ),
               ),
             ),
@@ -172,7 +173,7 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
 
 /// 媒体库卡片
 class _LibraryCard extends StatelessWidget {
-  final LibraryInfo library;
+  final models.MediaLibrary library;
   final VoidCallback onTap;
 
   const _LibraryCard({required this.library, required this.onTap});
@@ -224,7 +225,7 @@ class _LibraryCard extends StatelessWidget {
 
 /// 继续观看卡片
 class _ContinueWatchingCard extends StatelessWidget {
-  final ContinueWatchingItem item;
+  final models.MediaItem item;
   final VoidCallback onTap;
 
   const _ContinueWatchingCard({required this.item, required this.onTap});
@@ -249,8 +250,8 @@ class _ContinueWatchingCard extends StatelessWidget {
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: item.coverUrl != null
-                        ? Image.network(item.coverUrl!, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
+                    child: item.hasCoverImage
+                        ? Image.network(item.getCoverImageUrl()!, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
                             errorBuilder: (_, __, ___) => _placeholder(context))
                         : _placeholder(context),
                   ),
@@ -273,7 +274,7 @@ class _ContinueWatchingCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
             Text(
-              '${item.type}${item.productionYear != null ? ' · ${item.productionYear}' : ''}',
+              '${item.typeDisplayName}${item.productionYear != null ? ' · ${item.productionYear}' : ''}',
               maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),

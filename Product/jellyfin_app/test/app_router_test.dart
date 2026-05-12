@@ -77,4 +77,37 @@ void main() {
       expect(find.text('媒体库'), findsOneWidget);
     });
   });
+
+  group('路由注册验证', () {
+    /// 验证路由表包含指定路径
+    List<String> collectPaths(GoRouter router) {
+      final paths = <String>[];
+      void collect(List<RouteBase> routes) {
+        for (final route in routes) {
+          if (route is GoRoute) {
+            paths.add(route.path);
+            collect(route.routes);
+          }
+        }
+      }
+      collect(router.configuration.routes);
+      return paths;
+    }
+
+    test('5 个新路由已注册', () {
+      final sessionController = AppSessionController();
+      addTearDown(sessionController.dispose);
+
+      final router = createAppRouter(sessionController: sessionController);
+      addTearDown(router.dispose);
+
+      final paths = collectPaths(router);
+
+      expect(paths, contains('/libraries/:libraryId/movies'));
+      expect(paths, contains('/movies/:itemId'));
+      expect(paths, contains('/media/items/:itemId'));
+      expect(paths, contains('/series/:seriesId/seasons'));
+      expect(paths, contains('/series/:seriesId/seasons/:seasonId/episodes'));
+    });
+  });
 }
