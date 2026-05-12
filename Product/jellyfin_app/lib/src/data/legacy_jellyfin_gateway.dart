@@ -282,12 +282,66 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       recursive: true,
       startIndex: startIndex,
       limit: limit,
-      sortBy: sortBy != null ? [jellyfin_dart.ItemSortBy.sortName] : null,
+      sortBy: [jellyfin_dart.ItemSortBy.sortName],
     );
 
     final items = response.data?.items ?? [];
     return music.MusicAlbumListResult(
       albums: items.map((dto) => _mapMusicAlbum(dto, config.serverUrl)).toList(),
+      totalCount: response.data?.totalRecordCount,
+      startIndex: startIndex,
+    );
+  }
+
+  @override
+  Future<music.MusicArtistListResult> fetchArtists({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  }) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      parentId: parentId,
+      includeItemTypes: [jellyfin_dart.BaseItemKind.musicArtist],
+      recursive: true,
+      startIndex: startIndex,
+      limit: limit,
+      sortBy: [jellyfin_dart.ItemSortBy.sortName],
+    );
+
+    final items = response.data?.items ?? [];
+    return music.MusicArtistListResult(
+      artists: items.map((dto) => _mapMusicArtist(dto, config.serverUrl)).toList(),
+      totalCount: response.data?.totalRecordCount,
+      startIndex: startIndex,
+    );
+  }
+
+  @override
+  Future<music.MusicSongListResult> fetchSongs({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  }) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    final response = await _apiClient!.jellyfinClient.getItemsApi().getItems(
+      userId: config.userId,
+      parentId: parentId,
+      includeItemTypes: [jellyfin_dart.BaseItemKind.audio],
+      recursive: true,
+      startIndex: startIndex,
+      limit: limit,
+      sortBy: [jellyfin_dart.ItemSortBy.sortName],
+    );
+
+    final items = response.data?.items ?? [];
+    return music.MusicSongListResult(
+      songs: items.map((dto) => _mapMusicSong(dto, config.serverUrl, config.accessToken)).toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: startIndex,
     );
