@@ -10,6 +10,7 @@ import 'package:jellyfin_service/src/ui/widgets/media_list_builder.dart';
 /// 电影过滤页面
 ///
 /// 提供电影筛选和展示功能
+@Deprecated('使用 jellyfin_movies 包中的 MovieFilterPage')
 class MovieFilterPage extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;

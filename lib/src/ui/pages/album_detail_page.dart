@@ -5,6 +5,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 /// 专辑详情页
 ///
 /// 移动端布局：顶部专辑封面+信息 → 歌曲列表
+@Deprecated('使用 jellyfin_music 包中的 AlbumDetailPage')
 class AlbumDetailPage extends StatefulWidget {
   final JellyfinClient client;
   final MusicAlbum album;

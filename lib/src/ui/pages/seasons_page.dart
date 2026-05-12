@@ -4,6 +4,7 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 /// 季列表页面
 ///
 /// 显示指定剧集的所有季
+@Deprecated('使用 jellyfin_series 包中的 SeasonsPage')
 class SeasonsPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaItem series;
