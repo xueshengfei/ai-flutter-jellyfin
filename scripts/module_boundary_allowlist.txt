@@ -1,0 +1,47 @@
+# module_boundary_allowlist.txt
+# 允许暂留的 MaterialPageRoute 位置（格式：文件路径:行号）
+# 每行一个条目，# 开头为注释
+# 随着模块化推进逐步缩减此列表
+# 最后更新: Phase 5C 基线 41 处
+
+lib/src/ui/pages/ai_recommend_page.dart:249
+lib/src/ui/pages/ai_recommend_page.dart:273
+lib/src/ui/pages/ai_recommend_page.dart:291
+lib/src/ui/pages/ai_recommend_page.dart:316
+lib/src/ui/pages/album_detail_page.dart:86
+lib/src/ui/pages/album_detail_page.dart:239
+lib/src/ui/pages/artist_detail_page.dart:140
+lib/src/ui/pages/episodes_page.dart:253
+lib/src/ui/pages/login_page.dart:127
+lib/src/ui/pages/login_page.dart:200
+lib/src/ui/pages/media_items_page.dart:256
+lib/src/ui/pages/media_item_detail_page.dart:249
+lib/src/ui/pages/media_item_detail_page.dart:276
+lib/src/ui/pages/media_item_detail_page.dart:303
+lib/src/ui/pages/media_item_detail_page.dart:466
+lib/src/ui/pages/media_item_detail_page.dart:609
+lib/src/ui/pages/media_libraries_page.dart:94
+lib/src/ui/pages/media_libraries_page.dart:108
+lib/src/ui/pages/media_libraries_page.dart:136
+lib/src/ui/pages/media_libraries_page.dart:254
+lib/src/ui/pages/movie_filter_page.dart:515
+lib/src/ui/pages/movie_filter_page.dart:740
+lib/src/ui/pages/music_library_page.dart:78
+lib/src/ui/pages/music_library_page.dart:177
+lib/src/ui/pages/music_library_page.dart:188
+lib/src/ui/pages/music_library_page.dart:253
+lib/src/ui/pages/music_library_page.dart:264
+lib/src/ui/pages/music_library_page.dart:554
+lib/src/ui/pages/music_library_page.dart:809
+lib/src/ui/pages/music_library_page.dart:1119
+lib/src/ui/pages/music_library_page.dart:1237
+lib/src/ui/pages/music_search_page.dart:182
+lib/src/ui/pages/music_search_page.dart:207
+lib/src/ui/pages/music_search_page.dart:237
+lib/src/ui/pages/personal_page.dart:330
+lib/src/ui/pages/personal_page.dart:343
+lib/src/ui/pages/person_detail_page.dart:193
+lib/src/ui/pages/seasons_page.dart:145
+lib/src/ui/pages/test_api_page.dart:149
+lib/src/ui/widgets/continue_watching_card.dart:32
+lib/src/ui/widgets/mini_player_card.dart:36

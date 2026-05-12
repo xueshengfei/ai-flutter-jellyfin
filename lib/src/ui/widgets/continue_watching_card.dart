@@ -26,8 +26,7 @@ class ContinueWatchingCard extends StatelessWidget {
       onTap: () {
         final nav = navigator;
         if (nav != null) {
-          nav.push(JellyfinRouteNames.playbackVideo,
-              arguments: {'itemId': item.id});
+          nav.pushIntent(JellyfinRouteIntents.playbackVideo(itemId: item.id));
           return;
         }
         Navigator.push(context, MaterialPageRoute(

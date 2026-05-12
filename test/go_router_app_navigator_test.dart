@@ -191,5 +191,57 @@ void main() {
       final initialLocation = router.routerDelegate.currentConfiguration.uri.toString();
       expect(initialLocation, isNotNull);
     });
+
+    test('所有已声明的 JellyfinRouteNames 都应注册 GoRoute', () {
+      createTestRouter();
+
+      final registeredNames = router.configuration.routes
+          .whereType<GoRoute>()
+          .map((r) => r.name)
+          .whereType<String>()
+          .toSet();
+
+      // 验证全部 14 个路由名都已注册
+      expect(registeredNames, contains(JellyfinRouteNames.login));
+      expect(registeredNames, contains(JellyfinRouteNames.libraries));
+      expect(registeredNames, contains(JellyfinRouteNames.library));
+      expect(registeredNames, contains(JellyfinRouteNames.mediaDetail));
+      expect(registeredNames, contains(JellyfinRouteNames.movieDetail));
+      expect(registeredNames, contains(JellyfinRouteNames.seriesSeasons));
+      expect(registeredNames, contains(JellyfinRouteNames.seriesEpisodes));
+      expect(registeredNames, contains(JellyfinRouteNames.playbackVideo));
+      expect(registeredNames, contains(JellyfinRouteNames.musicLibrary));
+      expect(registeredNames, contains(JellyfinRouteNames.musicAlbum));
+      expect(registeredNames, contains(JellyfinRouteNames.musicArtist));
+      expect(registeredNames, contains(JellyfinRouteNames.musicSearch));
+      expect(registeredNames, contains(JellyfinRouteNames.aiRecommend));
+      expect(registeredNames, contains(JellyfinRouteNames.profile));
+
+      // 验证注册数量 = JellyfinRouteNames 全部字段数
+      expect(registeredNames.length, equals(14));
+    });
+
+    test('resolveAuthRedirect 纯函数逻辑', () {
+      // 未登录 + 非 login → 重定向到 login
+      expect(
+        resolveAuthRedirect(isLoggedIn: false, matchedLocation: '/libraries'),
+        '/login',
+      );
+      // 已登录 + login → 重定向到 libraries
+      expect(
+        resolveAuthRedirect(isLoggedIn: true, matchedLocation: '/login'),
+        '/libraries',
+      );
+      // 已登录 + 非 login → 不重定向
+      expect(
+        resolveAuthRedirect(isLoggedIn: true, matchedLocation: '/libraries'),
+        isNull,
+      );
+      // 未登录 + login → 不重定向
+      expect(
+        resolveAuthRedirect(isLoggedIn: false, matchedLocation: '/login'),
+        isNull,
+      );
+    });
   });
 }
