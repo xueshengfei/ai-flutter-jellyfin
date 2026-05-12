@@ -105,10 +105,13 @@ void main() {
 
       expect(paths, contains('/libraries/:libraryId/movies'));
       expect(paths, contains('/libraries/:libraryId/series'));
+      expect(paths, contains('/libraries/:libraryId/music'));
       expect(paths, contains('/movies/:itemId'));
       expect(paths, contains('/media/items/:itemId'));
       expect(paths, contains('/series/:seriesId/seasons'));
       expect(paths, contains('/series/:seriesId/seasons/:seasonId/episodes'));
+      expect(paths, contains('/music/albums/:albumId'));
+      expect(paths, contains('/music/artists/:artistId'));
       expect(paths, contains('/playback/video/:itemId'));
     });
   });

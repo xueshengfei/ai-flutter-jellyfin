@@ -1,5 +1,6 @@
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
+import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
 import '../session/app_session.dart';
 
@@ -54,4 +55,26 @@ abstract class JellyfinGateway {
     bool recursive = true,
     int? limit,
   });
+
+  // ─── 音乐 ───
+
+  /// 获取专辑列表
+  Future<music.MusicAlbumListResult> fetchAlbums({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+    String? sortBy,
+  });
+
+  /// 获取专辑详情
+  Future<music.MusicAlbum> getAlbumDetail(String albumId);
+
+  /// 获取专辑歌曲列表
+  Future<music.MusicSongListResult> getAlbumSongs(String albumId);
+
+  /// 获取艺术家详情
+  Future<music.MusicArtist> getArtistDetail(String artistId);
+
+  /// 获取艺术家专辑列表
+  Future<music.MusicAlbumListResult> getArtistAlbums(String artistId);
 }
