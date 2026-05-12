@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 
 /// 音乐专辑（业务模型）
+@Deprecated('使用 jellyfin_music 包中的 MusicAlbum')
 class MusicAlbum extends Equatable {
   final String id;
   final String name;
@@ -100,6 +101,7 @@ class MusicAlbum extends Equatable {
 }
 
 /// 音乐艺术家（业务模型）
+@Deprecated('使用 jellyfin_music 包中的 MusicArtist')
 class MusicArtist extends Equatable {
   final String id;
   final String name;
@@ -178,6 +180,7 @@ class MusicArtist extends Equatable {
 }
 
 /// 歌曲/音轨（业务模型）
+@Deprecated('使用 jellyfin_music 包中的 MusicSong')
 class MusicSong extends Equatable {
   final String id;
   final String name;
@@ -320,6 +323,7 @@ class MusicSong extends Equatable {
 }
 
 /// 艺术家引用
+@Deprecated('使用 jellyfin_music 包中的 ArtistRef')
 class ArtistRef extends Equatable {
   final String id;
   final String name;
@@ -331,6 +335,7 @@ class ArtistRef extends Equatable {
 }
 
 /// 音乐类型（业务模型）
+@Deprecated('使用 jellyfin_music 包中的 MusicGenre')
 class MusicGenre extends Equatable {
   final String id;
   final String name;
@@ -369,6 +374,7 @@ class MusicGenre extends Equatable {
 // ==================== 列表结果 ====================
 
 /// 专辑列表结果
+@Deprecated('使用 jellyfin_music 包中的 MusicAlbumListResult')
 class MusicAlbumListResult extends Equatable {
   final List<MusicAlbum> albums;
   final int? totalCount;
@@ -405,6 +411,7 @@ class MusicAlbumListResult extends Equatable {
 }
 
 /// 艺术家列表结果
+@Deprecated('使用 jellyfin_music 包中的 MusicArtistListResult')
 class MusicArtistListResult extends Equatable {
   final List<MusicArtist> artists;
   final int? totalCount;
@@ -441,6 +448,7 @@ class MusicArtistListResult extends Equatable {
 }
 
 /// 歌曲列表结果
+@Deprecated('使用 jellyfin_music 包中的 MusicSongListResult')
 class MusicSongListResult extends Equatable {
   final List<MusicSong> songs;
   final int? totalCount;

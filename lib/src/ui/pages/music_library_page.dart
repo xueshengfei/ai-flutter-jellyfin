@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
+import 'package:jellyfin_music/jellyfin_music.dart' show PlayMode;
 
 // ==================== 音乐媒体库页面 ====================
 
