@@ -5,6 +5,7 @@ import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import '../data/jellyfin_gateway.dart';
 import '../features/home/media_libraries_page.dart';
 import '../features/media/media_route_pages.dart';
+import '../features/playback/playback_route_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
 
@@ -138,6 +139,17 @@ GoRouter createAppRouter({
             gateway: effectiveGateway,
             seriesId: seriesId,
             seasonId: seasonId,
+          );
+        },
+      ),
+      // 视频播放
+      GoRoute(
+        path: '/playback/video/:itemId',
+        builder: (context, state) {
+          final itemId = state.pathParameters['itemId']!;
+          return VideoPlaybackRoutePage(
+            gateway: effectiveGateway,
+            itemId: itemId,
           );
         },
       ),

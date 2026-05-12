@@ -86,7 +86,7 @@ class MovieDetailRoutePage extends StatelessWidget {
           movie: movie,
           fetchDetail: gateway.getMediaItemDetail,
           onStartPlayback: (context, item) {
-            // 后续 milestone 接入播放
+            context.push('/playback/video/${item.id}');
           },
         );
       },
@@ -148,7 +148,7 @@ class MediaDetailRoutePage extends StatelessWidget {
             );
           },
           onStartPlayback: (context, item) {
-            // 后续 milestone 接入播放
+            context.push('/playback/video/${item.id}');
           },
         );
       },
@@ -290,7 +290,7 @@ class SeriesEpisodesRoutePage extends StatelessWidget {
               season: season,
               fetchEpisodes: gateway.getEpisodes,
               onStartPlayback: (context, episode) {
-                // 后续 milestone 接入播放
+                context.push('/playback/video/${episode.id}');
               },
             );
           },
