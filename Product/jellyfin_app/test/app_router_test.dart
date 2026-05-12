@@ -74,7 +74,7 @@ void main() {
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
 
-      expect(find.text('Libraries'), findsOneWidget);
+      expect(find.text('媒体库'), findsOneWidget);
     });
   });
 }
