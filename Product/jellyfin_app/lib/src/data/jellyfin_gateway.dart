@@ -47,4 +47,11 @@ abstract class JellyfinGateway {
 
   /// 获取电影列表（按筛选条件）
   Future<movies.MovieFilterResult> fetchMovies(movies.MovieFilter filter);
+
+  /// 获取媒体项列表（通用，用于剧集/动漫等）
+  Future<models.MediaItemListResult> fetchMediaItems({
+    required String parentId,
+    bool recursive = true,
+    int? limit,
+  });
 }

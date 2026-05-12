@@ -104,6 +104,7 @@ void main() {
       final paths = collectPaths(router);
 
       expect(paths, contains('/libraries/:libraryId/movies'));
+      expect(paths, contains('/libraries/:libraryId/series'));
       expect(paths, contains('/movies/:itemId'));
       expect(paths, contains('/media/items/:itemId'));
       expect(paths, contains('/series/:seriesId/seasons'));
