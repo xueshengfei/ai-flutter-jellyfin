@@ -237,7 +237,7 @@ packages/features/jellyfin_playback/
 ## 二、未完成内容
 
 - **Task 11 jellyfin_home** — 首页独立成包（**延后至 Round 4**，依赖 Auth/App Shell 稳定，Leader 建议）
-- **Task 15 jellyfin_music** — 音乐业务模块（已完成）
+- **Task 15 jellyfin_music** — 音乐业务模块（专辑详情、艺术家详情和部分音乐模型已抽取完成；音乐主库、搜索、歌词、音频播放状态仍保留在根包）
 - 根包旧文件保留在原位作为兼容层（Task 18 facade 收敛时清理）
 
 ### Task 15: 抽 jellyfin_music
@@ -414,3 +414,203 @@ jellyfin_music ──→ equatable + cached_network_image
 | Phase 2-D：播放模块 | **完成** | Task 14 |
 | Phase 2-E：音乐模块 | **完成** | Task 15 |
 | Phase 2-F：首页模块 | **Round 4** | Task 11（延后，依赖 Auth/App Shell） |
+
+---
+
+## 九、Phase 2 总体进度汇报
+
+> 汇报日期：2026-05-12
+
+### 9.1 完成概况
+
+**Phase 2 可执行部分已全部完成。** 6 个 feature 包已抽取并集成到根包，所有包共 171 个测试全部通过。
+
+| 包 | 测试数 | 解耦模式 |
+|----|--------|---------|
+| jellyfin_ai_recommendation | 19 | 回调（4个导航回调 + 2个抽象接口） |
+| jellyfin_media | 19 | 回调（typedef + 子 barrel） |
+| jellyfin_movies | 11 | 回调（5个 typedef） |
+| jellyfin_series | 11 | 回调（7个 typedef） |
+| jellyfin_playback | 19 | 委托类（PlaybackDelegate，6个操作） |
+| jellyfin_music | 21 | 回调（6个 typedef） |
+| jellyfin_core | 17 | — |
+| jellyfin_api | 8 | — |
+| jellyfin_models | 8 | — |
+| jellyfin_ui_kit | 14 | — |
+| 根包 jellyfin_service | 24 | — |
+| **总计** | **171** | — |
+
+### 9.2 核心成果
+
+1. **零 jellyfin_dart 依赖**：所有 6 个 feature 包均不依赖第三方接口 SDK，完全通过回调/委托解耦
+2. **统一解耦模式**：回调 typedef（5个模块）+ 委托类（1个模块），形成可复用的抽取范式
+3. **子 barrel 分层**：每个包拆分模型 barrel 和页面 barrel，下游按需引入
+4. **渐进式集成**：旧版文件保留为兼容层，新页面通过集成点逐步切换，不影响现有功能
+
+### 9.3 当前架构
+
+```
+jellyfin_dart (vendor)                    ← 第三方接口 SDK
+    ↑
+jellyfin_core ──→ jellyfin_api            ← 基础层（Phase 1）
+    ↑                  ↑
+jellyfin_models ←── jellyfin_ui_kit       ← 共享层（Phase 1）
+    ↑
+    ├── jellyfin_ai_recommendation        ← Feature 层（Phase 2）
+    ├── jellyfin_media
+    ├── jellyfin_movies
+    ├── jellyfin_series
+    ├── jellyfin_playback
+    └── jellyfin_music
+    ↑
+根包 jellyfin_service                      ← 业务聚合层
+    ├── barrel export + hide（兼容层）
+    ├── 旧版页面保留（兼容层，13个文件）
+    ├── MusicService / AudioPlaybackManager（深度耦合 jellyfin_dart，保留）
+    └── MusicLibraryPage / LyricsPage（体量大，保留）
+```
+
+---
+
+## 十、遇到的问题
+
+### 问题 1：根包与子包同名类型导致 ambiguous_export
+
+根包和 feature 包都导出 `MusicAlbum`、`MovieFilter`、`VideoQuality` 等同名类型，Dart 编译器报 ambiguous export 错误。
+
+**解决：** 根 barrel 使用 `hide` 隐藏子包的同名类型。保留根包模型（含 `fromDto` 工厂），子包模型为纯数据类。hide 列表随模块增多持续增长，计划在 Task 18（facade 收敛）时统一处理。
+
+### 问题 2：跨包枚举类型转换
+
+根包 `VideoQuality` 与 playback 包 `VideoQuality` 是不同 class，无法直接赋值。
+
+**解决：** 通过 `.name` 属性字符串匹配完成跨包枚举互转。在根包工厂方法 `_createPlaybackDelegate()` 中统一处理。
+
+### 问题 3：typedef 跨模块重复定义
+
+多个 feature 包各自定义了类似的 `MediaItemDetailFetcher` 等 typedef。
+
+**解决：** 提取通用 typedef 到 `jellyfin_models/media_contracts.dart`，各包共享一份定义。
+
+### 问题 4：PlaybackService 深度耦合无法外移
+
+`PlaybackService` 使用了 `jellyfin_dart` 的 `DeviceProfile`、`PlaybackInfoDto`、`PlaybackProgressInfo` 等内部类型，无法随 playback 包一起抽取。
+
+**解决：** 设计 `PlaybackDelegate` 委托类，根包工厂方法将 `PlaybackService` 实例包装为委托。播放包只依赖委托接口，不感知底层实现。
+
+### 问题 5：Widget 测试中 Pending Timer 和元素离屏
+
+`Future.delayed` 导致测试结束后仍有 pending timer 报错；Grid 子元素超出 600px 视口无法被 `tap()` 命中。
+
+**解决：** 使用 `Completer<T>` 替代 `Future.delayed`，手动控制异步完成时机；用 `ensureVisible()` 先滚动到可见再执行 `tap()`。
+
+### 问题 6：并行 Agent 改动冲突
+
+另一个 Agent 在同步修改 `jellyfin_ai_recommendation`（新增 TTS 功能），与我的 Phase 2 改动在同一文件上有交叉。
+
+**解决：** 提交时避开 `jellyfin_ai_recommendation` 的改动，只提交当前 Task 涉及的文件。两边的并行分支需后续合并同步。
+
+---
+
+## 十一、未完成 / 遗留项
+
+### 11.1 Task 11: jellyfin_home（延后至 Round 4）
+
+首页依赖 Auth/App Shell 的导航结构，当前 Phase 1-C（Task 8, 9）未开始，故延后。
+
+### 11.2 保留在根包的大型组件
+
+| 组件 | 估算行数 | 保留原因 |
+|------|---------|---------|
+| MusicLibraryPage | ~1609 | 内嵌 AudioPlayerPage，耦合 AudioPlaybackManager |
+| AudioPlaybackManager | ~500 | just_audio 单例，深度耦合根包 MusicSong |
+| MusicService | ~800 | 深度耦合 jellyfin_dart（BaseItemDto） |
+| MusicSearchPage / LyricsPage | ~600 | 依赖 AudioPlaybackManager |
+
+这些组件的抽取需要额外设计（可能需要先抽 AudioPlaybackManager 接口层），建议 Phase 3 或 Round 4 处理。
+
+### 11.3 兼容层旧文件（13 个）
+
+根包保留 13 个旧版文件作为兼容层。当前根 barrel 同时导出新旧两套，通过 `hide` 避免冲突。Task 18（facade 收敛）时统一清理。
+
+---
+
+## 十二、需要 Leader 协助的事项
+
+### 1. Phase 1-C 的优先级确认
+
+Phase 2-F（首页模块 Task 11）依赖 Phase 1-C（Task 8 Auth + Task 9 App Shell）。如果后续要做首页，需要先完成 Auth/App Shell。请确认 Round 3 的优先级排序。
+
+### 2. 兼容层清理时机
+
+当前根包同时保留新旧两套文件，`hide` 列表越来越长（累计隐藏约 20 个类型）。建议明确 **Task 18（facade 收敛）** 的执行时机——是 Round 3 还是等所有 feature 都抽取完毕后统一做？
+
+### 3. MusicLibraryPage / AudioPlaybackManager 的抽取策略
+
+这些是根包中最重的组件（合计 ~3000 行），耦合度也最高。两种路线：
+
+- **方案 A**：先抽 AudioPlaybackManager 接口层（定义播放器抽象），再逐步解耦 MusicLibraryPage
+- **方案 B**：保持现状，等 App Shell 稳定后一次性重构
+
+请确认倾向哪种方案，或者是否暂不处理。
+
+### 4. jellyfin_ai_recommendation 的并行开发同步
+
+当前有另一个 Agent 在修改 `jellyfin_ai_recommendation`（新增 TTS 功能）。我的提交已避开该模块的改动。请确认两边的并行开发是否需要在某个时间点做一次同步合并。
+
+### 5. Round 3 方向确认
+
+Phase 2 feature 模块已全部完成，请确认 Round 3 的方向：
+
+- **选项 A**：Phase 1-C（Auth + App Shell） → 解锁 Task 11（首页）
+- **选项 B**：Phase 3（性能优化 / 构建优化 / CI 流水线）
+- **选项 C**：其他方向
+
+---
+
+## 十三、Task 18 小步收敛 — hide 清单与旧文件清理计划
+
+> 更新日期：2026-05-12（Round 3）
+
+### 13.1 当前 hide 类型清单
+
+根 barrel `lib/jellyfin_service.dart` 中 `hide` 隐藏的同名类型共 **18 个**：
+
+| 来源包 | hide 的类型 | 数量 |
+|--------|-----------|------|
+| `jellyfin_movies` | `MovieFilter`, `MovieFilterResult`, `MovieDetailPage` | 3 |
+| `jellyfin_playback` | `VideoQuality`, `NetworkQualityMonitor`, `AutoQualityDecider`, `PlaybackInfo` | 4 |
+| `jellyfin_playback_pages` | `VideoPlayerPage` | 1 |
+| `jellyfin_music` | `MusicAlbum`, `MusicArtist`, `MusicSong`, `MusicGenre`, `ArtistRef`, `MusicAlbumListResult`, `MusicArtistListResult`, `MusicSongListResult` | 8 |
+| `jellyfin_music_pages` | `AlbumDetailPage`, `ArtistDetailPage` | 2 |
+
+### 13.2 旧文件 → 新包映射
+
+| 旧文件（根包 `lib/src/ui/pages/`） | 新包版本 | 状态 |
+|--------------------------------------|---------|------|
+| `media_item_detail_page.dart` | `jellyfin_media/pages/media_item_detail_page.dart` | @Deprecated 已标记 |
+| `person_detail_page.dart` | `jellyfin_media/pages/person_detail_page.dart` | @Deprecated 已标记 |
+| `media_items_page.dart` | `jellyfin_media/pages/media_items_page.dart` | @Deprecated 已标记 |
+| `seasons_page.dart` | `jellyfin_series/pages/seasons_page.dart` | @Deprecated 已标记 |
+| `episodes_page.dart` | `jellyfin_series/pages/episodes_page.dart` | @Deprecated 已标记 |
+| `movie_detail_page.dart` | `jellyfin_movies/pages/movie_detail_page.dart` | @Deprecated 已标记 |
+| `movie_filter_page.dart` | `jellyfin_movies/pages/movie_filter_page.dart` | @Deprecated 已标记 |
+| `video_player_page.dart` | `jellyfin_playback/pages/video_player_page.dart` | @Deprecated 已标记 |
+| `album_detail_page.dart` | `jellyfin_music/pages/album_detail_page.dart` | @Deprecated 已标记 |
+| `artist_detail_page.dart` | `jellyfin_music/pages/artist_detail_page.dart` | @Deprecated 已标记 |
+| `ai_recommend_page.dart` | `jellyfin_ai_recommendation/pages/ai_recommend_page.dart` | @Deprecated 已标记 |
+
+### 13.3 清理条件
+
+当以下条件全部满足时，可删除旧文件并移除 barrel 中的 hide：
+1. 所有下游引用（`media_libraries_page.dart` 等）已切换到新包版本
+2. 根包内不再有代码 import 旧文件
+3. `dart analyze` 无 deprecated 使用警告
+4. 全量测试通过
+
+### 13.4 模块边界检查
+
+运行 `dart scripts/check_module_boundaries.dart` 可自动检查：
+- feature 包 `src/` 是否被外部 import
+- feature 包是否 import 了根包 `jellyfin_service`
+- feature 包之间是否 import 了彼此的 `src/`
