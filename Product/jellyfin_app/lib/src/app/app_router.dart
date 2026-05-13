@@ -116,18 +116,13 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
           final libraryName = state.uri.queryParameters['name'] ?? '剧集';
-          final session = sessionController.currentSession;
           return SeriesListRoutePage(
             gateway: effectiveGateway,
             library: models.MediaLibrary(
               id: libraryId,
               name: libraryName,
               type: models.MediaLibraryType.tvshows,
-              serverUrl: session?.serverUrl ?? '',
-            ),
-            imageProvider: JellyfinAppImageProvider(
-              serverUrl: session?.serverUrl ?? '',
-              accessToken: session?.accessToken ?? '',
+              serverUrl: sessionController.currentSession?.serverUrl ?? '',
             ),
           );
         },

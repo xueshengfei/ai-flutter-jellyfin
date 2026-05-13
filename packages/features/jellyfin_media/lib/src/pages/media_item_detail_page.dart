@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import 'package:jellyfin_media/src/widgets/person_avatar_card.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 // MediaItemDetailFetcher 和 SeasonsFetcher 已收敛到 jellyfin_models/media_contracts.dart
 // 此处 re-export 以保持子入口 jellyfin_media_pages.dart 的兼容性

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_media/jellyfin_media_models.dart';
 import 'package:jellyfin_media/jellyfin_media_pages.dart';
-import 'package:jellyfin_media/jellyfin_media_widgets.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 

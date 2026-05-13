@@ -10,8 +10,10 @@ import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_movies/jellyfin_movies_pages.dart';
 import 'package:jellyfin_media/jellyfin_media_pages.dart';
 import 'package:jellyfin_series/jellyfin_series_pages.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../../data/jellyfin_gateway.dart';
+import '../../ui/jellyfin_app_image_provider.dart';
 
 // ──────────────────────────── 剧集列表页 ────────────────────────────
 
@@ -39,26 +41,64 @@ class SeriesListRoutePage extends StatelessWidget {
 
 // ──────────────────────────── 电影筛选页 ────────────────────────────
 
-class MoviesRoutePage extends StatelessWidget {
+class MoviesRoutePage extends StatefulWidget {
   final JellyfinGateway gateway;
   final String libraryId;
   final String libraryName;
+  final JellyfinAppImageProvider imageProvider;
 
   const MoviesRoutePage({
     super.key,
     required this.gateway,
     required this.libraryId,
     required this.libraryName,
+    required this.imageProvider,
   });
+
+  @override
+  State<MoviesRoutePage> createState() => _MoviesRoutePageState();
+}
+
+class _MoviesRoutePageState extends State<MoviesRoutePage> {
+  ViewModeConfig _viewModeConfig = const ViewModeConfig();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadViewMode();
+  }
+
+  Future<void> _loadViewMode() async {
+    final config = await ViewModeManager().getViewModeConfig(widget.libraryId);
+    if (mounted) {
+      setState(() => _viewModeConfig = config);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MovieFilterPage(
-      libraryId: libraryId,
-      libraryName: libraryName,
-      fetchMovies: gateway.fetchMovies,
+      libraryId: widget.libraryId,
+      libraryName: widget.libraryName,
+      fetchMovies: widget.gateway.fetchMovies,
       onNavigateToMovie: (context, item) {
         context.push('/movies/${item.id}');
+      },
+      appBarActions: [
+        ViewModeSelector(
+          libraryId: widget.libraryId,
+          onViewModeChanged: (config) {
+            setState(() => _viewModeConfig = config);
+          },
+        ),
+      ],
+      listBuilder: ({required items, required onTap}) {
+        return MediaListBuilder(
+          imageProvider: widget.imageProvider,
+          items: items,
+          config: _viewModeConfig,
+          onTap: onTap,
+        );
       },
     );
   }
