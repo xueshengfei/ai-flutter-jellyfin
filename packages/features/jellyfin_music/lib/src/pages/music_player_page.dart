@@ -14,12 +14,14 @@ import 'package:jellyfin_music/src/models/lyrics_models.dart';
 class MusicPlayerPage extends StatefulWidget {
   final AudioPlaybackPort playbackPort;
   final VoidCallback? onOpenLyrics;
+  final VoidCallback? onOpenRvc;
   final LyricsFetcher? fetchLyrics;
 
   const MusicPlayerPage({
     super.key,
     required this.playbackPort,
     this.onOpenLyrics,
+    this.onOpenRvc,
     this.fetchLyrics,
   });
 
@@ -531,7 +533,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     );
   }
 
-  // ─── 控制栏: [PlayMode] [Prev] [Play/Pause] [Next] [收藏] [歌词] ───
+  // ─── 控制栏: [PlayMode] [Prev] [Play/Pause] [Next] [收藏] [RVC] ───
 
   Widget _buildControls(AudioPlaybackPort port, AudioTrack track) {
     return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -599,6 +601,23 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
           ),
         ),
       ),
+      const SizedBox(width: 4),
+      // RVC 语音转换
+      if (widget.onOpenRvc != null)
+        SizedBox(
+          width: 48, height: 48,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: widget.onOpenRvc,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.auto_fix_high, size: 22, color: Theme.of(context).colorScheme.primary),
+                Text('RVC', style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        ),
     ]);
   }
 

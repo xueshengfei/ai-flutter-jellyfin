@@ -34,6 +34,9 @@ class AudioTrack extends Equatable {
   /// 是否收藏
   final bool? isFavorite;
 
+  /// 服务器端文件路径（用于 RVC 等功能）
+  final String? path;
+
   const AudioTrack({
     required this.id,
     required this.name,
@@ -44,6 +47,7 @@ class AudioTrack extends Equatable {
     this.albumName,
     this.trackNumber,
     this.isFavorite,
+    this.path,
   });
 
   @override
