@@ -1,11 +1,13 @@
 import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'jellyfin_image_provider.dart';
 
 /// Jellyfin 认证图片 Widget
 ///
-/// 使用 [JellyfinImageProvider] 加载需要认证的图片。
+/// 优先使用 CachedNetworkImage（磁盘+内存缓存），
+/// 如果 URL 为空则降级到 http 请求 + Image.memory。
 /// 不直接依赖任何具体 service 或 client 实现。
 class JellyfinImage extends StatefulWidget {
   final JellyfinImageProvider imageProvider;
@@ -34,6 +36,8 @@ class JellyfinImage extends StatefulWidget {
 }
 
 class _JellyfinImageState extends State<JellyfinImage> {
+  /// 是否降级到手动 http + Image.memory
+  bool _useFallback = false;
   Uint8List? _imageData;
   bool _isLoading = true;
   bool _hasError = false;
@@ -41,7 +45,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
   @override
   void initState() {
     super.initState();
-    _loadImage();
+    _initImage();
   }
 
   @override
@@ -52,17 +56,35 @@ class _JellyfinImageState extends State<JellyfinImage> {
         oldWidget.fillWidth != widget.fillWidth ||
         oldWidget.fillHeight != widget.fillHeight ||
         oldWidget.imageProvider != widget.imageProvider) {
-      _loadImage();
+      _initImage();
     }
   }
 
-  Future<void> _loadImage() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
+  void _initImage() {
+    final url = widget.imageProvider.buildImageUrl(
+      itemId: widget.itemId,
+      imageTag: widget.imageTag,
+      fillWidth: widget.fillWidth,
+      fillHeight: widget.fillHeight,
+    );
 
+    if (url.isEmpty) {
+      // URL 为空，降级到手动加载
+      setState(() {
+        _useFallback = true;
+        _isLoading = true;
+        _hasError = false;
+      });
+      _loadFallback();
+    } else {
+      setState(() {
+        _useFallback = false;
+      });
+    }
+  }
+
+  Future<void> _loadFallback() async {
+    if (!mounted) return;
     try {
       final imageData = await widget.imageProvider.getPrimaryImage(
         itemId: widget.itemId,
@@ -70,7 +92,6 @@ class _JellyfinImageState extends State<JellyfinImage> {
         fillWidth: widget.fillWidth,
         fillHeight: widget.fillHeight,
       );
-
       if (mounted) {
         setState(() {
           _imageData = imageData;
@@ -90,25 +111,41 @@ class _JellyfinImageState extends State<JellyfinImage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_useFallback) {
+      return _buildFallback();
+    }
+    return _buildCachedNetworkImage();
+  }
+
+  Widget _buildCachedNetworkImage() {
+    final url = widget.imageProvider.buildImageUrl(
+      itemId: widget.itemId,
+      imageTag: widget.imageTag,
+      fillWidth: widget.fillWidth,
+      fillHeight: widget.fillHeight,
+    );
+
+    final headers = widget.imageProvider.authHeaders;
+
+    return CachedNetworkImage(
+      imageUrl: url,
+      httpHeaders: headers,
+      fit: widget.fit,
+      placeholder: (_, __) => widget.placeholder ?? _defaultPlaceholder(),
+      errorWidget: (_, __, ___) =>
+          widget.errorWidget ?? _defaultError(),
+      memCacheWidth: widget.fillWidth,
+      memCacheHeight: widget.fillHeight,
+    );
+  }
+
+  Widget _buildFallback() {
     if (_isLoading) {
-      return widget.placeholder ??
-          Shimmer.fromColors(
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: Container(color: Colors.white),
-          );
+      return widget.placeholder ?? _defaultPlaceholder();
     }
-
     if (_hasError) {
-      return widget.errorWidget ??
-          Container(
-            color: Colors.grey[300],
-            child: const Center(
-              child: Icon(Icons.broken_image, color: Colors.white54),
-            ),
-          );
+      return widget.errorWidget ?? _defaultError();
     }
-
     if (_imageData != null) {
       return Image.memory(
         _imageData!,
@@ -116,10 +153,23 @@ class _JellyfinImageState extends State<JellyfinImage> {
         gaplessPlayback: true,
       );
     }
+    return widget.placeholder ?? const SizedBox.shrink();
+  }
 
-    return widget.placeholder ??
-        Container(
-          color: Colors.grey[300],
-        );
+  Widget _defaultPlaceholder() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(color: Colors.white),
+    );
+  }
+
+  Widget _defaultError() {
+    return Container(
+      color: Colors.grey[300],
+      child: const Center(
+        child: Icon(Icons.broken_image, color: Colors.white54),
+      ),
+    );
   }
 }

@@ -6,6 +6,8 @@ import '../session/app_session.dart';
 /// Product app 层的图片加载实现
 ///
 /// 使用当前登录会话的 serverUrl + accessToken 加载认证图片。
+/// 优先构建 URL 供 CachedNetworkImage 使用（磁盘+内存缓存），
+/// 降级时走 http 请求 + Image.memory。
 class JellyfinAppImageProvider implements JellyfinImageProvider {
   final String serverUrl;
   final String accessToken;
@@ -21,6 +23,31 @@ class JellyfinAppImageProvider implements JellyfinImageProvider {
       serverUrl: session.serverUrl,
       accessToken: session.accessToken,
     );
+  }
+
+  @override
+  String buildImageUrl({
+    required String itemId,
+    String? imageTag,
+    int? fillWidth,
+    int? fillHeight,
+  }) {
+    if (serverUrl.isEmpty) return '';
+    var url = '$serverUrl/Items/$itemId/Images/Primary';
+    final params = <String, String>{};
+    if (imageTag != null && imageTag.isNotEmpty) params['tag'] = imageTag;
+    if (fillWidth != null) params['fillWidth'] = '$fillWidth';
+    if (fillHeight != null) params['fillHeight'] = '$fillHeight';
+    if (params.isNotEmpty) {
+      url += '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+    }
+    return url;
+  }
+
+  @override
+  Map<String, String>? get authHeaders {
+    if (accessToken.isEmpty) return null;
+    return {'X-Emby-Token': accessToken};
   }
 
   @override
