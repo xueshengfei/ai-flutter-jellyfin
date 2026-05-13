@@ -710,6 +710,7 @@ class MediaLibraryService {
         tags: filter.tags,
         years: filter.years,
         nameStartsWith: filter.nameStartsWith,
+        searchTerm: filter.searchTerm,
         studios: filter.studios,
         minCommunityRating: filter.minCommunityRating,
         minOfficialRating: filter.minOfficialRating,

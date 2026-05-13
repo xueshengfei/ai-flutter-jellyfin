@@ -137,29 +137,54 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
   }
 
   void _showSearchDialog() {
+    final searchController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('搜索电影'),
         content: TextField(
+          controller: searchController,
           decoration: const InputDecoration(
-            hintText: '输入首字母...',
+            hintText: '输入电影名称关键词...',
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.search),
           ),
-          maxLength: 1,
-          textCapitalization: TextCapitalization.characters,
           autofocus: true,
-          onChanged: (value) {
+          onSubmitted: (value) {
             if (value.isNotEmpty) {
               setState(() {
-                _filter = _filter.copyWith(nameStartsWith: value.toUpperCase());
+                _filter = _filter.copyWith(
+                  searchTerm: value,
+                  nameStartsWith: null,
+                );
               });
               _loadMovies();
               Navigator.of(context).pop();
             }
           },
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = searchController.text.trim();
+              if (value.isNotEmpty) {
+                setState(() {
+                  _filter = _filter.copyWith(
+                    searchTerm: value,
+                    nameStartsWith: null,
+                  );
+                });
+                _loadMovies();
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('搜索'),
+          ),
+        ],
       ),
     );
   }
@@ -312,6 +337,7 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
     return (_filter.genres?.isNotEmpty ?? false) ||
         (_filter.years?.isNotEmpty ?? false) ||
         (_filter.nameStartsWith != null) ||
+        (_filter.searchTerm != null) ||
         (_filter.studios?.isNotEmpty ?? false) ||
         (_filter.isUnplayed ?? false) ||
         (_filter.minCommunityRating != null);
@@ -346,6 +372,12 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
       chips.add(_FilterChipWidget(
         label: '首字母: ${_filter.nameStartsWith}',
         onDeleted: () { setState(() => _filter = _filter.copyWith(nameStartsWith: null)); _loadMovies(); },
+      ));
+    }
+    if (_filter.searchTerm != null) {
+      chips.add(_FilterChipWidget(
+        label: '搜索: ${_filter.searchTerm}',
+        onDeleted: () { setState(() => _filter = _filter.copyWith(searchTerm: null)); _loadMovies(); },
       ));
     }
     if (_filter.studios?.isNotEmpty ?? false) {
