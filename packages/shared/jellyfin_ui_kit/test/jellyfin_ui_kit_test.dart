@@ -16,6 +16,19 @@ class FakeImageProvider implements JellyfinImageProvider {
         _shouldFail = shouldFail;
 
   @override
+  String buildImageUrl({
+    required String itemId,
+    String? imageTag,
+    int? fillWidth,
+    int? fillHeight,
+  }) {
+    return 'http://test:8096/Items/$itemId/Images/Primary';
+  }
+
+  @override
+  Map<String, String>? get authHeaders => null;
+
+  @override
   Future<Uint8List> getPrimaryImage({
     required String itemId,
     String? tag,

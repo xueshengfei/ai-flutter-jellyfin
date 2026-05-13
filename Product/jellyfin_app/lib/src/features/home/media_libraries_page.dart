@@ -173,6 +173,19 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
 /// imageProvider 为 null 时的 fallback（只显示 placeholder）
 class _StubImageProvider implements JellyfinImageProvider {
   @override
+  String buildImageUrl({
+    required String itemId,
+    String? imageTag,
+    int? fillWidth,
+    int? fillHeight,
+  }) {
+    return '';
+  }
+
+  @override
+  Map<String, String>? get authHeaders => null;
+
+  @override
   Future<Uint8List> getPrimaryImage({
     required String itemId,
     String? tag,
