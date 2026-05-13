@@ -26,6 +26,9 @@ class MovieFilter extends Equatable {
   /// 首字母过滤（如：'A', 'B', 'C'等）
   final String? nameStartsWith;
 
+  /// 关键词搜索（如：'教父'、'Iron Man'等）
+  final String? searchTerm;
+
   /// 工作室过滤（如：漫威、迪士尼等）
   final List<String>? studios;
 
@@ -76,6 +79,7 @@ class MovieFilter extends Equatable {
     this.tags,
     this.years,
     this.nameStartsWith,
+    this.searchTerm,
     this.studios,
     this.productionLocations,
     this.minCommunityRating,
@@ -133,6 +137,7 @@ class MovieFilter extends Equatable {
     List<String>? tags,
     List<int>? years,
     String? nameStartsWith,
+    String? searchTerm,
     List<String>? studios,
     List<String>? productionLocations,
     double? minCommunityRating,
@@ -161,6 +166,7 @@ class MovieFilter extends Equatable {
       tags: clearTags ? null : (tags ?? this.tags),
       years: clearYears ? null : (years ?? this.years),
       nameStartsWith: nameStartsWith ?? this.nameStartsWith,
+      searchTerm: searchTerm ?? this.searchTerm,
       studios: clearStudios ? null : (studios ?? this.studios),
       productionLocations: clearProductionLocations ? null : (productionLocations ?? this.productionLocations),
       minCommunityRating: minCommunityRating ?? this.minCommunityRating,
@@ -187,6 +193,7 @@ class MovieFilter extends Equatable {
         tags,
         years,
         nameStartsWith,
+        searchTerm,
         studios,
         productionLocations,
         minCommunityRating,

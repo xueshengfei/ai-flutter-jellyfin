@@ -29,6 +29,7 @@ class MovieFilter extends Equatable {
   final List<String>? tags;
   final List<int>? years;
   final String? nameStartsWith;
+  final String? searchTerm;
   final List<String>? studios;
   final List<String>? productionLocations;
   final double? minCommunityRating;
@@ -51,6 +52,7 @@ class MovieFilter extends Equatable {
     this.tags,
     this.years,
     this.nameStartsWith,
+    this.searchTerm,
     this.studios,
     this.productionLocations,
     this.minCommunityRating,
@@ -96,6 +98,7 @@ class MovieFilter extends Equatable {
     List<String>? tags,
     List<int>? years,
     String? nameStartsWith,
+    String? searchTerm,
     List<String>? studios,
     List<String>? productionLocations,
     double? minCommunityRating,
@@ -123,6 +126,7 @@ class MovieFilter extends Equatable {
       tags: clearTags ? null : (tags ?? this.tags),
       years: clearYears ? null : (years ?? this.years),
       nameStartsWith: nameStartsWith ?? this.nameStartsWith,
+      searchTerm: searchTerm ?? this.searchTerm,
       studios: clearStudios ? null : (studios ?? this.studios),
       productionLocations: clearProductionLocations ? null : (productionLocations ?? this.productionLocations),
       minCommunityRating: minCommunityRating ?? this.minCommunityRating,
@@ -142,7 +146,7 @@ class MovieFilter extends Equatable {
   @override
   List<Object?> get props => [
         parentId, startIndex, limit, genres, tags, years,
-        nameStartsWith, studios, productionLocations,
+        nameStartsWith, searchTerm, studios, productionLocations,
         minCommunityRating, minOfficialRating, maxOfficialRating,
         isHD, is4K, isPlayed, isFavorite, isUnplayed,
         sortBy, sortOrder, recursive,
