@@ -10,6 +10,9 @@ import '../session/app_session.dart';
 class LegacyJellyfinGateway implements JellyfinGateway {
   ApiClient? _apiClient;
 
+  /// 获取当前已认证的 client
+  ApiClient? get apiClient => _apiClient;
+
   @override
   Future<AppSession> login({
     required String serverUrl,
@@ -135,7 +138,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return movies.MovieFilterResult(
-      movies: items.map((dto) => _mapMediaItem(dto, config.serverUrl)).toList(),
+      movies: items.map((dto) => mapMediaItem(dto, config.serverUrl)).toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: filter.startIndex,
     );
@@ -161,7 +164,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     if (items.isEmpty) {
       throw StateError('找不到媒体项: $itemId');
     }
-    return _mapMediaItem(items.first, config.serverUrl);
+    return mapMediaItem(items.first, config.serverUrl);
   }
 
   void _requireClient() {
@@ -208,7 +211,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     }
   }
 
-  static models.MediaItem _mapMediaItem(
+  static models.MediaItem mapMediaItem(
     jellyfin_dart.BaseItemDto dto,
     String serverUrl,
   ) {
