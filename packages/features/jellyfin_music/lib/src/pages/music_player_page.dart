@@ -8,8 +8,9 @@ import 'package:jellyfin_music/src/services/audio_playback_port.dart';
 /// 只依赖 [AudioPlaybackPort] 接口，不依赖旧 jellyfin_service。
 class MusicPlayerPage extends StatefulWidget {
   final AudioPlaybackPort playbackPort;
+  final VoidCallback? onOpenLyrics;
 
-  const MusicPlayerPage({super.key, required this.playbackPort});
+  const MusicPlayerPage({super.key, required this.playbackPort, this.onOpenLyrics});
 
   @override
   State<MusicPlayerPage> createState() => _MusicPlayerPageState();
@@ -310,6 +311,14 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         onPressed: () => port.playNext(),
         icon: const Icon(Icons.skip_next, size: 40),
       ),
+      const SizedBox(width: 8),
+      // 歌词
+      if (widget.onOpenLyrics != null)
+        IconButton(
+          onPressed: widget.onOpenLyrics,
+          icon: const Icon(Icons.lyrics, size: 28),
+          tooltip: '歌词',
+        ),
     ]);
   }
 

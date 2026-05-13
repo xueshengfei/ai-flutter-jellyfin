@@ -3,7 +3,10 @@ library;
 
 export 'src/pages/album_detail_page.dart';
 export 'src/pages/artist_detail_page.dart';
+export 'src/pages/lyrics_page.dart';
 export 'src/pages/music_library_page.dart';
 export 'src/pages/music_player_page.dart';
+export 'src/pages/music_search_page.dart';
+export 'src/widgets/lyrics_panel.dart';
 export 'src/widgets/mini_player_bar.dart';
 export 'src/widgets/music_area_shell.dart';

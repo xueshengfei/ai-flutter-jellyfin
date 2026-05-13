@@ -91,4 +91,23 @@ abstract class JellyfinGateway {
 
   /// 获取艺术家专辑列表
   Future<music.MusicAlbumListResult> getArtistAlbums(String artistId);
+
+  /// 搜索音乐（艺术家+专辑+歌曲）
+  Future<music.MusicSearchResult> searchMusic({
+    required String searchTerm,
+    String? parentId,
+    int? limit,
+  });
+
+  /// 获取歌词
+  Future<music.LyricsData?> getLyrics(String itemId);
+
+  /// 搜索远程歌词
+  Future<List<music.RemoteLyricsInfo>> searchRemoteLyrics(String itemId);
+
+  /// 下载远程歌词
+  Future<music.LyricsData> downloadRemoteLyrics({
+    required String itemId,
+    required String lyricId,
+  });
 }

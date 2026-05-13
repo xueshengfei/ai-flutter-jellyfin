@@ -331,3 +331,30 @@ typedef SongsFetcher = Future<MusicSongListResult> Function({
   int? startIndex,
   int? limit,
 });
+
+// ==================== 搜索 ====================
+
+/// 音乐搜索结果（统一返回三种类型）
+class MusicSearchResult extends Equatable {
+  final List<MusicArtist> artists;
+  final List<MusicAlbum> albums;
+  final List<MusicSong> songs;
+
+  const MusicSearchResult({
+    this.artists = const [],
+    this.albums = const [],
+    this.songs = const [],
+  });
+
+  bool get isEmpty => artists.isEmpty && albums.isEmpty && songs.isEmpty;
+
+  @override
+  List<Object?> get props => [artists, albums, songs];
+}
+
+/// 音乐搜索回调
+typedef MusicSearchFetcher = Future<MusicSearchResult> Function({
+  required String searchTerm,
+  String? parentId,
+  int? limit,
+});
