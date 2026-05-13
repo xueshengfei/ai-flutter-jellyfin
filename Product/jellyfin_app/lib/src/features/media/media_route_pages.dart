@@ -151,11 +151,13 @@ class _MoviesRoutePageState extends State<MoviesRoutePage> {
 class MovieDetailRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
+  final JellyfinAppImageProvider? imageProvider;
 
   const MovieDetailRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
+    this.imageProvider,
   });
 
   @override
@@ -191,6 +193,7 @@ class MovieDetailRoutePage extends StatelessWidget {
         return MovieDetailPage(
           movie: movie,
           fetchDetail: gateway.getMediaItemDetail,
+          imageProvider: imageProvider,
           onStartPlayback: (context, item) {
             context.push('/playback/video/${item.id}');
           },
@@ -205,11 +208,13 @@ class MovieDetailRoutePage extends StatelessWidget {
 class MediaDetailRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
+  final JellyfinAppImageProvider? imageProvider;
 
   const MediaDetailRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
+    this.imageProvider,
   });
 
   @override
@@ -245,6 +250,7 @@ class MediaDetailRoutePage extends StatelessWidget {
         return MediaItemDetailPage(
           item: item,
           fetchDetail: gateway.getMediaItemDetail,
+          imageProvider: imageProvider,
           fetchSeasons: item.type.toLowerCase() == 'series'
               ? gateway.getSeasons
               : null,
@@ -267,11 +273,13 @@ class MediaDetailRoutePage extends StatelessWidget {
 class SeriesSeasonsRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String seriesId;
+  final JellyfinAppImageProvider? imageProvider;
 
   const SeriesSeasonsRoutePage({
     super.key,
     required this.gateway,
     required this.seriesId,
+    this.imageProvider,
   });
 
   @override
@@ -307,6 +315,7 @@ class SeriesSeasonsRoutePage extends StatelessWidget {
         return SeasonsPage(
           series: series,
           fetchSeasons: gateway.getSeasons,
+          imageProvider: imageProvider,
           onNavigateToEpisodes: (context, series, season) {
             context.push(
               '/series/${series.id}/seasons/${season.id}/episodes',
@@ -324,12 +333,14 @@ class SeriesEpisodesRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String seriesId;
   final String seasonId;
+  final JellyfinAppImageProvider? imageProvider;
 
   const SeriesEpisodesRoutePage({
     super.key,
     required this.gateway,
     required this.seriesId,
     required this.seasonId,
+    this.imageProvider,
   });
 
   @override
@@ -395,6 +406,7 @@ class SeriesEpisodesRoutePage extends StatelessWidget {
               series: series,
               season: season,
               fetchEpisodes: gateway.getEpisodes,
+              imageProvider: imageProvider,
               onStartPlayback: (context, episode) {
                 context.push('/playback/video/${episode.id}');
               },

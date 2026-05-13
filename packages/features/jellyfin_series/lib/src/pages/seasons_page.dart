@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_series/src/widgets/season_card.dart';
 
 /// 季列表页面（解耦版）
@@ -16,11 +17,15 @@ class SeasonsPage extends StatefulWidget {
   final void Function(BuildContext context, MediaItem series, Season season)?
       onNavigateToEpisodes;
 
+  /// 图片加载接口（可选，传入时使用 JellyfinImage 加载认证图片）
+  final JellyfinImageProvider? imageProvider;
+
   const SeasonsPage({
     super.key,
     required this.series,
     required this.fetchSeasons,
     this.onNavigateToEpisodes,
+    this.imageProvider,
   });
 
   @override
@@ -131,6 +136,7 @@ class _SeasonsPageState extends State<SeasonsPage> {
                       return SeasonCard(
                         season: season,
                         seriesName: widget.series.name,
+                        imageProvider: widget.imageProvider,
                         onTap: () {
                           widget.onNavigateToEpisodes?.call(
                               context, widget.series, season);

@@ -73,6 +73,10 @@ GoRouter createAppRouter({
           return MediaLibrariesPage(
             gateway: effectiveGateway,
             username: session?.username ?? '',
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
             onLibraryTap: (library) {
               switch (library.type) {
                 case models.MediaLibraryType.movies:
@@ -217,9 +221,14 @@ GoRouter createAppRouter({
         path: '/movies/:itemId',
         builder: (context, state) {
           final itemId = state.pathParameters['itemId']!;
+          final session = sessionController.currentSession;
           return MovieDetailRoutePage(
             gateway: effectiveGateway,
             itemId: itemId,
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
           );
         },
       ),
@@ -228,9 +237,14 @@ GoRouter createAppRouter({
         path: '/media/items/:itemId',
         builder: (context, state) {
           final itemId = state.pathParameters['itemId']!;
+          final session = sessionController.currentSession;
           return MediaDetailRoutePage(
             gateway: effectiveGateway,
             itemId: itemId,
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
           );
         },
       ),
@@ -239,9 +253,14 @@ GoRouter createAppRouter({
         path: '/series/:seriesId/seasons',
         builder: (context, state) {
           final seriesId = state.pathParameters['seriesId']!;
+          final session = sessionController.currentSession;
           return SeriesSeasonsRoutePage(
             gateway: effectiveGateway,
             seriesId: seriesId,
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
           );
         },
       ),
@@ -251,10 +270,15 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final seriesId = state.pathParameters['seriesId']!;
           final seasonId = state.pathParameters['seasonId']!;
+          final session = sessionController.currentSession;
           return SeriesEpisodesRoutePage(
             gateway: effectiveGateway,
             seriesId: seriesId,
             seasonId: seasonId,
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
           );
         },
       ),

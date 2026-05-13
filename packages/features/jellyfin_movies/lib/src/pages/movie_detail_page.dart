@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 /// 获取电影详情回调
 typedef MovieDetailFetcher = Future<MediaItem> Function(String itemId);
@@ -13,11 +14,15 @@ class MovieDetailPage extends StatefulWidget {
   final MovieDetailFetcher fetchDetail;
   final void Function(BuildContext context, MediaItem movie)? onStartPlayback;
 
+  /// 图片加载抽象，为 null 时回退到 Image.network
+  final JellyfinImageProvider? imageProvider;
+
   const MovieDetailPage({
     super.key,
     required this.movie,
     required this.fetchDetail,
     this.onStartPlayback,
+    this.imageProvider,
   });
 
   @override
@@ -110,11 +115,22 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            widget.movie.getBackdropImageUrl()!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surface),
-          ),
+          if (widget.imageProvider != null)
+            JellyfinImage(
+              imageProvider: widget.imageProvider!,
+              itemId: widget.movie.id,
+              imageTag: widget.movie.backdropImageTag,
+              fillWidth: 800,
+              fillHeight: 450,
+              fit: BoxFit.cover,
+              errorWidget: Container(color: Theme.of(context).colorScheme.surface),
+            )
+          else
+            Image.network(
+              widget.movie.getBackdropImageUrl()!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surface),
+            ),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -203,10 +219,27 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         if (movie.hasCoverImage)
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              movie.getCoverImageUrl()!,
-              width: 100, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(width: 100, height: 150, color: Colors.grey.shade300, child: const Icon(Icons.movie, color: Colors.grey)),
+            child: SizedBox(
+              width: 100,
+              child: widget.imageProvider != null
+                  ? JellyfinImage(
+                      imageProvider: widget.imageProvider!,
+                      itemId: movie.id,
+                      imageTag: movie.primaryImageTag,
+                      fillWidth: 200,
+                      fillHeight: 300,
+                      fit: BoxFit.cover,
+                      errorWidget: Container(
+                        width: 100, height: 150,
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.movie, color: Colors.grey),
+                      ),
+                    )
+                  : Image.network(
+                      movie.getCoverImageUrl()!,
+                      width: 100, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(width: 100, height: 150, color: Colors.grey.shade300, child: const Icon(Icons.movie, color: Colors.grey)),
+                    ),
             ),
           ),
         const SizedBox(width: 16),

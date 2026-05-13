@@ -13,6 +13,8 @@ dependencies:
   equatable: ^2.0.5
   jellyfin_models:
     path: ../../shared/jellyfin_models
+  jellyfin_ui_kit:
+    path: ../../shared/jellyfin_ui_kit
 
 dev_dependencies:
   flutter_test:

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 /// 集卡片组件
 class EpisodeCard extends StatelessWidget {
   final Episode episode;
   final VoidCallback onTap;
   final VoidCallback? onPlay;
+  final JellyfinImageProvider? imageProvider;
 
   const EpisodeCard({
     super.key,
     required this.episode,
     required this.onTap,
     this.onPlay,
+    this.imageProvider,
   });
 
   @override
@@ -28,36 +31,7 @@ class EpisodeCard extends StatelessWidget {
               width: 120,
               height: 68,
               child: episode.hasThumbnailImage
-                  ? Image.network(
-                      episode.getThumbnailImageUrl()!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          child: const Center(
-                            child:
-                                Icon(Icons.error_outline, color: Colors.grey),
-                          ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          child: const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
-                      },
-                    )
+                  ? _buildThumbnailImage(context)
                   : Container(
                       color: Theme.of(context)
                           .colorScheme
@@ -172,6 +146,52 @@ class EpisodeCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// 构建缩略图：优先使用 JellyfinImage，否则回退到 Image.network
+  Widget _buildThumbnailImage(BuildContext context) {
+    if (imageProvider != null) {
+      return JellyfinImage(
+        imageProvider: imageProvider!,
+        itemId: episode.id,
+        imageTag: episode.primaryImageTag,
+        fillWidth: 240,
+        fillHeight: 136,
+        fit: BoxFit.cover,
+        errorWidget: Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(
+            child: Icon(Icons.error_outline, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    return Image.network(
+      episode.getThumbnailImageUrl()!,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(
+            child: Icon(Icons.error_outline, color: Colors.grey),
+          ),
+        );
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      },
     );
   }
 }

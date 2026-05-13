@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 /// 季卡片组件
 class SeasonCard extends StatelessWidget {
   final Season season;
   final String seriesName;
   final VoidCallback onTap;
+  final JellyfinImageProvider? imageProvider;
 
   const SeasonCard({
     super.key,
     required this.season,
     required this.seriesName,
     required this.onTap,
+    this.imageProvider,
   });
 
   @override
@@ -30,32 +33,7 @@ class SeasonCard extends StatelessWidget {
                 width: double.infinity,
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: season.hasCoverImage
-                    ? Image.network(
-                        season.getCoverImageUrl()!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                            child: const Center(
-                              child: Icon(Icons.error_outline,
-                                  color: Colors.grey),
-                            ),
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-                        },
-                      )
+                    ? _buildCoverImage(context)
                     : Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -130,6 +108,46 @@ class SeasonCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// 构建封面图片：优先使用 JellyfinImage，否则回退到 Image.network
+  Widget _buildCoverImage(BuildContext context) {
+    if (imageProvider != null) {
+      return JellyfinImage(
+        imageProvider: imageProvider!,
+        itemId: season.id,
+        imageTag: season.primaryImageTag,
+        fit: BoxFit.cover,
+        errorWidget: Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(
+            child: Icon(Icons.error_outline, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    return Image.network(
+      season.getCoverImageUrl()!,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(
+            child: Icon(Icons.error_outline, color: Colors.grey),
+          ),
+        );
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      },
     );
   }
 }
