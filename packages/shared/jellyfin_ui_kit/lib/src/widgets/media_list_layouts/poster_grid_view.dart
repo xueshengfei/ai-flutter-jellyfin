@@ -12,6 +12,8 @@ class PosterGridView extends StatelessWidget {
   final int crossAxisCount;
   final ValueChanged<MediaItem>? onTap;
   final Widget Function(MediaItem item, VoidCallback onTap)? cardBuilder;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
 
   const PosterGridView({
     super.key,
@@ -20,12 +22,16 @@ class PosterGridView extends StatelessWidget {
     this.crossAxisCount = 3,
     this.onTap,
     this.cardBuilder,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
+      shrinkWrap: shrinkWrap,
+      physics: physics,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: 0.67,

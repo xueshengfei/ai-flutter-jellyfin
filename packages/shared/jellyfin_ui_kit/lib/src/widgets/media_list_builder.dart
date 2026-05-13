@@ -16,12 +16,20 @@ class MediaListBuilder extends StatelessWidget {
   final ViewModeConfig config;
   final ValueChanged<MediaItem>? onTap;
 
+  /// 是否收缩包裹（嵌套在 Column/SliverToBoxAdapter 中时设为 true）
+  final bool shrinkWrap;
+
+  /// 滚动物理（嵌套时传 NeverScrollableScrollPhysics()）
+  final ScrollPhysics? physics;
+
   const MediaListBuilder({
     super.key,
     required this.imageProvider,
     required this.items,
     required this.config,
     this.onTap,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   @override
@@ -32,6 +40,8 @@ class MediaListBuilder extends StatelessWidget {
           imageProvider: imageProvider,
           items: items,
           onTap: onTap,
+          shrinkWrap: shrinkWrap,
+          physics: physics,
         );
 
       case ViewMode.list:
@@ -39,6 +49,8 @@ class MediaListBuilder extends StatelessWidget {
           imageProvider: imageProvider,
           items: items,
           onTap: onTap,
+          shrinkWrap: shrinkWrap,
+          physics: physics,
         );
 
       case ViewMode.poster:
@@ -47,6 +59,8 @@ class MediaListBuilder extends StatelessWidget {
           items: items,
           crossAxisCount: config.crossAxisCount,
           onTap: onTap,
+          shrinkWrap: shrinkWrap,
+          physics: physics,
         );
 
       case ViewMode.card:
@@ -55,6 +69,8 @@ class MediaListBuilder extends StatelessWidget {
           items: items,
           crossAxisCount: config.crossAxisCount,
           onTap: onTap,
+          shrinkWrap: shrinkWrap,
+          physics: physics,
         );
     }
   }
