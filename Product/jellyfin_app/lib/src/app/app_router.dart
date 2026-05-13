@@ -14,6 +14,7 @@ import '../features/playback/playback_route_page.dart';
 import '../features/rvc/rvc_route_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
+import '../ui/jellyfin_app_image_provider.dart';
 
 /// 认证重定向纯函数
 String? resolveAuthRedirect({
@@ -97,10 +98,15 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
           final libraryName = state.uri.queryParameters['name'] ?? '媒体库';
+          final session = sessionController.currentSession;
           return MoviesRoutePage(
             gateway: effectiveGateway,
             libraryId: libraryId,
             libraryName: libraryName,
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
           );
         },
       ),
@@ -110,13 +116,18 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
           final libraryName = state.uri.queryParameters['name'] ?? '剧集';
+          final session = sessionController.currentSession;
           return SeriesListRoutePage(
             gateway: effectiveGateway,
             library: models.MediaLibrary(
               id: libraryId,
               name: libraryName,
               type: models.MediaLibraryType.tvshows,
-              serverUrl: sessionController.currentSession?.serverUrl ?? '',
+              serverUrl: session?.serverUrl ?? '',
+            ),
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
             ),
           );
         },
@@ -263,6 +274,7 @@ GoRouter createAppRouter({
           return MusicPlayerPage(
             playbackPort: effectiveAudioPort,
             onOpenLyrics: () => context.push('/music/lyrics'),
+            fetchLyrics: effectiveGateway.getLyrics,
           );
         },
       ),
