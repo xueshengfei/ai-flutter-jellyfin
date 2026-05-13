@@ -129,56 +129,32 @@ class _AlbumsTab extends StatefulWidget {
 
 class _AlbumsTabState extends State<_AlbumsTab>
     with AutomaticKeepAliveClientMixin {
-  late Future<MusicAlbumListResult> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() {
-    setState(() {
-      _future = widget.fetchAlbums(parentId: widget.libraryId);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder<MusicAlbumListResult>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return _ErrorBody(error: '${snapshot.error}', onRetry: _load);
-        }
-        final albums = snapshot.data?.albums ?? [];
-        if (albums.isEmpty) {
-          return const _EmptyBody(icon: '💿', message: '没有找到专辑');
-        }
-        return RefreshIndicator(
-          onRefresh: () async => _load(),
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 0.67,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: albums.length,
-            itemBuilder: (context, index) => _AlbumCard(
-              album: albums[index],
-              imageProvider: widget.imageProvider,
-              onTap: () =>
-                  widget.onOpenAlbum?.call(context, albums[index]),
-            ),
-          ),
+    return PaginatedList<MusicAlbum>(
+      pageSize: 100,
+      padding: const EdgeInsets.all(16),
+      fetcher: ({required startIndex, required limit}) async {
+        final result = await widget.fetchAlbums(
+          parentId: widget.libraryId,
+          startIndex: startIndex,
+          limit: limit,
+        );
+        return PagedResult(
+          items: result.albums,
+          totalCount: result.totalCount ?? result.albums.length,
         );
       },
+      emptyBuilder: (context) =>
+          const _EmptyBody(icon: '💿', message: '没有找到专辑'),
+      errorBuilder: (context, error, retry) =>
+          _ErrorBody(error: error, onRetry: retry),
+      itemBuilder: (context, album, index) => _AlbumCard(
+        album: album,
+        imageProvider: widget.imageProvider,
+        onTap: () => widget.onOpenAlbum?.call(context, album),
+      ),
     );
   }
 
@@ -207,92 +183,64 @@ class _ArtistsTab extends StatefulWidget {
 
 class _ArtistsTabState extends State<_ArtistsTab>
     with AutomaticKeepAliveClientMixin {
-  late Future<MusicArtistListResult> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() {
-    setState(() {
-      _future = widget.fetchArtists(parentId: widget.libraryId);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder<MusicArtistListResult>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return _ErrorBody(error: '${snapshot.error}', onRetry: _load);
-        }
-        final artists = snapshot.data?.artists ?? [];
-        if (artists.isEmpty) {
-          return const _EmptyBody(icon: '🎤', message: '没有找到艺术家');
-        }
-        return RefreshIndicator(
-          onRefresh: () async => _load(),
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 0.85,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: artists.length,
-            itemBuilder: (context, index) {
-              final artist = artists[index];
-              return InkWell(
-                onTap: () =>
-                    widget.onOpenArtist?.call(context, artist),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: CircleAvatar(
-                        radius: double.infinity,
-                        backgroundColor: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        child: artist.hasImage && widget.imageProvider != null
-                            ? ClipOval(
-                                child: JellyfinImage(
-                                  imageProvider: widget.imageProvider!,
-                                  itemId: artist.id,
-                                  imageTag: artist.primaryImageTag,
-                                  fillWidth: 300,
-                                  fillHeight: 300,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Icon(Icons.person,
-                                size: 40, color: Colors.grey.shade400),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(artist.name,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center),
-                    if (artist.albumCount != null)
-                      Text('${artist.albumCount} 张专辑',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                  ],
+    return PaginatedList<MusicArtist>(
+      pageSize: 100,
+      padding: const EdgeInsets.all(16),
+      fetcher: ({required startIndex, required limit}) async {
+        final result = await widget.fetchArtists(
+          parentId: widget.libraryId,
+          startIndex: startIndex,
+          limit: limit,
+        );
+        return PagedResult(
+          items: result.artists,
+          totalCount: result.totalCount ?? result.artists.length,
+        );
+      },
+      emptyBuilder: (context) =>
+          const _EmptyBody(icon: '🎤', message: '没有找到艺术家'),
+      errorBuilder: (context, error, retry) =>
+          _ErrorBody(error: error, onRetry: retry),
+      itemBuilder: (context, artist, index) {
+        return InkWell(
+          onTap: () => widget.onOpenArtist?.call(context, artist),
+          child: Column(
+            children: [
+              Expanded(
+                child: CircleAvatar(
+                  radius: double.infinity,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: artist.hasImage && widget.imageProvider != null
+                      ? ClipOval(
+                          child: JellyfinImage(
+                            imageProvider: widget.imageProvider!,
+                            itemId: artist.id,
+                            imageTag: artist.primaryImageTag,
+                            fillWidth: 300,
+                            fillHeight: 300,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Icon(Icons.person,
+                          size: 40, color: Colors.grey.shade400),
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 8),
+              Text(artist.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center),
+              if (artist.albumCount != null)
+                Text('${artist.albumCount} 张专辑',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+            ],
           ),
         );
       },
@@ -324,117 +272,102 @@ class _SongsTab extends StatefulWidget {
 
 class _SongsTabState extends State<_SongsTab>
     with AutomaticKeepAliveClientMixin {
-  late Future<MusicSongListResult> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() {
-    setState(() {
-      _future = widget.fetchSongs(parentId: widget.libraryId);
-    });
-  }
+  /// 当前页歌曲缓存，用于批量播放
+  List<MusicSong> _currentSongs = [];
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder<MusicSongListResult>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return _ErrorBody(error: '${snapshot.error}', onRetry: _load);
-        }
-        final songs = snapshot.data?.songs ?? [];
-        if (songs.isEmpty) {
-          return const _EmptyBody(icon: '🎵', message: '没有找到歌曲');
-        }
-        return RefreshIndicator(
-          onRefresh: () async => _load(),
-          child: ListView.builder(
-            itemCount: songs.length,
-            itemBuilder: (context, index) {
-              final song = songs[index];
-              return ListTile(
-                onTap: () {
-                  // 在页面内部将 MusicSong 转为 AudioTrack，
-                  // 通过 onPlayTracks 回调抛给 App 层
-                  final tracks = songs
-                      .map((s) => AudioTrack(
-                            id: s.id,
-                            name: s.name,
-                            streamUrl: s.getStreamUrl(),
-                            coverUrl: s.getAlbumCoverUrl(
-                                fillWidth: 480, fillHeight: 480),
-                            artistText: s.artistText,
-                            duration: s.runTimeSeconds != null
-                                ? Duration(seconds: s.runTimeSeconds!)
-                                : null,
-                            albumName: s.albumName,
-                            trackNumber: s.trackNumber,
-                            isFavorite: s.isFavorite,
-                          ))
-                      .toList();
-                  widget.onPlayTracks?.call(context, tracks, index);
-                },
-                leading: song.albumId != null && widget.imageProvider != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: JellyfinImage(
-                            imageProvider: widget.imageProvider!,
-                            itemId: song.albumId!,
-                            imageTag: song.albumPrimaryImageTag,
-                            fillWidth: 96,
-                            fillHeight: 96,
-                            fit: BoxFit.cover,
-                            errorWidget: const Icon(Icons.music_note),
-                          ),
-                        ),
-                      )
-                    : song.albumId != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: song.getAlbumCoverUrl() != null
-                                  ? Image.network(song.getAlbumCoverUrl()!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          const Icon(Icons.music_note))
-                                  : const Icon(Icons.music_note),
-                            ),
-                          )
-                        : const SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: Icon(Icons.music_note),
-                          ),
-                title: Text(song.name,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text(
-                  '${song.artistText}${song.albumName != null ? " · ${song.albumName}" : ""}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                      TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                ),
-                trailing: song.durationText.isNotEmpty
-                    ? Text(song.durationText,
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade400))
-                    : null,
-              );
-            },
+    return PaginatedList<MusicSong>(
+      pageSize: 100,
+      fetcher: ({required startIndex, required limit}) async {
+        final result = await widget.fetchSongs(
+          parentId: widget.libraryId,
+          startIndex: startIndex,
+          limit: limit,
+        );
+        _currentSongs = result.songs;
+        return PagedResult(
+          items: result.songs,
+          totalCount: result.totalCount ?? result.songs.length,
+        );
+      },
+      emptyBuilder: (context) =>
+          const _EmptyBody(icon: '🎵', message: '没有找到歌曲'),
+      errorBuilder: (context, error, retry) =>
+          _ErrorBody(error: error, onRetry: retry),
+      itemBuilder: (context, song, index) {
+        return ListTile(
+          onTap: () {
+            // 在页面内部将 MusicSong 转为 AudioTrack，
+            // 通过 onPlayTracks 回调抛给 App 层
+            final tracks = _currentSongs
+                .map((s) => AudioTrack(
+                      id: s.id,
+                      name: s.name,
+                      streamUrl: s.getStreamUrl(),
+                      coverUrl: s.getAlbumCoverUrl(
+                          fillWidth: 480, fillHeight: 480),
+                      artistText: s.artistText,
+                      duration: s.runTimeSeconds != null
+                          ? Duration(seconds: s.runTimeSeconds!)
+                          : null,
+                      albumName: s.albumName,
+                      trackNumber: s.trackNumber,
+                      isFavorite: s.isFavorite,
+                    ))
+                .toList();
+            widget.onPlayTracks?.call(context, tracks, index);
+          },
+          leading: song.albumId != null && widget.imageProvider != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: JellyfinImage(
+                      imageProvider: widget.imageProvider!,
+                      itemId: song.albumId!,
+                      imageTag: song.albumPrimaryImageTag,
+                      fillWidth: 96,
+                      fillHeight: 96,
+                      fit: BoxFit.cover,
+                      errorWidget: const Icon(Icons.music_note),
+                    ),
+                  ),
+                )
+              : song.albumId != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: song.getAlbumCoverUrl() != null
+                            ? Image.network(song.getAlbumCoverUrl()!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.music_note))
+                            : const Icon(Icons.music_note),
+                      ),
+                    )
+                  : const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Icon(Icons.music_note),
+                    ),
+          title: Text(song.name,
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            '${song.artistText}${song.albumName != null ? " · ${song.albumName}" : ""}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
+          trailing: song.durationText.isNotEmpty
+              ? Text(song.durationText,
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.grey.shade400))
+              : null,
         );
       },
     );

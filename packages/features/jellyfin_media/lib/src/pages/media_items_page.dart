@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 // MediaItemsFetcher 已收敛到 jellyfin_models/media_contracts.dart
 
@@ -38,47 +39,11 @@ class MediaItemsPage extends StatefulWidget {
 }
 
 class _MediaItemsPageState extends State<MediaItemsPage> {
-  List<MediaItem> _mediaItems = [];
-  bool _isLoading = true;
-  String? _errorMessage;
+  /// GlobalKey 用于外部调用 PaginatedListState.refresh()
+  final _paginatedListKey = GlobalKey<PaginatedListState<MediaItem>>();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadMediaItems();
-  }
-
-  Future<void> _loadMediaItems() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      // 对于电视剧类型，只获取 Series 类型的媒体项
-      final isTvShows = widget.library.type == MediaLibraryType.tvshows;
-
-      final result = await widget.fetchMediaItems(
-        parentId: widget.library.id,
-        recursive: !isTvShows,
-        limit: isTvShows ? null : 50,
-      );
-
-      if (mounted) {
-        setState(() {
-          _mediaItems = result.items;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = '获取媒体项失败: $e';
-          _isLoading = false;
-        });
-      }
-    }
-  }
+  /// 对于电视剧类型，只获取 Series 类型的媒体项
+  bool get _isTvShows => widget.library.type == MediaLibraryType.tvshows;
 
   @override
   Widget build(BuildContext context) {
@@ -87,150 +52,116 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
         title: Text(widget.library.name),
         actions: [
           ...?widget.appBarActions,
-          if (!_isLoading && _errorMessage == null && _mediaItems.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                child: Text(
-                  '${_mediaItems.length} 项',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
+          IconButton(
+            onPressed: () => _paginatedListKey.currentState?.refresh(),
+            tooltip: '刷新',
+            icon: const Icon(Icons.refresh),
+          ),
         ],
       ),
-      body: _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _loadMediaItems,
-        tooltip: '刷新',
-        child: const Icon(Icons.refresh),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在加载媒体项...'),
-          ],
-        ),
-      );
-    }
-
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _loadMediaItems,
-              child: const Text('重试'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_mediaItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              widget.library.type.icon,
-              style: const TextStyle(fontSize: 64),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '${widget.library.name} 中没有找到媒体项',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 如果提供了自定义列表构建器，使用它
-    if (widget.listBuilder != null) {
-      return RefreshIndicator(
-        onRefresh: _loadMediaItems,
-        child: widget.listBuilder!(
-          _mediaItems,
-          (item) => _navigateToDetail(item),
-        ),
-      );
-    }
-
-    // 默认：简单的网格布局
-    return RefreshIndicator(
-      onRefresh: _loadMediaItems,
-      child: GridView.builder(
+      body: PaginatedList<MediaItem>(
+        key: _paginatedListKey,
+        pageSize: 100,
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: 0.67,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: _mediaItems.length,
-        itemBuilder: (context, index) {
-          final item = _mediaItems[index];
-          return InkWell(
-            onTap: () => _navigateToDetail(item),
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: item.hasCoverImage
-                        ? Image.network(
-                            item.getCoverImageUrl()!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
-                              child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
-                            ),
-                          )
-                        : Container(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                            child: Center(
-                              child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
-                            ),
-                          ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      item.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        fetcher: ({required startIndex, required limit}) async {
+          final result = await widget.fetchMediaItems(
+            parentId: widget.library.id,
+            recursive: !_isTvShows,
+            startIndex: startIndex,
+            limit: limit,
           );
+          return PagedResult(
+            items: result.items,
+            totalCount: result.totalCount ?? result.items.length,
+          );
+        },
+        loadingBuilder: (context) => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在加载媒体项...'),
+            ],
+          ),
+        ),
+        errorBuilder: (context, error, retry) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                '获取媒体项失败: $error',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: retry, child: const Text('重试')),
+            ],
+          ),
+        ),
+        emptyBuilder: (context) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                widget.library.type.icon,
+                style: const TextStyle(fontSize: 64),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '${widget.library.name} 中没有找到媒体项',
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        itemBuilder: (context, item, index) {
+          // 如果提供了自定义列表构建器，这里只处理默认情况
+          return _buildDefaultItem(context, item);
         },
       ),
     );
   }
 
-  void _navigateToDetail(MediaItem item) {
-    widget.onNavigateToMediaItem?.call(context, item);
+  Widget _buildDefaultItem(BuildContext context, MediaItem item) {
+    return InkWell(
+      onTap: () => widget.onNavigateToMediaItem?.call(context, item),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: item.hasCoverImage
+                  ? Image.network(
+                      item.getCoverImageUrl()!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
+                      ),
+                    )
+                  : Container(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      child: Center(
+                        child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
+                      ),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                item.name,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

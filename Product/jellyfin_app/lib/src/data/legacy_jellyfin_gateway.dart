@@ -119,7 +119,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
 
     final items = response.data?.items ?? [];
-    return items.map((dto) => _mapMediaItem(dto, config.serverUrl))
+    return items.map((dto) => mapMediaItem(dto, config.serverUrl))
         .toList();
   }
 
@@ -143,7 +143,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     if (items.isEmpty) {
       throw StateError('找不到媒体项: $itemId');
     }
-    return _mapMediaItem(items.first, config.serverUrl);
+    return mapMediaItem(items.first, config.serverUrl);
   }
 
   @override
@@ -228,7 +228,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return movies.MovieFilterResult(
-      movies: items.map((dto) => _mapMediaItem(dto, config.serverUrl))
+      movies: items.map((dto) => mapMediaItem(dto, config.serverUrl))
           .toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: filter.startIndex,
@@ -239,6 +239,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
   Future<models.MediaItemListResult> fetchMediaItems({
     required String parentId,
     bool recursive = true,
+    int? startIndex,
     int? limit,
   }) async {
     _requireClient();
@@ -248,6 +249,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       userId: config.userId,
       parentId: parentId,
       recursive: recursive,
+      startIndex: startIndex,
       limit: limit,
       includeItemTypes: [jellyfin_dart.BaseItemKind.series],
       fields: [
@@ -258,7 +260,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return models.MediaItemListResult(
-      items: items.map((dto) => _mapMediaItem(dto, config.serverUrl))
+      items: items.map((dto) => mapMediaItem(dto, config.serverUrl))
           .toList(),
       totalCount: response.data?.totalRecordCount,
     );
@@ -584,8 +586,8 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     }
   }
 
-  /// BaseItemDto → MediaItem
-  static models.MediaItem _mapMediaItem(
+  /// BaseItemDto → MediaItem（公开，供 adapter 复用）
+  static models.MediaItem mapMediaItem(
     jellyfin_dart.BaseItemDto dto,
     String serverUrl,
   ) {
