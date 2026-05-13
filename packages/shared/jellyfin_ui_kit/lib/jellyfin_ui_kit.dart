@@ -18,6 +18,7 @@ export 'src/image/jellyfin_image_provider.dart';
 export 'src/image/jellyfin_image.dart';
 
 // 模型
+export 'src/models/paged_result.dart';
 export 'src/models/view_mode_models.dart';
 
 // 服务
@@ -33,6 +34,8 @@ export 'src/widgets/person_avatar_card.dart';
 export 'src/widgets/continue_watching_card.dart';
 export 'src/widgets/view_mode_selector.dart';
 export 'src/widgets/media_list_builder.dart';
+export 'src/widgets/pagination_nav_bar.dart';
+export 'src/widgets/paginated_list.dart';
 
 // Widget - 布局
 export 'src/widgets/media_list_layouts/banner_list_view.dart';

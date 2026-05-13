@@ -13,6 +13,7 @@ typedef MediaItemDetailFetcher = Future<MediaItem> Function(String itemId);
 typedef MediaItemsFetcher = Future<MediaItemListResult> Function({
   required String parentId,
   bool recursive,
+  int? startIndex,
   int? limit,
 });
 

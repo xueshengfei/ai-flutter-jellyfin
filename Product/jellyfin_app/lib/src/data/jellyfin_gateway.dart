@@ -53,6 +53,7 @@ abstract class JellyfinGateway {
   Future<models.MediaItemListResult> fetchMediaItems({
     required String parentId,
     bool recursive = true,
+    int? startIndex,
     int? limit,
   });
 

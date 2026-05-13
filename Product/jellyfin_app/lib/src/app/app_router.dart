@@ -5,11 +5,13 @@ import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_music/jellyfin_music.dart' as music;
 import 'package:jellyfin_music/jellyfin_music_pages.dart';
+import 'package:jellyfin_personal/jellyfin_personal.dart';
 import 'package:rvc_flutter/rvc_flutter.dart';
 import '../data/jellyfin_gateway.dart';
 import '../features/home/media_libraries_page.dart';
 import '../features/media/media_route_pages.dart';
 import '../features/music/music_route_pages.dart';
+import '../features/personal/personal_route_page.dart';
 import '../features/playback/playback_route_page.dart';
 import '../features/rvc/rvc_route_page.dart';
 import '../session/app_session.dart';
@@ -33,6 +35,7 @@ String? resolveAuthRedirect({
 GoRouter createAppRouter({
   required AppSessionController sessionController,
   JellyfinGateway? gateway,
+  PersonalRepository? personalRepository,
   music.AudioPlaybackPort? audioPlaybackPort,
   RvcTaskController? rvcTaskController,
   String initialLocation = '/login',
@@ -93,6 +96,7 @@ GoRouter createAppRouter({
               context.push('/media/items/${item.id}');
             },
             onLogout: () => sessionController.clearSession(),
+            onOpenPersonal: () => context.push('/personal'),
           );
         },
       ),
@@ -325,6 +329,22 @@ GoRouter createAppRouter({
           );
         },
       ),
+      // 个人中心
+      GoRoute(
+        path: '/personal',
+        builder: (context, state) {
+          final repository = personalRepository;
+          if (repository == null) {
+            return const Scaffold(
+              body: Center(child: Text('个人模块未配置')),
+            );
+          }
+          return PersonalRoutePage(
+            repository: repository,
+            sessionController: sessionController,
+          );
+        },
+      ),
     ],
   );
 }
@@ -374,6 +394,7 @@ class _StubGateway implements JellyfinGateway {
   Future<models.MediaItemListResult> fetchMediaItems({
     required String parentId,
     bool recursive = true,
+    int? startIndex,
     int? limit,
   }) async {
     return models.MediaItemListResult(items: []);

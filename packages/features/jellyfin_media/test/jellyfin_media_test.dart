@@ -81,7 +81,7 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? limit}) {
+          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
             return completer.future;
           },
         ),
@@ -110,8 +110,8 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? limit}) {
-            return Future.value(MediaItemListResult(items: items));
+          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
+            return Future.value(MediaItemListResult(items: items, totalCount: items.length));
           },
         ),
       ));
@@ -131,7 +131,7 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? limit}) {
+          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
             callCount++;
             if (callCount == 1) {
               throw Exception('网络错误');
@@ -158,7 +158,7 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? limit}) {
+          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
             return Future.value(const MediaItemListResult(items: []));
           },
         ),
@@ -418,4 +418,17 @@ class _FakeImageProvider implements JellyfinImageProvider {
   }) async {
     return Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
   }
+
+  @override
+  String buildImageUrl({
+    required String itemId,
+    String? imageTag,
+    int? fillWidth,
+    int? fillHeight,
+  }) {
+    return 'http://localhost/Items/$itemId/Images/Primary';
+  }
+
+  @override
+  Map<String, String>? get authHeaders => null;
 }

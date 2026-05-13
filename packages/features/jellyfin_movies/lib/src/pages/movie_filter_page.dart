@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_movies/src/models/movie_filter_models.dart';
 
 /// 电影过滤页面
@@ -41,84 +42,36 @@ class MovieFilterPage extends StatefulWidget {
 
 class _MovieFilterPageState extends State<MovieFilterPage> {
   late MovieFilter _filter;
-  List<MediaItem> _movies = [];
-  bool _isLoading = false;
-  bool _isLoadingMore = false;
   int? _totalCount;
-  final ScrollController _scrollController = ScrollController();
+
+  /// PaginatedList 的 GlobalKey，用于刷新
+  final _paginatedListKey = GlobalKey<PaginatedListState<MediaItem>>();
 
   @override
   void initState() {
     super.initState();
     _filter = MovieFilter.defaultFilter(parentId: widget.libraryId);
-    _loadMovies();
-    _scrollController.addListener(_onScroll);
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  Future<PagedResult<MediaItem>> _fetchPage({
+    required int startIndex,
+    required int limit,
+  }) async {
+    final fetchFilter = _filter.copyWith(
+      startIndex: startIndex,
+      limit: limit,
+    );
+    final result = await widget.fetchMovies(fetchFilter);
+    _totalCount = result.totalCount;
+    return PagedResult(
+      items: result.movies,
+      totalCount: result.totalCount ?? result.movies.length,
+    );
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent * 0.8) {
-      if (!_isLoadingMore &&
-          _totalCount != null &&
-          _movies.length < _totalCount!) {
-        _loadMoreMovies();
-      }
-    }
-  }
-
-  Future<void> _loadMovies() async {
-    setState(() {
-      _isLoading = true;
-      _movies = [];
-      _filter = _filter.copyWith(startIndex: 0);
-    });
-
-    try {
-      final result = await widget.fetchMovies(_filter);
-      if (mounted) {
-        setState(() {
-          _movies = result.movies;
-          _totalCount = result.totalCount;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() { _isLoading = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('加载失败: $e'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _loadMoreMovies() async {
-    if (_isLoadingMore) return;
-    setState(() { _isLoadingMore = true; });
-
-    try {
-      final nextFilter = _filter.copyWith(startIndex: _movies.length);
-      final result = await widget.fetchMovies(nextFilter);
-      if (mounted) {
-        setState(() {
-          _movies.addAll(result.movies);
-          _isLoadingMore = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() { _isLoadingMore = false; });
-    }
+  void _applyFilter(MovieFilter newFilter) {
+    setState(() { _filter = newFilter; });
+    _paginatedListKey.currentState?.refresh();
   }
 
   void _showFilterDialog() {
@@ -128,10 +81,7 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
       backgroundColor: Colors.transparent,
       builder: (context) => _MovieFilterSheet(
         filter: _filter,
-        onApply: (newFilter) {
-          setState(() { _filter = newFilter; });
-          _loadMovies();
-        },
+        onApply: (newFilter) => _applyFilter(newFilter),
       ),
     );
   }
@@ -152,13 +102,10 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
           autofocus: true,
           onSubmitted: (value) {
             if (value.isNotEmpty) {
-              setState(() {
-                _filter = _filter.copyWith(
-                  searchTerm: value,
-                  nameStartsWith: null,
-                );
-              });
-              _loadMovies();
+              _applyFilter(_filter.copyWith(
+                searchTerm: value,
+                nameStartsWith: null,
+              ));
               Navigator.of(context).pop();
             }
           },
@@ -172,13 +119,10 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
             onPressed: () {
               final value = searchController.text.trim();
               if (value.isNotEmpty) {
-                setState(() {
-                  _filter = _filter.copyWith(
-                    searchTerm: value,
-                    nameStartsWith: null,
-                  );
-                });
-                _loadMovies();
+                _applyFilter(_filter.copyWith(
+                  searchTerm: value,
+                  nameStartsWith: null,
+                ));
                 Navigator.of(context).pop();
               }
             },
@@ -193,15 +137,64 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
-        controller: _scrollController,
         slivers: [
           _buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: _isLoading
-                ? _buildLoadingWidget()
-                : _movies.isEmpty
-                    ? _buildEmptyWidget()
-                    : _buildContent(),
+          // 筛选条件区域
+          if (_hasActiveFilters())
+            SliverToBoxAdapter(child: _buildResultHeader()),
+          // 分页列表内容
+          SliverFillRemaining(
+            child: PaginatedList<MediaItem>(
+              key: _paginatedListKey,
+              pageSize: 100,
+              fetcher: _fetchPage,
+              loadingBuilder: (context) => SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('正在加载电影...'),
+                    ],
+                  ),
+                ),
+              ),
+              emptyBuilder: (context) => SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.movie_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(height: 24),
+                      Text('暂无电影', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text('尝试调整筛选条件', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ),
+              itemBuilder: (context, movie, index) {
+                if (widget.listBuilder != null) {
+                  // 如果有自定义 listBuilder，用单个 item 包装
+                  return widget.listBuilder!(
+                    items: [movie],
+                    onTap: (item) => widget.onNavigateToMovie?.call(context, item),
+                  );
+                }
+                return ListTile(
+                  leading: movie.hasCoverImage
+                      ? Image.network(movie.getCoverImageUrl()!, width: 50, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.movie))
+                      : const Icon(Icons.movie),
+                  title: Text(movie.name),
+                  subtitle: Text('${movie.productionYear ?? ""} ${movie.communityRating != null ? "⭐ ${movie.ratingText}" : ""}'),
+                  onTap: () => widget.onNavigateToMovie?.call(context, movie),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -234,55 +227,6 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
           onPressed: _showFilterDialog,
           tooltip: '筛选',
         ),
-      ],
-    );
-  }
-
-  Widget _buildLoadingWidget() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在加载电影...'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyWidget() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.movie_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 24),
-            Text('暂无电影', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('尝试调整筛选条件', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildResultHeader(),
-        _buildMovieList(),
-        if (_isLoadingMore)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
       ],
     );
   }
@@ -344,14 +288,11 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
   }
 
   void _clearAllFilters() {
-    setState(() {
-      _filter = MovieFilter.defaultFilter(
-        parentId: widget.libraryId,
-        startIndex: 0,
-        limit: _filter.limit,
-      );
-    });
-    _loadMovies();
+    _applyFilter(MovieFilter.defaultFilter(
+      parentId: widget.libraryId,
+      startIndex: 0,
+      limit: _filter.limit,
+    ));
   }
 
   List<Widget> _buildFilterChips() {
@@ -359,67 +300,40 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
     if (_filter.genres?.isNotEmpty ?? false) {
       chips.add(_FilterChipWidget(
         label: '类型: ${_filter.genres!.join(", ")}',
-        onDeleted: () { setState(() => _filter = _filter.copyWith(clearGenres: true)); _loadMovies(); },
+        onDeleted: () { _applyFilter(_filter.copyWith(clearGenres: true)); },
       ));
     }
     if (_filter.years?.isNotEmpty ?? false) {
       chips.add(_FilterChipWidget(
         label: '年份: ${_filter.years!.join(", ")}',
-        onDeleted: () { setState(() => _filter = _filter.copyWith(clearYears: true)); _loadMovies(); },
+        onDeleted: () { _applyFilter(_filter.copyWith(clearYears: true)); },
       ));
     }
     if (_filter.nameStartsWith != null) {
       chips.add(_FilterChipWidget(
         label: '首字母: ${_filter.nameStartsWith}',
-        onDeleted: () { setState(() => _filter = _filter.copyWith(nameStartsWith: null)); _loadMovies(); },
+        onDeleted: () { _applyFilter(_filter.copyWith(nameStartsWith: null)); },
       ));
     }
     if (_filter.searchTerm != null) {
       chips.add(_FilterChipWidget(
         label: '搜索: ${_filter.searchTerm}',
-        onDeleted: () { setState(() => _filter = _filter.copyWith(searchTerm: null)); _loadMovies(); },
+        onDeleted: () { _applyFilter(_filter.copyWith(searchTerm: null)); },
       ));
     }
     if (_filter.studios?.isNotEmpty ?? false) {
       chips.add(_FilterChipWidget(
         label: '工作室: ${_filter.studios!.join(", ")}',
-        onDeleted: () { setState(() => _filter = _filter.copyWith(clearStudios: true)); _loadMovies(); },
+        onDeleted: () { _applyFilter(_filter.copyWith(clearStudios: true)); },
       ));
     }
     if (_filter.minCommunityRating != null) {
       chips.add(_FilterChipWidget(
         label: '${_filter.minCommunityRating}+ 分',
-        onDeleted: () { setState(() => _filter = _filter.copyWith(minCommunityRating: null)); _loadMovies(); },
+        onDeleted: () { _applyFilter(_filter.copyWith(minCommunityRating: null)); },
       ));
     }
     return chips;
-  }
-
-  Widget _buildMovieList() {
-    if (widget.listBuilder != null) {
-      return widget.listBuilder!(
-        items: _movies,
-        onTap: (item) => widget.onNavigateToMovie?.call(context, item),
-      );
-    }
-    // 默认简单列表
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _movies.length,
-      itemBuilder: (context, index) {
-        final movie = _movies[index];
-        return ListTile(
-          leading: movie.hasCoverImage
-              ? Image.network(movie.getCoverImageUrl()!, width: 50, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.movie))
-              : const Icon(Icons.movie),
-          title: Text(movie.name),
-          subtitle: Text('${movie.productionYear ?? ""} ${movie.communityRating != null ? "⭐ ${movie.ratingText}" : ""}'),
-          onTap: () => widget.onNavigateToMovie?.call(context, movie),
-        );
-      },
-    );
   }
 }
 
