@@ -7,7 +7,6 @@ import 'package:jellyfin_service/src/ui/pages/media_item_detail_page.dart';
 /// 个人详情页面
 ///
 /// 显示人员（演员、导演、编剧等）的详细信息和参与的作品列表
-@Deprecated('使用 jellyfin_media 包中的 PersonDetailPage')
 class PersonDetailPage extends StatefulWidget {
   final JellyfinClient client;
   final String personId;

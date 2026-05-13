@@ -4,7 +4,6 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 /// 电影详情页面
 ///
 /// 显示电影的完整元数据信息
-@Deprecated('使用 jellyfin_movies 包中的 MovieDetailPage')
 class MovieDetailPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaItem movie;

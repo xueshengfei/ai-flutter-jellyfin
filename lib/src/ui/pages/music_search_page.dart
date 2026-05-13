@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
 /// 音乐搜索页面
 ///
@@ -12,14 +11,10 @@ class MusicSearchPage extends StatefulWidget {
   final JellyfinClient client;
   final String? libraryId;
 
-  /// 可选的音频播放端口，传递给 AudioPlayerPage
-  final music.AudioPlaybackPort? audioPlayback;
-
   const MusicSearchPage({
     super.key,
     required this.client,
     this.libraryId,
-    this.audioPlayback,
   });
 
   @override
@@ -237,7 +232,6 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
               onTap: () => Navigator.push(context, MaterialPageRoute(
                 builder: (_) => AudioPlayerPage(
                   client: widget.client, song: song, playlist: _songs, initialIndex: index,
-                  audioPlayback: widget.audioPlayback,
                 ),
               )),
             )

@@ -8,7 +8,6 @@ import 'package:jellyfin_service/jellyfin_service.dart';
 /// 视频播放页面
 ///
 /// 支持嵌入和全屏模式切换，提供自定义控制栏、画质选择
-@Deprecated('使用 jellyfin_playback 包中的 VideoPlayerPage')
 class VideoPlayerPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaItem item;

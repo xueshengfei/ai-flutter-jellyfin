@@ -47,6 +47,7 @@ export 'src/services/image_service.dart';
 export 'src/services/user_service.dart';
 export 'src/services/music_service.dart';
 export 'src/services/server_discovery_service.dart';
+export 'src/services/ai_recommendation_service.dart';
 
 // 业务模型（业务SDK的核心价值）
 export 'src/models/user_models.dart';
@@ -58,6 +59,7 @@ export 'src/models/music_models.dart';
 export 'src/models/lyrics_models.dart';
 export 'src/models/server_discovery_models.dart';
 export 'src/models/video_quality_models.dart';
+export 'src/models/ai_recommendation_models.dart';
 
 // 异常
 export 'src/exceptions/jellyfin_exception.dart';
@@ -66,12 +68,6 @@ export 'src/exceptions/api_exception.dart';
 
 // 主客户端
 export 'src/jellyfin_client.dart';
-
-// 适配器
-export 'src/adapters/media_item_mapper.dart';
-
-// App Shell（编排层）
-export 'src/app_shell/app_shell.dart';
 
 // 调试工具
 export 'src/debug/network_simulator.dart';
@@ -106,36 +102,20 @@ export 'src/ui/pages/login_page.dart';
 export 'src/ui/pages/media_libraries_page.dart';
 export 'src/ui/pages/video_player_page.dart';
 export 'src/ui/pages/media_item_detail_page.dart';
+export 'src/ui/pages/media_items_page.dart';
+export 'src/ui/pages/movie_detail_page.dart';
+export 'src/ui/pages/movie_filter_page.dart';
 export 'src/ui/pages/personal_page.dart';
+export 'src/ui/pages/person_detail_page.dart';
+export 'src/ui/pages/episodes_page.dart';
+export 'src/ui/pages/seasons_page.dart';
 export 'src/ui/pages/music_library_page.dart';
 export 'src/ui/pages/music_search_page.dart';
 export 'src/ui/pages/artist_detail_page.dart';
 export 'src/ui/pages/album_detail_page.dart';
 export 'src/ui/pages/test_api_page.dart';
 export 'src/ui/pages/lyrics_page.dart';
-
-// AI 推荐业务模块（已解耦为独立 feature 包）
-export 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
-
-// 通用媒体业务模块（已解耦为独立 feature 包）
-export 'package:jellyfin_media/jellyfin_media.dart';
-
-// 电影业务模块（已解耦为独立 feature 包）
-// hide 与根包同名的类型（MovieFilter / MovieDetailPage），避免 ambiguous_export
-export 'package:jellyfin_movies/jellyfin_movies.dart' hide MovieFilter, MovieFilterResult, MovieDetailPage;
-
-// 剧集业务模块（已解耦为独立 feature 包）
-export 'package:jellyfin_series/jellyfin_series.dart';
-
-// 播放业务模块（已解耦为独立 feature 包）
-// hide 与根包同名的类型，避免 ambiguous_export
-export 'package:jellyfin_playback/jellyfin_playback.dart' hide VideoQuality, NetworkQualityMonitor, AutoQualityDecider, PlaybackInfo;
-export 'package:jellyfin_playback/jellyfin_playback_pages.dart' hide VideoPlayerPage;
-
-// 音乐业务模块（已解耦为独立 feature 包）
-// hide 与根包同名的类型，避免 ambiguous_export
-export 'package:jellyfin_music/jellyfin_music.dart' hide MusicAlbum, MusicArtist, MusicSong, MusicGenre, ArtistRef, MusicAlbumListResult, MusicArtistListResult, MusicSongListResult;
-export 'package:jellyfin_music/jellyfin_music_pages.dart' hide AlbumDetailPage, ArtistDetailPage;
+export 'src/ui/pages/ai_recommend_page.dart';
 
 // RVC 语音转换
 export 'package:rvc_flutter/rvc_flutter.dart';

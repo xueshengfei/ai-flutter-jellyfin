@@ -1,7 +1,6 @@
 import 'dart:collection';
 
 /// 视频画质档位
-@Deprecated('使用 jellyfin_playback 包中的 VideoQuality')
 enum VideoQuality {
   auto('自动', null),
   p4k('4K', 15000000),
@@ -34,7 +33,6 @@ class _BandwidthSample {
 /// 网络质量监测器
 ///
 /// 通过滑动窗口采样估算当前带宽，推荐合适的画质档位
-@Deprecated('使用 jellyfin_playback 包中的 NetworkQualityMonitor')
 class NetworkQualityMonitor {
   /// 滑动窗口最大采样数
   static const int _maxSamples = 10;
@@ -144,7 +142,6 @@ class NetworkQualityMonitor {
 /// 自动画质切换决策器
 ///
 /// 实现防抖逻辑：降级立即执行，升级需要多次确认
-@Deprecated('使用 jellyfin_playback 包中的 AutoQualityDecider')
 class AutoQualityDecider {
   /// 连续推荐同一画质的次数
   int _consecutiveCount = 0;
