@@ -163,6 +163,39 @@ GoRouter createAppRouter({
           );
         },
       ),
+      // 音乐搜索页
+      GoRoute(
+        path: '/libraries/:libraryId/music/search',
+        builder: (context, state) {
+          final libraryId = state.pathParameters['libraryId']!;
+          return MusicSearchRoutePage(
+            gateway: effectiveGateway,
+            audioPlaybackPort: effectiveAudioPort,
+            libraryId: libraryId,
+          );
+        },
+      ),
+      // 歌词页
+      GoRoute(
+        path: '/music/lyrics',
+        builder: (context, state) {
+          if (effectiveAudioPort == null) {
+            return const Scaffold(body: Center(child: Text('播放器未初始化')));
+          }
+          final track = effectiveAudioPort.currentTrack;
+          return LyricsPage(
+            playbackPort: effectiveAudioPort,
+            fetchLyrics: effectiveGateway.getLyrics,
+            searchRemoteLyrics: effectiveGateway.searchRemoteLyrics,
+            downloadRemoteLyrics: ({required itemId, required lyricId}) =>
+                effectiveGateway.downloadRemoteLyrics(
+              itemId: itemId,
+              lyricId: lyricId,
+            ),
+            albumCoverUrl: track?.coverUrl,
+          );
+        },
+      ),
       // 电影详情页
       GoRoute(
         path: '/movies/:itemId',
@@ -227,7 +260,10 @@ GoRouter createAppRouter({
           if (effectiveAudioPort == null) {
             return const Scaffold(body: Center(child: Text('播放器未初始化')));
           }
-          return MusicPlayerPage(playbackPort: effectiveAudioPort);
+          return MusicPlayerPage(
+            playbackPort: effectiveAudioPort,
+            onOpenLyrics: () => context.push('/music/lyrics'),
+          );
         },
       ),
       // RVC 语音转换
@@ -344,5 +380,28 @@ class _StubGateway implements JellyfinGateway {
   @override
   Future<music.MusicAlbumListResult> getArtistAlbums(String artistId) async {
     return const music.MusicAlbumListResult(albums: []);
+  }
+
+  @override
+  Future<music.MusicSearchResult> searchMusic({
+    required String searchTerm,
+    String? parentId,
+    int? limit,
+  }) async {
+    return const music.MusicSearchResult();
+  }
+
+  @override
+  Future<music.LyricsData?> getLyrics(String itemId) async => null;
+
+  @override
+  Future<List<music.RemoteLyricsInfo>> searchRemoteLyrics(String itemId) async => [];
+
+  @override
+  Future<music.LyricsData> downloadRemoteLyrics({
+    required String itemId,
+    required String lyricId,
+  }) {
+    throw UnimplementedError('No gateway configured');
   }
 }

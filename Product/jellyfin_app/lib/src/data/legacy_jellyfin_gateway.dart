@@ -428,6 +428,104 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
   }
 
+  @override
+  Future<music.MusicSearchResult> searchMusic({
+    required String searchTerm,
+    String? parentId,
+    int? limit,
+  }) async {
+    _requireClient();
+    final config = _apiClient!.config;
+    final effectiveLimit = limit ?? 20;
+
+    // 并行搜索艺术家、专辑、歌曲
+    final results = await Future.wait([
+      // 艺术家
+      _apiClient!.jellyfinClient.getItemsApi().getItems(
+        userId: config.userId,
+        parentId: parentId,
+        includeItemTypes: [jellyfin_dart.BaseItemKind.musicArtist],
+        searchTerm: searchTerm,
+        recursive: true,
+        limit: effectiveLimit,
+      ),
+      // 专辑
+      _apiClient!.jellyfinClient.getItemsApi().getItems(
+        userId: config.userId,
+        parentId: parentId,
+        includeItemTypes: [jellyfin_dart.BaseItemKind.musicAlbum],
+        searchTerm: searchTerm,
+        recursive: true,
+        limit: effectiveLimit,
+      ),
+      // 歌曲
+      _apiClient!.jellyfinClient.getItemsApi().getItems(
+        userId: config.userId,
+        parentId: parentId,
+        includeItemTypes: [jellyfin_dart.BaseItemKind.audio],
+        searchTerm: searchTerm,
+        recursive: true,
+        limit: (limit ?? 50),
+      ),
+    ]);
+
+    final artists = (results[0].data?.items ?? [])
+        .map((dto) => _mapMusicArtist(dto, config.serverUrl))
+        .toList();
+    final albums = (results[1].data?.items ?? [])
+        .map((dto) => _mapMusicAlbum(dto, config.serverUrl))
+        .toList();
+    final songs = (results[2].data?.items ?? [])
+        .map((dto) => _mapMusicSong(dto, config.serverUrl, config.accessToken))
+        .toList();
+
+    return music.MusicSearchResult(
+      artists: artists,
+      albums: albums,
+      songs: songs,
+    );
+  }
+
+  @override
+  Future<music.LyricsData?> getLyrics(String itemId) async {
+    _requireClient();
+
+    try {
+      final response = await _apiClient!.jellyfinClient.getLyricsApi()
+          .getLyrics(itemId: itemId);
+      final dto = response.data;
+      if (dto == null) return null;
+      return _mapLyricsData(dto);
+    } catch (e) {
+      // 没有歌词返回 null
+      return null;
+    }
+  }
+
+  @override
+  Future<List<music.RemoteLyricsInfo>> searchRemoteLyrics(String itemId) async {
+    _requireClient();
+
+    final response = await _apiClient!.jellyfinClient.getLyricsApi()
+        .searchRemoteLyrics(itemId: itemId);
+    final items = response.data ?? [];
+    return items.map(_mapRemoteLyricsInfo).toList();
+  }
+
+  @override
+  Future<music.LyricsData> downloadRemoteLyrics({
+    required String itemId,
+    required String lyricId,
+  }) async {
+    _requireClient();
+
+    final response = await _apiClient!.jellyfinClient.getLyricsApi()
+        .downloadRemoteLyrics(itemId: itemId, lyricId: lyricId);
+    final dto = response.data;
+    if (dto == null) throw StateError('下载歌词失败');
+    return _mapLyricsData(dto);
+  }
+
   void _requireClient() {
     if (_apiClient == null) {
       throw StateError('未登录，请先调用 login()');
@@ -762,6 +860,41 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       played: dto.userData?.played,
       playCount: dto.userData?.playCount,
       accessToken: accessToken,
+    );
+  }
+
+  // ─── 歌词 DTO 映射 ───
+
+  static music.LyricsData _mapLyricsData(jellyfin_dart.LyricDto dto) {
+    return music.LyricsData(
+      metadata: dto.metadata != null ? _mapLyricsMetadata(dto.metadata!) : null,
+      lines: dto.lyrics?.map(_mapLyricsLine).toList() ?? [],
+    );
+  }
+
+  static music.LyricsMetadata _mapLyricsMetadata(jellyfin_dart.LyricMetadata dto) {
+    return music.LyricsMetadata(
+      isSynced: dto.isSynced,
+      artist: dto.artist,
+      album: dto.album,
+      title: dto.title,
+      lengthTicks: dto.length,
+      offsetTicks: dto.offset,
+    );
+  }
+
+  static music.LyricsLine _mapLyricsLine(jellyfin_dart.LyricLine dto) {
+    return music.LyricsLine(
+      text: dto.text,
+      startTicks: dto.start,
+    );
+  }
+
+  static music.RemoteLyricsInfo _mapRemoteLyricsInfo(jellyfin_dart.RemoteLyricInfoDto dto) {
+    return music.RemoteLyricsInfo(
+      id: dto.id,
+      providerName: dto.providerName,
+      lyrics: dto.lyrics != null ? _mapLyricsData(dto.lyrics!) : null,
     );
   }
 

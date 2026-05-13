@@ -89,6 +89,9 @@ class MusicLibraryRoutePage extends StatelessWidget {
               ctx.push('/playback/music');
             }
           : null,
+      onSearch: () => context.push(
+        '/libraries/${library.id}/music/search?name=${Uri.encodeComponent(library.name)}',
+      ),
     );
 
     if (port == null) return page;
@@ -230,6 +233,52 @@ class ArtistDetailRoutePage extends StatelessWidget {
       audioPlaybackPort: port,
       onOpenMusicPlayer: () => context.push('/playback/music'),
       child: futurePage,
+    );
+  }
+}
+
+// ──────────────────────────── 音乐搜索页 ────────────────────────────
+
+class MusicSearchRoutePage extends StatelessWidget {
+  final JellyfinGateway gateway;
+  final music.AudioPlaybackPort? audioPlaybackPort;
+  final String libraryId;
+
+  const MusicSearchRoutePage({
+    super.key,
+    required this.gateway,
+    this.audioPlaybackPort,
+    required this.libraryId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final port = audioPlaybackPort;
+    final page = MusicSearchPage(
+      libraryId: libraryId,
+      search: ({required searchTerm, parentId, limit}) =>
+          gateway.searchMusic(
+        searchTerm: searchTerm,
+        parentId: parentId,
+        limit: limit,
+      ),
+      onOpenAlbum: (ctx, album) =>
+          ctx.push('/music/albums/${album.id}'),
+      onOpenArtist: (ctx, artist) =>
+          ctx.push('/music/artists/${artist.id}'),
+      onPlayTracks: port != null
+          ? (ctx, tracks, startIndex) {
+              port.playSong(tracks[startIndex], tracks, startIndex);
+              ctx.push('/playback/music');
+            }
+          : null,
+    );
+
+    if (port == null) return page;
+    return MusicAreaShell(
+      audioPlaybackPort: port,
+      onOpenMusicPlayer: () => context.push('/playback/music'),
+      child: page,
     );
   }
 }

@@ -19,6 +19,7 @@ class MusicLibraryPage extends StatefulWidget {
   final OnOpenAlbum? onOpenAlbum;
   final OnOpenArtist? onOpenArtist;
   final OnPlayTracks? onPlayTracks;
+  final VoidCallback? onSearch;
 
   const MusicLibraryPage({
     super.key,
@@ -30,6 +31,7 @@ class MusicLibraryPage extends StatefulWidget {
     this.onOpenAlbum,
     this.onOpenArtist,
     this.onPlayTracks,
+    this.onSearch,
   });
 
   @override
@@ -57,6 +59,14 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.libraryName),
+        actions: [
+          if (widget.onSearch != null)
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: widget.onSearch,
+              tooltip: '搜索',
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
