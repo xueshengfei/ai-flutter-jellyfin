@@ -10,18 +10,24 @@ class BannerListView extends StatelessWidget {
   final JellyfinImageProvider imageProvider;
   final List<MediaItem> items;
   final ValueChanged<MediaItem>? onTap;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
 
   const BannerListView({
     super.key,
     required this.imageProvider,
     required this.items,
     this.onTap,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
+      shrinkWrap: shrinkWrap,
+      physics: physics,
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];

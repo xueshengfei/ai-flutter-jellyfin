@@ -11,6 +11,8 @@ class CardGridView extends StatelessWidget {
   final List<MediaItem> items;
   final int crossAxisCount;
   final ValueChanged<MediaItem>? onTap;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
 
   const CardGridView({
     super.key,
@@ -18,12 +20,16 @@ class CardGridView extends StatelessWidget {
     required this.items,
     this.crossAxisCount = 3,
     this.onTap,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
+      shrinkWrap: shrinkWrap,
+      physics: physics,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: 0.7,
