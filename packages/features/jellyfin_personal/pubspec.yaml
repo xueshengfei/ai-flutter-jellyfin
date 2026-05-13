@@ -1,0 +1,25 @@
+name: jellyfin_personal
+description: Reusable personal center feature for Jellyfin product apps.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  equatable: ^2.0.5
+  jellyfin_models:
+    path: ../../shared/jellyfin_models
+  jellyfin_ui_kit:
+    path: ../../shared/jellyfin_ui_kit
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

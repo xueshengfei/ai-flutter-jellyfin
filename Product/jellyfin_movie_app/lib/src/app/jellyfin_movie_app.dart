@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'app_router.dart';
 import '../data/legacy_jellyfin_gateway.dart';
+import '../data/personal_repository_adapter.dart';
 import '../session/app_session_controller.dart';
 
 /// Jellyfin 电影 App 根 Widget
@@ -23,6 +24,10 @@ class _JellyfinMovieAppState extends State<JellyfinMovieApp> {
     _router = createAppRouter(
       sessionController: _sessionController,
       gateway: _gateway,
+      personalRepository: JellyfinPersonalRepositoryAdapter(
+        gateway: _gateway,
+        sessionController: _sessionController,
+      ),
     );
   }
 

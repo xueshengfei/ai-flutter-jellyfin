@@ -4,6 +4,7 @@ import 'package:rvc_flutter/rvc_flutter.dart';
 import 'app_router.dart';
 import '../data/audio_playback_adapter.dart';
 import '../data/legacy_jellyfin_gateway.dart';
+import '../data/personal_repository_adapter.dart';
 import '../session/app_session_controller.dart';
 
 /// Jellyfin 产品 App 根 Widget
@@ -36,6 +37,10 @@ class _JellyfinAppState extends State<JellyfinApp> {
     _router = createAppRouter(
       sessionController: _sessionController,
       gateway: _gateway,
+      personalRepository: JellyfinPersonalRepositoryAdapter(
+        gateway: _gateway,
+        sessionController: _sessionController,
+      ),
       audioPlaybackPort: AudioPlaybackAdapter.instance,
       rvcTaskController: _getOrCreateRvcController(),
     );

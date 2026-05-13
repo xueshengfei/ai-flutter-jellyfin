@@ -113,6 +113,7 @@ void main() {
       expect(paths, contains('/music/albums/:albumId'));
       expect(paths, contains('/music/artists/:artistId'));
       expect(paths, contains('/playback/video/:itemId'));
+      expect(paths, contains('/personal'));
     });
   });
 }

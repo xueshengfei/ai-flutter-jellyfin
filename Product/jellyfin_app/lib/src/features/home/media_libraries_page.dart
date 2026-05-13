@@ -13,6 +13,7 @@ class MediaLibrariesPage extends StatefulWidget {
   final void Function(models.MediaLibrary library) onLibraryTap;
   final void Function(models.MediaItem item) onContinueWatchingTap;
   final VoidCallback onLogout;
+  final VoidCallback? onOpenPersonal;
 
   const MediaLibrariesPage({
     super.key,
@@ -22,6 +23,7 @@ class MediaLibrariesPage extends StatefulWidget {
     required this.onLibraryTap,
     required this.onContinueWatchingTap,
     required this.onLogout,
+    this.onOpenPersonal,
   });
 
   @override
@@ -73,6 +75,12 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       appBar: AppBar(
         title: const Text('Jellyfin'),
         actions: [
+          if (widget.onOpenPersonal != null)
+            IconButton(
+              icon: const Icon(Icons.person),
+              tooltip: '个人中心',
+              onPressed: widget.onOpenPersonal,
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Center(

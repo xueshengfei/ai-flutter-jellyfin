@@ -343,6 +343,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  jellyfin_personal:
+    dependency: "direct main"
+    description:
+      path: "../../packages/features/jellyfin_personal"
+      relative: true
+    source: path
+    version: "0.1.0"
   jellyfin_playback:
     dependency: "direct main"
     description:

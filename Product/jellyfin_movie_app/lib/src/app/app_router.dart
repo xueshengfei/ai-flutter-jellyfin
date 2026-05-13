@@ -3,9 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:jellyfin_auth/jellyfin_auth_pages.dart';
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
+import 'package:jellyfin_personal/jellyfin_personal.dart';
 
 import '../data/jellyfin_gateway.dart';
 import '../features/media/movie_route_pages.dart';
+import '../features/personal/personal_route_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
 
@@ -28,6 +30,7 @@ String? resolveAuthRedirect({
 GoRouter createAppRouter({
   required AppSessionController sessionController,
   JellyfinGateway? gateway,
+  PersonalRepository? personalRepository,
   String initialLocation = '/login',
 }) {
   final effectiveGateway = gateway ?? _StubGateway();
@@ -99,6 +102,22 @@ GoRouter createAppRouter({
           return Scaffold(
             appBar: AppBar(title: const Text('播放')),
             body: Center(child: Text('视频播放: $itemId（待接入）')),
+          );
+        },
+      ),
+      // 个人中心
+      GoRoute(
+        path: '/personal',
+        builder: (context, state) {
+          final repository = personalRepository;
+          if (repository == null) {
+            return const Scaffold(
+              body: Center(child: Text('个人模块未配置')),
+            );
+          }
+          return PersonalRoutePage(
+            repository: repository,
+            sessionController: sessionController,
           );
         },
       ),
@@ -194,7 +213,16 @@ class _AutoMovieLibraryPageState extends State<_AutoMovieLibraryPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Jellyfin 电影')),
+      appBar: AppBar(
+        title: const Text('Jellyfin 电影'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: '个人中心',
+            onPressed: () => context.push('/personal'),
+          ),
+        ],
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -59,6 +59,8 @@ dependencies:
     path: ../../packages/features/jellyfin_ai_recommendation
   jellyfin_auth:
     path: ../../packages/features/jellyfin_auth
+  jellyfin_personal:
+    path: ../../packages/features/jellyfin_personal
   rvc_flutter:
     path: ../../packages/features/rvc_flutter
   just_audio: ^0.9.46

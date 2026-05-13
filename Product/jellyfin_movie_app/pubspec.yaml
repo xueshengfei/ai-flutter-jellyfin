@@ -33,6 +33,9 @@ dependencies:
     path: ../../packages/features/jellyfin_playback
   jellyfin_auth:
     path: ../../packages/features/jellyfin_auth
+  jellyfin_personal:
+    path: ../../packages/features/jellyfin_personal
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
