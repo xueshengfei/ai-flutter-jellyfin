@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'app_router.dart';
+import '../data/audio_playback_adapter.dart';
 import '../data/legacy_jellyfin_gateway.dart';
 import '../session/app_session_controller.dart';
 
@@ -23,6 +24,7 @@ class _JellyfinAppState extends State<JellyfinApp> {
     _router = createAppRouter(
       sessionController: _sessionController,
       gateway: _gateway,
+      audioPlaybackPort: AudioPlaybackAdapter.instance,
     );
   }
 

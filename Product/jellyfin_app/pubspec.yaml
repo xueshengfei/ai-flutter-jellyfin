@@ -58,6 +58,7 @@ dependencies:
     path: ../../packages/features/jellyfin_ai_recommendation
   jellyfin_auth:
     path: ../../packages/features/jellyfin_auth
+  just_audio: ^0.9.46
 
 dev_dependencies:
   flutter_test:

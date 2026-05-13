@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:equatable/equatable.dart';
 
 /// 音轨抽象数据
@@ -134,3 +134,10 @@ abstract class AudioPlaybackPort extends ChangeNotifier {
   /// 更新播放列表中指定音轨的收藏状态（乐观更新）
   void updateTrackFavorite(String trackId, bool isFavorite);
 }
+
+/// 播放音轨列表回调（AudioTrack 版，由 App 层调用）
+typedef OnPlayTracks = void Function(
+  BuildContext context,
+  List<AudioTrack> tracks,
+  int startIndex,
+);
