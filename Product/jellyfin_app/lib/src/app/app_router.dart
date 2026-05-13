@@ -5,11 +5,13 @@ import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_music/jellyfin_music.dart' as music;
 import 'package:jellyfin_music/jellyfin_music_pages.dart';
+import 'package:rvc_flutter/rvc_flutter.dart';
 import '../data/jellyfin_gateway.dart';
 import '../features/home/media_libraries_page.dart';
 import '../features/media/media_route_pages.dart';
 import '../features/music/music_route_pages.dart';
 import '../features/playback/playback_route_page.dart';
+import '../features/rvc/rvc_route_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
 
@@ -31,6 +33,7 @@ GoRouter createAppRouter({
   required AppSessionController sessionController,
   JellyfinGateway? gateway,
   music.AudioPlaybackPort? audioPlaybackPort,
+  RvcTaskController? rvcTaskController,
   String initialLocation = '/login',
 }) {
   final effectiveGateway = gateway ?? _StubGateway();
@@ -225,6 +228,20 @@ GoRouter createAppRouter({
             return const Scaffold(body: Center(child: Text('播放器未初始化')));
           }
           return MusicPlayerPage(playbackPort: effectiveAudioPort);
+        },
+      ),
+      // RVC 语音转换
+      GoRoute(
+        path: '/rvc',
+        builder: (context, state) {
+          if (rvcTaskController == null) {
+            return const Scaffold(body: Center(child: Text('RVC 服务未配置')));
+          }
+          final audioPath = state.uri.queryParameters['audioPath'];
+          return RvcRoutePage(
+            controller: rvcTaskController,
+            audioPath: audioPath,
+          );
         },
       ),
     ],
