@@ -303,3 +303,31 @@ typedef OnPlaySong = void Function(
 
 /// 导航到专辑详情
 typedef OnNavigateToAlbum = void Function(BuildContext context, MusicAlbum album);
+
+/// 打开专辑详情回调（从音乐库列表点击）
+typedef OnOpenAlbum = void Function(BuildContext context, MusicAlbum album);
+
+/// 打开艺术家详情回调（从音乐库列表点击）
+typedef OnOpenArtist = void Function(BuildContext context, MusicArtist artist);
+
+/// 获取专辑列表
+typedef AlbumsFetcher = Future<MusicAlbumListResult> Function({
+  required String parentId,
+  int? startIndex,
+  int? limit,
+  String? sortBy,
+});
+
+/// 获取艺术家列表
+typedef ArtistsFetcher = Future<MusicArtistListResult> Function({
+  required String parentId,
+  int? startIndex,
+  int? limit,
+});
+
+/// 获取歌曲列表
+typedef SongsFetcher = Future<MusicSongListResult> Function({
+  required String parentId,
+  int? startIndex,
+  int? limit,
+});

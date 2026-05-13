@@ -1,8 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jellyfin_auth/jellyfin_auth_pages.dart';
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_music/jellyfin_music.dart' as music;
+import 'package:jellyfin_music/jellyfin_music_pages.dart';
 import '../data/jellyfin_gateway.dart';
 import '../features/home/media_libraries_page.dart';
 import '../features/media/media_route_pages.dart';
@@ -28,9 +30,11 @@ String? resolveAuthRedirect({
 GoRouter createAppRouter({
   required AppSessionController sessionController,
   JellyfinGateway? gateway,
+  music.AudioPlaybackPort? audioPlaybackPort,
   String initialLocation = '/login',
 }) {
   final effectiveGateway = gateway ?? _StubGateway();
+  final effectiveAudioPort = audioPlaybackPort;
 
   return GoRouter(
     initialLocation: initialLocation,
@@ -66,7 +70,6 @@ GoRouter createAppRouter({
             gateway: effectiveGateway,
             username: session?.username ?? '',
             onLibraryTap: (library) {
-              // 根据媒体库类型路由到不同页面
               switch (library.type) {
                 case models.MediaLibraryType.movies:
                   context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
@@ -123,6 +126,7 @@ GoRouter createAppRouter({
           final libraryName = state.uri.queryParameters['name'] ?? '音乐';
           return MusicLibraryRoutePage(
             gateway: effectiveGateway,
+            audioPlaybackPort: effectiveAudioPort,
             library: models.MediaLibrary(
               id: libraryId,
               name: libraryName,
@@ -139,6 +143,7 @@ GoRouter createAppRouter({
           final albumId = state.pathParameters['albumId']!;
           return AlbumDetailRoutePage(
             gateway: effectiveGateway,
+            audioPlaybackPort: effectiveAudioPort,
             albumId: albumId,
           );
         },
@@ -150,6 +155,7 @@ GoRouter createAppRouter({
           final artistId = state.pathParameters['artistId']!;
           return ArtistDetailRoutePage(
             gateway: effectiveGateway,
+            audioPlaybackPort: effectiveAudioPort,
             artistId: artistId,
           );
         },
@@ -209,6 +215,16 @@ GoRouter createAppRouter({
             gateway: effectiveGateway,
             itemId: itemId,
           );
+        },
+      ),
+      // 音乐播放详情页
+      GoRoute(
+        path: '/playback/music',
+        builder: (context, state) {
+          if (effectiveAudioPort == null) {
+            return const Scaffold(body: Center(child: Text('播放器未初始化')));
+          }
+          return MusicPlayerPage(playbackPort: effectiveAudioPort);
         },
       ),
     ],
