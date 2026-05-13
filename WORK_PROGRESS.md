@@ -356,6 +356,68 @@ AudioPlaybackAdapter（单例，在 product/jellyfin_app）
 
 ---
 
+## P2：RVC 内存级任务中心
+
+**目标**：RVC 一键翻唱任务状态从页面级提升到 App 级，页面退出后任务不丢失。
+
+### 核心问题
+
+旧 `RvcPage` 所有状态（`_isConverting`、`_convertResult`、`_audioPlayer`）都在 `_RvcPageState` 里。
+用户退出页面后 `dispose()` 销毁一切，耗时任务结果丢失。
+
+### 新建文件
+
+| 文件 | 说明 |
+|------|------|
+| `rvc_flutter/lib/src/models/rvc_task.dart` | `RvcTaskStatus` 枚举 + `RvcTaskSnapshot` 不可变快照 |
+| `rvc_flutter/lib/src/controllers/rvc_task_controller.dart` | `RvcTaskController`（ChangeNotifier） |
+| `product/jellyfin_app/lib/src/features/rvc/rvc_route_page.dart` | RVC 路由页面（注入 controller） |
+
+### 修改文件
+
+| 文件 | 变更 |
+|------|------|
+| `rvc_flutter/lib/rvc_flutter.dart` | 新增 export controller + models |
+| `rvc_flutter/lib/src/rvc_page.dart` | 重构：接收 `RvcTaskController`，用 `ListenableBuilder` |
+| `app_router.dart` | 新增 `/rvc` 路由，`createAppRouter` 新增 `rvcTaskController` 参数 |
+| `jellyfin_app.dart` | 创建并持有 `RvcTaskController`（延迟初始化） |
+| `pubspec.yaml` | 新增 `rvc_flutter` 依赖 |
+
+### 关键设计
+
+#### RvcTaskController
+
+```text
+管理三个核心能力（全部 App 级生命周期）：
+  1. 服务连接：RVCClient、connect()、status、models
+  2. 任务执行：startConvert() / startCover()、RvcTaskSnapshot
+  3. 结果播放：AudioPlayer、togglePlayback()
+```
+
+#### 任务流程
+
+```text
+用户进入 /rvc
+  → RvcRoutePage 注入 App 级 controller
+  → 用户选择文件/模型/参数 → 点击转换
+  → controller.startConvert() / startCover()
+  → 用户退出页面
+  → controller 仍在 App 内存中
+  → HTTP Future 完成后写入 controller
+  → 用户再次进入 /rvc
+  → 页面通过 ListenableBuilder 读取 controller.currentTask
+  → 展示上次任务结果 / 继续播放
+```
+
+#### RvcPage 重构
+
+- 从 `StatefulWidget`（自建 `RVCClient` + `AudioPlayer`）→ `StatefulWidget`（接收 `controller`）
+- 页面只管理临时 UI 状态（文件选择、参数滑块）
+- 所有业务逻辑通过 controller 代理
+- `ListenableBuilder` 监听 controller 状态变化
+
+---
+
 ## 测试状态
 
 | 阶段 | 测试内容 | 数量 |
@@ -374,6 +436,6 @@ AudioPlaybackAdapter（单例，在 product/jellyfin_app）
 |------|------|------|
 | P0 | 音乐模块边界修正 | ✅ 已完成 |
 | P1 | 音乐模块迷你播放器 | ✅ 已完成（已修正） |
-| P2 | RVC 任务中心 | 待开始 |
+| P2 | RVC 内存级任务中心 | ✅ 已完成 |
 | P3 | 搜索 + 歌词 | 待开始 |
 | P4 | 模型清理 | 待开始 |
