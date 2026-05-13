@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
 import 'package:jellyfin_service/src/ui/services/audio_playback_manager.dart';
-import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
 /// 歌词页面（QQ 音乐 / Spotify 风格）
 class LyricsPage extends StatefulWidget {
@@ -12,15 +11,11 @@ class LyricsPage extends StatefulWidget {
   final MusicSong currentSong;
   final String? albumCoverUrl;
 
-  /// 可选的音频播放端口，null 时使用 AudioPlaybackManager.instance
-  final music.AudioPlaybackPort? audioPlayback;
-
   const LyricsPage({
     super.key,
     required this.client,
     required this.currentSong,
     this.albumCoverUrl,
-    this.audioPlayback,
   });
 
   @override
@@ -28,10 +23,6 @@ class LyricsPage extends StatefulWidget {
 }
 
 class _LyricsPageState extends State<LyricsPage> {
-  // 使用注入的 port 或 fallback 到 singleton
-  AudioPlaybackManager get _manager =>
-      widget.audioPlayback as AudioPlaybackManager? ?? AudioPlaybackManager.instance;
-
   LyricsData? _lyricsData;
   bool _isLoading = true;
 
@@ -52,7 +43,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
   void _startPositionTracking() {
     _positionSub?.cancel();
-    _positionSub = _manager.onPositionChanged.listen((p) {
+    _positionSub = AudioPlaybackManager.instance.onPositionChanged.listen((p) {
       if (!mounted) return;
       _updateCurrentLine(p);
     });
@@ -132,7 +123,7 @@ class _LyricsPageState extends State<LyricsPage> {
     if (lines == null || index >= lines.length) return;
     final startTime = lines[index].startTime;
     if (startTime != null) {
-      await _manager.seek(startTime);
+      await AudioPlaybackManager.instance.seek(startTime);
     }
   }
 
@@ -221,7 +212,7 @@ class _LyricsPageState extends State<LyricsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final manager = _manager;
+    final manager = AudioPlaybackManager.instance;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -277,9 +268,9 @@ class _LyricsPageState extends State<LyricsPage> {
           ),
           Expanded(
             child: ListenableBuilder(
-              listenable: _manager,
+              listenable: AudioPlaybackManager.instance,
               builder: (context, _) {
-                final song = _manager.currentSong ?? widget.currentSong;
+                final song = AudioPlaybackManager.instance.currentSong ?? widget.currentSong;
                 return Column(
                   children: [
                     Text(

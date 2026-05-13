@@ -4,7 +4,6 @@ import 'package:jellyfin_dart/jellyfin_dart.dart' as jellyfin_dart;
 /// 电影过滤器
 ///
 /// 用于封装电影列表查询的所有过滤和排序参数
-@Deprecated('使用 jellyfin_movies 包中的 MovieFilter')
 class MovieFilter extends Equatable {
   /// 媒体库ID（必需）
   final String parentId;
@@ -223,7 +222,6 @@ class MovieFilter extends Equatable {
 /// 电影过滤结果
 ///
 /// 封装电影列表查询的返回结果
-@Deprecated('使用 jellyfin_movies 包中的 MovieFilterResult')
 class MovieFilterResult extends Equatable {
   /// 电影列表
   final List<MovieItem> movies;

@@ -5,8 +5,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_music/jellyfin_music.dart' show PlayMode;
-import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
 // ==================== 音乐媒体库页面 ====================
 
@@ -19,15 +17,11 @@ class MusicLibraryPage extends StatefulWidget {
   final String libraryId;
   final String libraryName;
 
-  /// 可选的音频播放端口，null 时使用 AudioPlaybackManager.instance
-  final music.AudioPlaybackPort? audioPlayback;
-
   const MusicLibraryPage({
     super.key,
     required this.client,
     required this.libraryId,
     required this.libraryName,
-    this.audioPlayback,
   });
 
   @override
@@ -100,7 +94,7 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
               children: [
                 _ArtistsTab(client: widget.client, libraryId: widget.libraryId, config: _viewModeConfig),
                 _AlbumsTab(client: widget.client, libraryId: widget.libraryId, config: _viewModeConfig),
-                _SongsTab(client: widget.client, libraryId: widget.libraryId, config: _viewModeConfig, audioPlayback: widget.audioPlayback),
+                _SongsTab(client: widget.client, libraryId: widget.libraryId, config: _viewModeConfig),
               ],
             ),
           ),
@@ -288,8 +282,7 @@ class _SongsTab extends StatefulWidget {
   final JellyfinClient client;
   final String libraryId;
   final ViewModeConfig config;
-  final music.AudioPlaybackPort? audioPlayback;
-  const _SongsTab({required this.client, required this.libraryId, required this.config, this.audioPlayback});
+  const _SongsTab({required this.client, required this.libraryId, required this.config});
   @override
   State<_SongsTab> createState() => _SongsTabState();
 }
@@ -554,7 +547,6 @@ class _SongsTabState extends State<_SongsTab> {
                   onTap: () => Navigator.push(context, MaterialPageRoute(
                     builder: (_) => AudioPlayerPage(
                       client: widget.client, song: song, playlist: sorted, initialIndex: index,
-                      audioPlayback: widget.audioPlayback,
                     ),
                   )),
                 )
@@ -626,16 +618,12 @@ class AudioPlayerPage extends StatefulWidget {
   final List<MusicSong> playlist;
   final int initialIndex;
 
-  /// 可选的音频播放端口，null 时使用 AudioPlaybackManager.instance
-  final music.AudioPlaybackPort? audioPlayback;
-
   const AudioPlayerPage({
     super.key,
     required this.client,
     required this.song,
     required this.playlist,
     this.initialIndex = 0,
-    this.audioPlayback,
   });
 
   @override
@@ -644,8 +632,7 @@ class AudioPlayerPage extends StatefulWidget {
 
 class _AudioPlayerPageState extends State<AudioPlayerPage>
     with SingleTickerProviderStateMixin {
-  // 使用注入的 port 或 fallback 到 singleton
-  AudioPlaybackManager get _manager => AudioPlaybackManager.instance;
+  final _manager = AudioPlaybackManager.instance;
   late final AnimationController _vinylController;
 
   // 动态取色
@@ -1082,7 +1069,7 @@ class _AudioPlayerPageState extends State<AudioPlayerPage>
 
   /// 预加载相邻歌曲封面到 CachedNetworkImage 缓存
   void _preloadAdjacentSongs() {
-    final playlist = _manager.musicPlaylist;
+    final playlist = _manager.playlist;
     final idx = _manager.currentIndex;
     for (final i in [idx - 1, idx + 1]) {
       if (i < 0 || i >= playlist.length) continue;

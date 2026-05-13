@@ -2,18 +2,18 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
 /// 循环模式（内部使用）
 enum RepeatMode { off, repeatAll, repeatOne }
+
+/// 播放模式（UI 展示）
+enum PlayMode { sequential, shuffle, repeatOne }
 
 /// 全局音频播放管理器（ChangeNotifier 单例）
 ///
 /// 持有 [AudioPlayer] + 播放列表 + 当前索引 + shuffle/repeat 状态，
 /// 生命周期与应用一致，退出歌曲详情页后音乐继续播放。
-///
-/// 实现 [music.AudioPlaybackPort] 接口，供 feature 包解耦使用。
-class AudioPlaybackManager extends ChangeNotifier implements music.AudioPlaybackPort {
+class AudioPlaybackManager extends ChangeNotifier {
   AudioPlaybackManager._() {
     _setupListeners();
   }
@@ -62,25 +62,13 @@ class AudioPlaybackManager extends ChangeNotifier implements music.AudioPlayback
   bool get shuffleMode => _shuffleMode;
   RepeatMode get repeatMode => _repeatMode;
   String? get error => _error;
-  List<MusicSong> get musicPlaylist => List.unmodifiable(_playlist);
-
-  // ==================== AudioPlaybackPort 接口实现 ====================
-
-  @override
-  music.AudioTrack? get currentTrack => currentSong != null
-      ? _songToTrack(currentSong!)
-      : null;
-
-  @override
-  List<music.AudioTrack> get playlist =>
-      _playlist.map(_songToTrack).toList();
+  List<MusicSong> get playlist => List.unmodifiable(_playlist);
 
   /// 当前播放模式
-  @override
-  music.PlayMode get playMode {
-    if (_shuffleMode) return music.PlayMode.shuffle;
-    if (_repeatMode == RepeatMode.repeatOne) return music.PlayMode.repeatOne;
-    return music.PlayMode.sequential;
+  PlayMode get playMode {
+    if (_shuffleMode) return PlayMode.shuffle;
+    if (_repeatMode == RepeatMode.repeatOne) return PlayMode.repeatOne;
+    return PlayMode.sequential;
   }
 
   /// 位置变化流（替代原 audioplayers 的 onPositionChanged）
@@ -193,17 +181,16 @@ class AudioPlaybackManager extends ChangeNotifier implements music.AudioPlayback
   }
 
   /// 循环切换播放模式：顺序 → 随机 → 单曲循环 → 顺序
-  @override
   void cyclePlayMode() {
     switch (playMode) {
-      case music.PlayMode.sequential:
+      case PlayMode.sequential:
         _shuffleMode = true;
         _repeatMode = RepeatMode.off;
         _initShuffleOrder();
-      case music.PlayMode.shuffle:
+      case PlayMode.shuffle:
         _shuffleMode = false;
         _repeatMode = RepeatMode.repeatOne;
-      case music.PlayMode.repeatOne:
+      case PlayMode.repeatOne:
         _shuffleMode = false;
         _repeatMode = RepeatMode.off;
     }
@@ -211,59 +198,6 @@ class AudioPlaybackManager extends ChangeNotifier implements music.AudioPlayback
   }
 
   // ==================== 内部方法 ====================
-
-  // ==================== AudioPlaybackPort 接口方法 ====================
-
-  @override
-  Future<void> playSong(
-    music.AudioTrack track,
-    List<music.AudioTrack> audioPlaylist,
-    int startIndex,
-  ) async {
-    final songs = audioPlaylist.map(_trackToSong).toList();
-    final client = _client;
-    if (client == null) return;
-    await play(songs, startIndex, client);
-  }
-
-  // ==================== AudioTrack ↔ MusicSong 转换 ====================
-
-  /// MusicSong → AudioTrack
-  static music.AudioTrack _songToTrack(MusicSong song) {
-    return music.AudioTrack(
-      id: song.id,
-      name: song.name,
-      streamUrl: song.getStreamUrl(),
-      coverUrl: song.getAlbumCoverUrl(),
-      artistText: song.artistText,
-      duration: song.runTimeTicks != null && song.runTimeTicks! > 0
-          ? Duration(microseconds: song.runTimeTicks! ~/ 10)
-          : (song.runTimeSeconds != null && song.runTimeSeconds! > 0
-              ? Duration(seconds: song.runTimeSeconds!)
-              : null),
-      albumName: song.albumName,
-      trackNumber: song.trackNumber,
-      isFavorite: song.isFavorite,
-    );
-  }
-
-  /// AudioTrack → MusicSong
-  static MusicSong _trackToSong(music.AudioTrack track) {
-    return MusicSong(
-      id: track.id,
-      name: track.name,
-      serverUrl: '', // streamUrl 已包含完整路径，无需 serverUrl
-      albumName: track.albumName,
-      trackNumber: track.trackNumber,
-      isFavorite: track.isFavorite,
-    );
-  }
-
-  /// 更新播放列表中指定音轨的收藏状态（AudioPlaybackPort 接口）
-  @override
-  void updateTrackFavorite(String trackId, bool isFavorite) {
-    updateSongFavorite(trackId, isFavorite);
-  }
 
   /// 更新播放列表中指定歌曲的收藏状态（乐观更新用）
   void updateSongFavorite(String songId, bool isFavorite) {

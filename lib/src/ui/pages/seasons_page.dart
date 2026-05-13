@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_service/jellyfin_service.dart';
-import 'package:jellyfin_service/src/ui/pages/episodes_page.dart';
 
 /// 季列表页面
 ///
 /// 显示指定剧集的所有季
-@Deprecated('使用 jellyfin_series 包中的 SeasonsPage')
 class SeasonsPage extends StatefulWidget {
   final JellyfinClient client;
   final MediaItem series;
 
-  const SeasonsPage({super.key, required this.client, required this.series});
+  const SeasonsPage({
+    super.key,
+    required this.client,
+    required this.series,
+  });
 
   @override
   State<SeasonsPage> createState() => _SeasonsPageState();
@@ -57,7 +59,9 @@ class _SeasonsPageState extends State<SeasonsPage> {
         future: _seasonsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
           if (snapshot.hasError) {
@@ -65,9 +69,16 @@ class _SeasonsPageState extends State<SeasonsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red,
+                  ),
                   const SizedBox(height: 16),
-                  Text('加载失败: ${snapshot.error}', textAlign: TextAlign.center),
+                  Text(
+                    '加载失败: ${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: _loadSeasons,
@@ -108,9 +119,7 @@ class _SeasonsPageState extends State<SeasonsPage> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 child: Text(
                   '共有 $_totalSeasons 季',
                   style: Theme.of(context).textTheme.titleMedium,
@@ -126,13 +135,12 @@ class _SeasonsPageState extends State<SeasonsPage> {
                   },
                   child: GridView.builder(
                     padding: const EdgeInsets.all(16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 1.2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 1.2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
                     itemCount: result.seasons.length,
                     itemBuilder: (context, index) {
                       final season = result.seasons[index];
@@ -198,23 +206,16 @@ class SeasonCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             child: const Center(
-                              child: Icon(
-                                Icons.error_outline,
-                                color: Colors.grey,
-                              ),
+                              child: Icon(Icons.error_outline, color: Colors.grey),
                             ),
                           );
                         },
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
                           return Container(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             child: const Center(
                               child: CircularProgressIndicator(),
                             ),
@@ -228,18 +229,13 @@ class SeasonCard extends StatelessWidget {
                             Icon(
                               Icons.folder_outlined,
                               size: 48,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(height: 8),
                             Text(
                               season.seasonNumberText,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                             ),
                           ],
@@ -261,8 +257,8 @@ class SeasonCard extends StatelessWidget {
                     Text(
                       season.name,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -279,9 +275,9 @@ class SeasonCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             '${season.episodeCount} 集',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey,
+                                ),
                           ),
                         ],
                       ),
