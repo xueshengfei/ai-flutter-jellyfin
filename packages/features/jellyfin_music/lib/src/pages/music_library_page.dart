@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_music/src/models/music_models.dart';
 import 'package:jellyfin_music/src/services/audio_playback_port.dart';
 
@@ -21,6 +22,9 @@ class MusicLibraryPage extends StatefulWidget {
   final OnPlayTracks? onPlayTracks;
   final VoidCallback? onSearch;
 
+  /// 图片加载器（注入 JellyfinAppImageProvider 以加载认证封面）
+  final JellyfinImageProvider? imageProvider;
+
   const MusicLibraryPage({
     super.key,
     required this.libraryName,
@@ -32,6 +36,7 @@ class MusicLibraryPage extends StatefulWidget {
     this.onOpenArtist,
     this.onPlayTracks,
     this.onSearch,
+    this.imageProvider,
   });
 
   @override
@@ -83,16 +88,19 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
             fetchAlbums: widget.fetchAlbums,
             libraryId: widget.libraryId,
             onOpenAlbum: widget.onOpenAlbum,
+            imageProvider: widget.imageProvider,
           ),
           _ArtistsTab(
             fetchArtists: widget.fetchArtists,
             libraryId: widget.libraryId,
             onOpenArtist: widget.onOpenArtist,
+            imageProvider: widget.imageProvider,
           ),
           _SongsTab(
             fetchSongs: widget.fetchSongs,
             libraryId: widget.libraryId,
             onPlayTracks: widget.onPlayTracks,
+            imageProvider: widget.imageProvider,
           ),
         ],
       ),
@@ -106,11 +114,13 @@ class _AlbumsTab extends StatefulWidget {
   final AlbumsFetcher fetchAlbums;
   final String libraryId;
   final OnOpenAlbum? onOpenAlbum;
+  final JellyfinImageProvider? imageProvider;
 
   const _AlbumsTab({
     required this.fetchAlbums,
     required this.libraryId,
     this.onOpenAlbum,
+    this.imageProvider,
   });
 
   @override
@@ -162,6 +172,7 @@ class _AlbumsTabState extends State<_AlbumsTab>
             itemCount: albums.length,
             itemBuilder: (context, index) => _AlbumCard(
               album: albums[index],
+              imageProvider: widget.imageProvider,
               onTap: () =>
                   widget.onOpenAlbum?.call(context, albums[index]),
             ),
@@ -181,11 +192,13 @@ class _ArtistsTab extends StatefulWidget {
   final ArtistsFetcher fetchArtists;
   final String libraryId;
   final OnOpenArtist? onOpenArtist;
+  final JellyfinImageProvider? imageProvider;
 
   const _ArtistsTab({
     required this.fetchArtists,
     required this.libraryId,
     this.onOpenArtist,
+    this.imageProvider,
   });
 
   @override
@@ -248,14 +261,19 @@ class _ArtistsTabState extends State<_ArtistsTab>
                         backgroundColor: Theme.of(context)
                             .colorScheme
                             .surfaceContainerHighest,
-                        backgroundImage: artist.hasImage
-                            ? NetworkImage(artist.getPrimaryImageUrl(
-                                fillWidth: 300, fillHeight: 300)!)
-                            : null,
-                        child: !artist.hasImage
-                            ? Icon(Icons.person,
-                                size: 40, color: Colors.grey.shade400)
-                            : null,
+                        child: artist.hasImage && widget.imageProvider != null
+                            ? ClipOval(
+                                child: JellyfinImage(
+                                  imageProvider: widget.imageProvider!,
+                                  itemId: artist.id,
+                                  imageTag: artist.primaryImageTag,
+                                  fillWidth: 300,
+                                  fillHeight: 300,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Icon(Icons.person,
+                                size: 40, color: Colors.grey.shade400),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -291,11 +309,13 @@ class _SongsTab extends StatefulWidget {
   final SongsFetcher fetchSongs;
   final String libraryId;
   final OnPlayTracks? onPlayTracks;
+  final JellyfinImageProvider? imageProvider;
 
   const _SongsTab({
     required this.fetchSongs,
     required this.libraryId,
     this.onPlayTracks,
+    this.imageProvider,
   });
 
   @override
@@ -362,25 +382,42 @@ class _SongsTabState extends State<_SongsTab>
                       .toList();
                   widget.onPlayTracks?.call(context, tracks, index);
                 },
-                leading: song.albumId != null
+                leading: song.albumId != null && widget.imageProvider != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: SizedBox(
                           width: 48,
                           height: 48,
-                          child: song.getAlbumCoverUrl() != null
-                              ? Image.network(song.getAlbumCoverUrl()!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.music_note))
-                              : const Icon(Icons.music_note),
+                          child: JellyfinImage(
+                            imageProvider: widget.imageProvider!,
+                            itemId: song.albumId!,
+                            imageTag: song.albumPrimaryImageTag,
+                            fillWidth: 96,
+                            fillHeight: 96,
+                            fit: BoxFit.cover,
+                            errorWidget: const Icon(Icons.music_note),
+                          ),
                         ),
                       )
-                    : const SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: Icon(Icons.music_note),
-                      ),
+                    : song.albumId != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: song.getAlbumCoverUrl() != null
+                                  ? Image.network(song.getAlbumCoverUrl()!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          const Icon(Icons.music_note))
+                                  : const Icon(Icons.music_note),
+                            ),
+                          )
+                        : const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(Icons.music_note),
+                          ),
                 title: Text(song.name,
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Text(
@@ -412,8 +449,9 @@ class _SongsTabState extends State<_SongsTab>
 class _AlbumCard extends StatelessWidget {
   final MusicAlbum album;
   final VoidCallback onTap;
+  final JellyfinImageProvider? imageProvider;
 
-  const _AlbumCard({required this.album, required this.onTap});
+  const _AlbumCard({required this.album, required this.onTap, this.imageProvider});
 
   @override
   Widget build(BuildContext context) {
@@ -425,25 +463,38 @@ class _AlbumCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: album.hasCoverImage
-                  ? Image.network(
-                      album.getCoverImageUrl(
-                          fillWidth: 300, fillHeight: 300)!,
+              child: album.hasCoverImage && imageProvider != null
+                  ? JellyfinImage(
+                      imageProvider: imageProvider!,
+                      itemId: album.id,
+                      imageTag: album.primaryImageTag,
+                      fillWidth: 300,
+                      fillHeight: 300,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
+                      errorWidget: Center(
                         child: Icon(Icons.album,
                             size: 40, color: Colors.grey.shade400),
                       ),
                     )
-                  : Container(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      child: Center(
-                        child: Icon(Icons.album,
-                            size: 40, color: Colors.grey.shade400),
-                      ),
-                    ),
+                  : album.hasCoverImage
+                      ? Image.network(
+                          album.getCoverImageUrl(
+                              fillWidth: 300, fillHeight: 300)!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Icon(Icons.album,
+                                size: 40, color: Colors.grey.shade400),
+                          ),
+                        )
+                      : Container(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          child: Center(
+                            child: Icon(Icons.album,
+                                size: 40, color: Colors.grey.shade400),
+                          ),
+                        ),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),

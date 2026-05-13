@@ -21,12 +21,16 @@ class MediaItemsPage extends StatefulWidget {
   /// 传入 items 和 onTap 回调，返回完整的列表 Widget
   final Widget Function(List<MediaItem> items, ValueChanged<MediaItem> onTap)? listBuilder;
 
+  /// AppBar 右侧额外操作按钮（如 ViewModeSelector）
+  final List<Widget>? appBarActions;
+
   const MediaItemsPage({
     super.key,
     required this.library,
     required this.fetchMediaItems,
     this.onNavigateToMediaItem,
     this.listBuilder,
+    this.appBarActions,
   });
 
   @override
@@ -82,6 +86,7 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
       appBar: AppBar(
         title: Text(widget.library.name),
         actions: [
+          ...?widget.appBarActions,
           if (!_isLoading && _errorMessage == null && _mediaItems.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),

@@ -116,13 +116,18 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
           final libraryName = state.uri.queryParameters['name'] ?? '剧集';
+          final session = sessionController.currentSession;
           return SeriesListRoutePage(
             gateway: effectiveGateway,
             library: models.MediaLibrary(
               id: libraryId,
               name: libraryName,
               type: models.MediaLibraryType.tvshows,
-              serverUrl: sessionController.currentSession?.serverUrl ?? '',
+              serverUrl: session?.serverUrl ?? '',
+            ),
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
             ),
           );
         },
@@ -133,9 +138,14 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
           final libraryName = state.uri.queryParameters['name'] ?? '音乐';
+          final session = sessionController.currentSession;
           return MusicLibraryRoutePage(
             gateway: effectiveGateway,
             audioPlaybackPort: effectiveAudioPort,
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
             library: models.MediaLibrary(
               id: libraryId,
               name: libraryName,
