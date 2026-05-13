@@ -6,4 +6,5 @@
 /// import 'package:jellyfin_media/jellyfin_media_widgets.dart';
 /// ```
 
-export 'src/widgets/person_avatar_card.dart';
+// PersonAvatarCard / PersonListRow 已迁移到 jellyfin_ui_kit
+// 如需使用，请 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
