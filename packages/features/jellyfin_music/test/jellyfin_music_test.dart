@@ -91,9 +91,16 @@ void main() {
       const song = MusicSong(
         id: 's1', name: 'A', serverUrl: 'http://t', accessToken: 'key123',
       );
+      // 默认使用 universal 端点
       final url = song.getStreamUrl();
-      expect(url, contains('/Audio/s1/stream'));
+      expect(url, contains('/Audio/s1/universal'));
+      expect(url, contains('container=mp3,aac'));
+      expect(url, contains('audioCodec=mp3'));
       expect(url, contains('api_key=key123'));
+      // transcode: false 走原始流
+      final rawUrl = song.getStreamUrl(transcode: false);
+      expect(rawUrl, contains('/Audio/s1/stream'));
+      expect(rawUrl, contains('api_key=key123'));
     });
 
     test('artistText', () {

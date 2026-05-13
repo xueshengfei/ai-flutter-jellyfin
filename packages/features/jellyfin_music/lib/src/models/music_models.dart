@@ -150,10 +150,24 @@ class MusicSong extends Equatable {
     this.path,
   });
 
-  String getStreamUrl({String? container, int? audioBitRate, int? startTimeTicks}) {
-    var url = '$serverUrl/Audio/$id/stream';
-    if (container != null) url += '.$container';
-    if (accessToken != null) url += '?api_key=$accessToken';
+  /// 获取音频流 URL（universal 端点，兼容性最佳）
+  ///
+  /// 使用 `/Audio/{id}/universal` 端点，优先直接播放，
+  /// 不兼容时 Jellyfin 自动转码为 MP3。
+  /// 如需原始格式，传 `transcode: false`。
+  String getStreamUrl({bool transcode = true, int? audioBitRate, int? startTimeTicks}) {
+    if (!transcode) {
+      // 原始流：返回服务器上的原始文件
+      var url = '$serverUrl/Audio/$id/stream';
+      if (accessToken != null) url += '?api_key=$accessToken';
+      if (audioBitRate != null) url += '&audioBitRate=$audioBitRate';
+      if (startTimeTicks != null) url += '&startTimeTicks=$startTimeTicks';
+      return url;
+    }
+    // Universal 端点：优先直接播放 mp3/aac，不兼容时自动转码
+    var url = '$serverUrl/Audio/$id/universal';
+    url += '?container=mp3,aac&audioCodec=mp3';
+    if (accessToken != null) url += '&api_key=$accessToken';
     if (audioBitRate != null) url += '&audioBitRate=$audioBitRate';
     if (startTimeTicks != null) url += '&startTimeTicks=$startTimeTicks';
     return url;
