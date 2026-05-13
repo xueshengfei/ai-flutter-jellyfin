@@ -1,21 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import '../../data/jellyfin_gateway.dart';
-
-/// 媒体库图标映射
-IconData _libraryIcon(models.MediaLibraryType type) {
-  switch (type) {
-    case models.MediaLibraryType.movies: return Icons.movie;
-    case models.MediaLibraryType.music: return Icons.music_note;
-    case models.MediaLibraryType.tvshows: return Icons.tv;
-    default: return Icons.folder;
-  }
-}
 
 /// 媒体库列表页面 — 登录后首页
 class MediaLibrariesPage extends StatefulWidget {
   final JellyfinGateway gateway;
   final String username;
+  final JellyfinImageProvider? imageProvider;
   final void Function(models.MediaLibrary library) onLibraryTap;
   final void Function(models.MediaItem item) onContinueWatchingTap;
   final VoidCallback onLogout;
@@ -24,6 +18,7 @@ class MediaLibrariesPage extends StatefulWidget {
     super.key,
     required this.gateway,
     required this.username,
+    this.imageProvider,
     required this.onLibraryTap,
     required this.onContinueWatchingTap,
     required this.onLogout,
@@ -127,6 +122,8 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       );
     }
 
+    final imgProvider = widget.imageProvider;
+
     return RefreshIndicator(
       onRefresh: _loadAll,
       child: ListView(
@@ -140,7 +137,8 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: _libraries.map((lib) => _LibraryCard(
+            children: _libraries.map((lib) => LibraryCard(
+              imageProvider: imgProvider ?? _StubImageProvider(),
               library: lib,
               onTap: () => widget.onLibraryTap(lib),
             )).toList(),
@@ -158,7 +156,8 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
                 scrollDirection: Axis.horizontal,
                 itemCount: _continueWatching.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) => _ContinueWatchingCard(
+                itemBuilder: (context, index) => ContinueWatchingCard(
+                  imageProvider: imgProvider ?? _StubImageProvider(),
                   item: _continueWatching[index],
                   onTap: () => widget.onContinueWatchingTap(_continueWatching[index]),
                 ),
@@ -171,121 +170,16 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
   }
 }
 
-/// 媒体库卡片
-class _LibraryCard extends StatelessWidget {
-  final models.MediaLibrary library;
-  final VoidCallback onTap;
-
-  const _LibraryCard({required this.library, required this.onTap});
-
+/// imageProvider 为 null 时的 fallback（只显示 placeholder）
+class _StubImageProvider implements JellyfinImageProvider {
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: (MediaQuery.of(context).size.width - 42) / 2,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-              child: Center(
-                child: Icon(_libraryIcon(library.type), size: 22, color: Theme.of(context).colorScheme.primary),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(library.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (library.itemCount != null)
-                    Text('${library.itemCount} 项', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<Uint8List> getPrimaryImage({
+    required String itemId,
+    String? tag,
+    int? fillWidth,
+    int? fillHeight,
+    int? quality,
+  }) async {
+    throw UnsupportedError('No image provider configured');
   }
-}
-
-/// 继续观看卡片
-class _ContinueWatchingCard extends StatelessWidget {
-  final models.MediaItem item;
-  final VoidCallback onTap;
-
-  const _ContinueWatchingCard({required this.item, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (item.playedPercentage ?? 0) / 100;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 130,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: item.hasCoverImage
-                        ? Image.network(item.getCoverImageUrl()!, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                            errorBuilder: (_, __, ___) => _placeholder(context))
-                        : _placeholder(context),
-                  ),
-                  if (progress > 0)
-                    Positioned(
-                      left: 0, right: 0, bottom: 0,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
-                        child: LinearProgressIndicator(
-                          value: progress.clamp(0.0, 1.0),
-                          minHeight: 3,
-                          backgroundColor: Colors.white.withValues(alpha: 0.3),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-            Text(
-              '${item.typeDisplayName}${item.productionYear != null ? ' · ${item.productionYear}' : ''}',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _placeholder(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: const Center(child: Icon(Icons.play_circle_outline, size: 32, color: Colors.white54)),
-  );
 }
