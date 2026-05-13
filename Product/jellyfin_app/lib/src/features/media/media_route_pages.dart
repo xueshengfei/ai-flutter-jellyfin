@@ -17,23 +17,63 @@ import '../../ui/jellyfin_app_image_provider.dart';
 
 // ──────────────────────────── 剧集列表页 ────────────────────────────
 
-class SeriesListRoutePage extends StatelessWidget {
+class SeriesListRoutePage extends StatefulWidget {
   final JellyfinGateway gateway;
   final models.MediaLibrary library;
+  final JellyfinAppImageProvider imageProvider;
 
   const SeriesListRoutePage({
     super.key,
     required this.gateway,
     required this.library,
+    required this.imageProvider,
   });
+
+  @override
+  State<SeriesListRoutePage> createState() => _SeriesListRoutePageState();
+}
+
+class _SeriesListRoutePageState extends State<SeriesListRoutePage> {
+  ViewModeConfig _viewModeConfig = const ViewModeConfig();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadViewMode();
+  }
+
+  Future<void> _loadViewMode() async {
+    final config = await ViewModeManager().getViewModeConfig(widget.library.id);
+    if (mounted) {
+      setState(() => _viewModeConfig = config);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MediaItemsPage(
-      library: library,
-      fetchMediaItems: gateway.fetchMediaItems,
+      library: widget.library,
+      fetchMediaItems: widget.gateway.fetchMediaItems,
       onNavigateToMediaItem: (context, item) {
         context.push('/media/items/${item.id}');
+      },
+      appBarActions: [
+        ViewModeSelector(
+          libraryId: widget.library.id,
+          onViewModeChanged: (config) {
+            setState(() => _viewModeConfig = config);
+          },
+        ),
+      ],
+      listBuilder: (items, onTap) {
+        return MediaListBuilder(
+          imageProvider: widget.imageProvider,
+          items: items,
+          config: _viewModeConfig,
+          onTap: onTap,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+        );
       },
     );
   }

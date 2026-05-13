@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_music/jellyfin_music.dart' as music;
 import 'package:jellyfin_music/jellyfin_music_pages.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../../data/jellyfin_gateway.dart';
 
@@ -32,6 +33,7 @@ music.AudioTrack _songToTrack(music.MusicSong song) {
     albumName: song.albumName,
     trackNumber: song.trackNumber,
     isFavorite: song.isFavorite,
+    path: song.path,
   );
 }
 
@@ -46,12 +48,14 @@ class MusicLibraryRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final music.AudioPlaybackPort? audioPlaybackPort;
   final models.MediaLibrary library;
+  final JellyfinImageProvider? imageProvider;
 
   const MusicLibraryRoutePage({
     super.key,
     required this.gateway,
     this.audioPlaybackPort,
     required this.library,
+    this.imageProvider,
   });
 
   @override
@@ -92,6 +96,7 @@ class MusicLibraryRoutePage extends StatelessWidget {
       onSearch: () => context.push(
         '/libraries/${library.id}/music/search?name=${Uri.encodeComponent(library.name)}',
       ),
+      imageProvider: imageProvider,
     );
 
     if (port == null) return page;
