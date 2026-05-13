@@ -122,6 +122,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       genres: filter.genres,
       years: filter.years,
       nameStartsWith: filter.nameStartsWith,
+      searchTerm: filter.searchTerm,
       isPlayed: filter.isPlayed,
       isFavorite: filter.isFavorite,
       fields: [

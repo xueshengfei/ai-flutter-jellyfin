@@ -217,6 +217,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       isPlayed: filter.isPlayed,
       isFavorite: filter.isFavorite,
       nameStartsWith: filter.nameStartsWith,
+      searchTerm: filter.searchTerm,
       fields: [
         jellyfin_dart.ItemFields.overview,
         jellyfin_dart.ItemFields.people,
