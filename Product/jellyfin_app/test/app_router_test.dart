@@ -72,7 +72,10 @@ void main() {
       addTearDown(router.dispose);
 
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-      await tester.pumpAndSettle();
+      // pump 而非 pumpAndSettle：AiRecommendPill 有无限循环动画
+      await tester.pump();
+      // 推进时钟让 AiRecommendPill 的 Future.delayed(2s) 触发
+      await tester.pump(const Duration(seconds: 3));
 
       expect(find.text('媒体库'), findsOneWidget);
     });
