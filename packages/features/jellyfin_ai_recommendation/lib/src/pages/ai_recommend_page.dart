@@ -106,8 +106,10 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     _scrollController.dispose();
     _currentSubscription?.cancel();
     _streamService.cancel();
-    _ttsService?.stop();
-    _ttsService?.dispose();
+    // 先 dispose 再置 null，避免异步回调在 dispose 后调用 stop/notifyListeners
+    final tts = _ttsService;
+    _ttsService = null;
+    tts?.dispose();
     super.dispose();
   }
 

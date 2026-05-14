@@ -9,8 +9,9 @@ import 'dart:typed_data';
 /// 即可读到已接收的部分数据，实现逐 chunk 推送。
 Stream<Uint8List> createSseStream(
   String url,
-  Map<String, String> headers,
-) {
+  Map<String, String> headers, {
+  dynamic cancelToken,
+}) {
   final controller = StreamController<Uint8List>();
   var lastLength = 0;
 

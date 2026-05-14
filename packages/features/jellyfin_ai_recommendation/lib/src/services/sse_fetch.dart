@@ -5,7 +5,8 @@ import 'dart:typed_data';
 /// Web 实现见 sse_fetch_web.dart，原生实现见 sse_fetch_native.dart。
 Stream<Uint8List> createSseStream(
   String url,
-  Map<String, String> headers,
-) {
+  Map<String, String> headers, {
+  dynamic cancelToken,
+}) {
   throw UnsupportedError('SSE streaming not supported on this platform');
 }
