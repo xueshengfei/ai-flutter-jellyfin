@@ -19,6 +19,15 @@ import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
 import '../ui/jellyfin_app_image_provider.dart';
 
+/// 从 Jellyfin 服务器地址推导同 IP 不同端口的服务地址
+///
+/// 例: deriveServiceUrl('http://192.168.1.100:8096', 8000)
+///   → 'http://192.168.1.100:8000'
+String deriveServiceUrl(String serverUrl, int port) {
+  final uri = Uri.parse(serverUrl);
+  return '${uri.scheme}://${uri.host}:$port';
+}
+
 /// 认证重定向纯函数
 String? resolveAuthRedirect({
   required bool isLoggedIn,
@@ -39,7 +48,6 @@ GoRouter createAppRouter({
   PersonalRepository? personalRepository,
   music.AudioPlaybackPort? audioPlaybackPort,
   RvcTaskController? rvcTaskController,
-  String? aiServiceUrl,
   ServerDiscoveryService? discoveryService,
   String initialLocation = '/login',
 }) {
@@ -110,9 +118,7 @@ GoRouter createAppRouter({
             },
             onLogout: () => sessionController.clearSession(),
             onOpenPersonal: () => context.push('/personal'),
-            onOpenAiRecommendation: aiServiceUrl != null
-                ? () => context.push('/ai')
-                : null,
+            onOpenAiRecommendation: () => context.push('/ai'),
           );
         },
       ),
@@ -366,15 +372,16 @@ GoRouter createAppRouter({
       GoRoute(
         path: '/ai',
         builder: (context, state) {
-          if (aiServiceUrl == null) {
-            return const Scaffold(body: Center(child: Text('AI 推荐服务未配置')));
-          }
           final session = sessionController.currentSession;
+          final serverUrl = session?.serverUrl;
+          if (serverUrl == null || serverUrl.isEmpty) {
+            return const Scaffold(body: Center(child: Text('未登录')));
+          }
           return AiRecommendRoutePage(
             gateway: effectiveGateway,
-            aiServiceUrl: aiServiceUrl,
+            aiServiceUrl: deriveServiceUrl(serverUrl, 8000),
             imageProvider: JellyfinAppImageProvider(
-              serverUrl: session?.serverUrl ?? '',
+              serverUrl: serverUrl,
               accessToken: session?.accessToken ?? '',
             ),
           );

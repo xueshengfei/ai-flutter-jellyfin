@@ -44,13 +44,24 @@ class _JellyfinAppState extends State<JellyfinApp> {
       ),
       audioPlaybackPort: AudioPlaybackAdapter.instance,
       rvcTaskController: _getOrCreateRvcController(),
-      aiServiceUrl: 'http://localhost:8000',
       discoveryService: ServerDiscoveryService(),
     );
+
+    // 登录后用 session 的 serverUrl 更新 RVC 服务地址
+    _sessionController.addListener(_onSessionChanged);
+  }
+
+  void _onSessionChanged() {
+    final serverUrl = _sessionController.currentSession?.serverUrl;
+    if (serverUrl != null && serverUrl.isNotEmpty) {
+      final rvcUrl = deriveServiceUrl(serverUrl, 9880);
+      _rvcTaskController?.updateServerUrl(rvcUrl);
+    }
   }
 
   @override
   void dispose() {
+    _sessionController.removeListener(_onSessionChanged);
     _router.dispose();
     _rvcTaskController?.dispose();
     _sessionController.dispose();
