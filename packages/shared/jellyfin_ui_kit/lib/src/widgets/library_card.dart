@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
+
 import '../image/jellyfin_image.dart';
 import '../image/jellyfin_image_provider.dart';
 
-/// 媒体库卡片（紧凑横条）
+/// Compact media-library card with responsive width.
 class LibraryCard extends StatelessWidget {
   final JellyfinImageProvider imageProvider;
   final MediaLibrary library;
@@ -18,54 +19,107 @@ class LibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: (MediaQuery.of(context).size.width - 42) / 2,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            // 小图标/封面
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: library.hasCoverImage
-                  ? JellyfinImage(
-                      imageProvider: imageProvider,
-                      itemId: library.id,
-                      imageTag: library.primaryImageTag,
-                      fillWidth: 80,
-                      fillHeight: 80,
-                      fit: BoxFit.cover,
-                    )
-                  : Center(child: Text(library.type.icon, style: const TextStyle(fontSize: 22))),
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final columns = switch (screenWidth) {
+      >= 1200 => 4,
+      >= 760 => 3,
+      >= 520 => 2,
+      _ => 1,
+    };
+    final horizontalPadding = screenWidth >= 520 ? 48.0 : 32.0;
+    final spacing = (columns - 1) * 12.0;
+    final width = ((screenWidth - horizontalPadding - spacing) / columns)
+        .clamp(220.0, 360.0);
+
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: width,
+          height: 84,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                _LibraryCover(imageProvider: imageProvider, library: library),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        library.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (library.itemCount != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          '${library.itemCount} 项',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(library.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (library.itemCount != null)
-                    Text('${library.itemCount} 项', style: TextStyle(color: Colors.grey[600], fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _LibraryCover extends StatelessWidget {
+  final JellyfinImageProvider imageProvider;
+  final MediaLibrary library;
+
+  const _LibraryCover({
+    required this.imageProvider,
+    required this.library,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(7),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: library.hasCoverImage
+          ? JellyfinImage(
+              imageProvider: imageProvider,
+              itemId: library.id,
+              imageTag: library.primaryImageTag,
+              fillWidth: 96,
+              fillHeight: 96,
+              fit: BoxFit.cover,
+            )
+          : Center(
+              child: Text(
+                library.type.icon,
+                style: const TextStyle(fontSize: 22),
+              ),
+            ),
     );
   }
 }

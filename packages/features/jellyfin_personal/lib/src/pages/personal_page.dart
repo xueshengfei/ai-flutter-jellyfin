@@ -84,6 +84,7 @@ class _PersonalPageState extends State<PersonalPage> {
           return RefreshIndicator(
             onRefresh: _controller.loadAll,
             child: ListView(
+              padding: const EdgeInsets.only(bottom: 28),
               children: [
                 if (widget.config.showProfileHeader)
                   FutureBuilder<models.UserProfile>(
@@ -104,6 +105,7 @@ class _PersonalPageState extends State<PersonalPage> {
                 if (_showFilterTabs) _buildFilterTabs(),
                 for (final section in widget.config.sections)
                   PersonalSectionView(
+                    section: section,
                     title: section.labelFor(_controller.typeFilter),
                     state: _controller.sectionState(section),
                     imageProvider: widget.imageProvider,
@@ -122,19 +124,24 @@ class _PersonalPageState extends State<PersonalPage> {
   Widget _buildFilterTabs() {
     final filters = _availableFilters;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: filters.map((filter) {
-          final isSelected = _controller.typeFilter == filter;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(filter.label),
-              selected: isSelected,
-              onSelected: (_) => _controller.setTypeFilter(filter),
-            ),
-          );
-        }).toList(),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Row(
+          children: filters.map((filter) {
+            final isSelected = _controller.typeFilter == filter;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(filter.label),
+                selected: isSelected,
+                onSelected: (_) => _controller.setTypeFilter(filter),
+                showCheckmark: true,
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

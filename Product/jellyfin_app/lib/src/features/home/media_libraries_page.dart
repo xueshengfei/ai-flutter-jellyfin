@@ -84,7 +84,10 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Center(
-              child: Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                widget.username,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
           IconButton(
@@ -122,7 +125,11 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text(_errorMessage!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             FilledButton(onPressed: _loadAll, child: const Text('重试')),
           ],
@@ -135,39 +142,50 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
     return RefreshIndicator(
       onRefresh: _loadAll,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           // 媒体库
           const Padding(
             padding: EdgeInsets.only(bottom: 8),
-            child: Text('媒体库', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text(
+              '媒体库',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
           ),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _libraries.map((lib) => LibraryCard(
-              imageProvider: imgProvider ?? _StubImageProvider(),
-              library: lib,
-              onTap: () => widget.onLibraryTap(lib),
-            )).toList(),
+            spacing: 12,
+            runSpacing: 12,
+            children: _libraries
+                .map(
+                  (lib) => LibraryCard(
+                    imageProvider: imgProvider ?? _StubImageProvider(),
+                    library: lib,
+                    onTap: () => widget.onLibraryTap(lib),
+                  ),
+                )
+                .toList(),
           ),
           // 继续观看
           if (_continueWatching.isNotEmpty) ...[
             const SizedBox(height: 24),
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text('继续观看', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                '继续观看',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
             SizedBox(
-              height: 180,
+              height: ContinueWatchingCard.height,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _continueWatching.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, __) => const SizedBox(width: 14),
                 itemBuilder: (context, index) => ContinueWatchingCard(
                   imageProvider: imgProvider ?? _StubImageProvider(),
                   item: _continueWatching[index],
-                  onTap: () => widget.onContinueWatchingTap(_continueWatching[index]),
+                  onTap: () =>
+                      widget.onContinueWatchingTap(_continueWatching[index]),
                 ),
               ),
             ),
