@@ -226,6 +226,7 @@ class AudioPlaybackAdapter extends music.AudioPlaybackPort {
       albumName: old.albumName,
       trackNumber: old.trackNumber,
       isFavorite: isFavorite,
+      path: old.path,
     );
     notifyListeners();
   }

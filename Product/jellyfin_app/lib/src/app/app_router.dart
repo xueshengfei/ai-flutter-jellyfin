@@ -304,13 +304,16 @@ GoRouter createAppRouter({
           if (effectiveAudioPort == null) {
             return const Scaffold(body: Center(child: Text('播放器未初始化')));
           }
-          final track = effectiveAudioPort.currentTrack;
           return MusicPlayerPage(
             playbackPort: effectiveAudioPort,
             onOpenLyrics: () => context.push('/music/lyrics'),
-            onOpenRvc: track?.path != null
-                ? () => context.push('/rvc?audioPath=${Uri.encodeComponent(track!.path!)}')
-                : null,
+            onOpenRvc: () {
+              final audioPath = effectiveAudioPort.currentTrack?.path;
+              final location = audioPath != null && audioPath.isNotEmpty
+                  ? '/rvc?audioPath=${Uri.encodeComponent(audioPath)}'
+                  : '/rvc';
+              context.push(location);
+            },
             fetchLyrics: effectiveGateway.getLyrics,
           );
         },

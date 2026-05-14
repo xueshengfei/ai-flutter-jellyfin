@@ -4,13 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_music/jellyfin_music.dart';
 import 'package:jellyfin_music/jellyfin_music_pages.dart';
 
-
 void main() {
   group('MusicAlbum', () {
     test('构造和字段访问', () {
       const album = MusicAlbum(
-        id: 'a1', name: '测试专辑', serverUrl: 'http://test',
-        productionYear: 2024, songCount: 10, artists: ['艺术家A'],
+        id: 'a1',
+        name: '测试专辑',
+        serverUrl: 'http://test',
+        productionYear: 2024,
+        songCount: 10,
+        artists: ['艺术家A'],
       );
       expect(album.id, 'a1');
       expect(album.name, '测试专辑');
@@ -21,23 +24,44 @@ void main() {
 
     test('getCoverImageUrl', () {
       const album = MusicAlbum(
-        id: 'a1', name: '专辑', serverUrl: 'http://test',
+        id: 'a1',
+        name: '专辑',
+        serverUrl: 'http://test',
         primaryImageTag: 'tag123',
       );
-      expect(album.getCoverImageUrl(), 'http://test/Items/a1/Images/Primary?tag=tag123');
-      expect(album.getCoverImageUrl(fillWidth: 200),
-          'http://test/Items/a1/Images/Primary?tag=tag123&fillWidth=200');
+      expect(
+        album.getCoverImageUrl(),
+        'http://test/Items/a1/Images/Primary?tag=tag123',
+      );
+      expect(
+        album.getCoverImageUrl(fillWidth: 200),
+        'http://test/Items/a1/Images/Primary?tag=tag123&fillWidth=200',
+      );
     });
 
     test('hasCoverImage', () {
-      const withImage = MusicAlbum(id: 'a1', name: 'A', serverUrl: 'http://t', primaryImageTag: 'tag');
-      const withoutImage = MusicAlbum(id: 'a2', name: 'B', serverUrl: 'http://t');
+      const withImage = MusicAlbum(
+        id: 'a1',
+        name: 'A',
+        serverUrl: 'http://t',
+        primaryImageTag: 'tag',
+      );
+      const withoutImage = MusicAlbum(
+        id: 'a2',
+        name: 'B',
+        serverUrl: 'http://t',
+      );
       expect(withImage.hasCoverImage, true);
       expect(withoutImage.hasCoverImage, false);
     });
 
     test('artistText', () {
-      const withArtists = MusicAlbum(id: 'a1', name: 'A', serverUrl: 'http://t', artists: ['X', 'Y']);
+      const withArtists = MusicAlbum(
+        id: 'a1',
+        name: 'A',
+        serverUrl: 'http://t',
+        artists: ['X', 'Y'],
+      );
       const without = MusicAlbum(id: 'a2', name: 'B', serverUrl: 'http://t');
       expect(withArtists.artistText, 'X / Y');
       expect(without.artistText, '未知艺术家');
@@ -55,8 +79,11 @@ void main() {
   group('MusicArtist', () {
     test('构造和字段访问', () {
       const artist = MusicArtist(
-        id: 'ar1', name: '测试艺术家', serverUrl: 'http://test',
-        albumCount: 5, songCount: 50,
+        id: 'ar1',
+        name: '测试艺术家',
+        serverUrl: 'http://test',
+        albumCount: 5,
+        songCount: 50,
       );
       expect(artist.id, 'ar1');
       expect(artist.albumCount, 5);
@@ -64,7 +91,12 @@ void main() {
     });
 
     test('hasImage', () {
-      const withImg = MusicArtist(id: 'ar1', name: 'A', serverUrl: 'http://t', primaryImageTag: 'tag');
+      const withImg = MusicArtist(
+        id: 'ar1',
+        name: 'A',
+        serverUrl: 'http://t',
+        primaryImageTag: 'tag',
+      );
       const without = MusicArtist(id: 'ar2', name: 'B', serverUrl: 'http://t');
       expect(withImg.hasImage, true);
       expect(without.hasImage, false);
@@ -74,8 +106,12 @@ void main() {
   group('MusicSong', () {
     test('构造和字段访问', () {
       const song = MusicSong(
-        id: 's1', name: '测试歌曲', serverUrl: 'http://test',
-        trackNumber: 1, runTimeSeconds: 195, artists: ['艺术家A'],
+        id: 's1',
+        name: '测试歌曲',
+        serverUrl: 'http://test',
+        trackNumber: 1,
+        runTimeSeconds: 195,
+        artists: ['艺术家A'],
       );
       expect(song.id, 's1');
       expect(song.trackNumber, 1);
@@ -83,13 +119,21 @@ void main() {
     });
 
     test('durationText', () {
-      const song = MusicSong(id: 's1', name: 'A', serverUrl: 'http://t', runTimeSeconds: 195);
+      const song = MusicSong(
+        id: 's1',
+        name: 'A',
+        serverUrl: 'http://t',
+        runTimeSeconds: 195,
+      );
       expect(song.durationText, '3:15');
     });
 
     test('getStreamUrl', () {
       const song = MusicSong(
-        id: 's1', name: 'A', serverUrl: 'http://t', accessToken: 'key123',
+        id: 's1',
+        name: 'A',
+        serverUrl: 'http://t',
+        accessToken: 'key123',
       );
       // 默认使用 universal 端点
       final url = song.getStreamUrl();
@@ -104,7 +148,12 @@ void main() {
     });
 
     test('artistText', () {
-      const withArtists = MusicSong(id: 's1', name: 'A', serverUrl: 'http://t', artists: ['X']);
+      const withArtists = MusicSong(
+        id: 's1',
+        name: 'A',
+        serverUrl: 'http://t',
+        artists: ['X'],
+      );
       const without = MusicSong(id: 's2', name: 'B', serverUrl: 'http://t');
       expect(withArtists.artistText, 'X');
       expect(without.artistText, '未知艺术家');
@@ -119,12 +168,57 @@ void main() {
     });
 
     test('MusicSongListResult isNotEmpty', () {
-      final result = MusicSongListResult(
-        songs: [const MusicSong(id: 's1', name: 'A', serverUrl: 'http://t')],
+      const result = MusicSongListResult(
+        songs: [MusicSong(id: 's1', name: 'A', serverUrl: 'http://t')],
         totalCount: 1,
       );
       expect(result.isNotEmpty, true);
       expect(result.length, 1);
+    });
+  });
+
+  group('MusicLibraryPage playback mapping', () {
+    testWidgets('preserves song file path when building tracks from song tab', (
+      tester,
+    ) async {
+      List<AudioTrack>? playedTracks;
+      int? playedIndex;
+
+      const song = MusicSong(
+        id: 'song-with-path',
+        name: 'Path Song',
+        serverUrl: 'http://test',
+        path: '/media/music/path-song.flac',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MusicLibraryPage(
+            libraryName: 'Library',
+            libraryId: 'library-id',
+            fetchAlbums:
+                ({required parentId, startIndex, limit, sortBy}) async =>
+                    const MusicAlbumListResult(albums: [], totalCount: 0),
+            fetchArtists: ({required parentId, startIndex, limit}) async =>
+                const MusicArtistListResult(artists: [], totalCount: 0),
+            fetchSongs: ({required parentId, startIndex, limit}) async =>
+                const MusicSongListResult(songs: [song], totalCount: 1),
+            onPlayTracks: (context, tracks, index) {
+              playedTracks = tracks;
+              playedIndex = index;
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.music_note).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Path Song'));
+
+      expect(playedIndex, 0);
+      expect(playedTracks, isNotNull);
+      expect(playedTracks!.single.path, '/media/music/path-song.flac');
     });
   });
 
@@ -147,20 +241,36 @@ void main() {
 
   group('AlbumDetailPage', () {
     testWidgets('显示专辑名和歌曲列表', (tester) async {
-      final songs = List.generate(3, (i) => MusicSong(
-        id: 's$i', name: '歌曲 $i', serverUrl: 'http://test',
-        trackNumber: i + 1, runTimeSeconds: 180 + i * 30,
-      ));
-
-      await tester.pumpWidget(MaterialApp(
-        home: AlbumDetailPage(
-          album: const MusicAlbum(id: 'a1', name: '测试专辑', serverUrl: 'http://test'),
-          fetchAlbumDetail: (_) async =>
-              const MusicAlbum(id: 'a1', name: '测试专辑', serverUrl: 'http://test', songCount: 3),
-          fetchAlbumSongs: (_) async =>
-              MusicSongListResult(songs: songs, totalCount: 3),
+      final songs = List.generate(
+        3,
+        (i) => MusicSong(
+          id: 's$i',
+          name: '歌曲 $i',
+          serverUrl: 'http://test',
+          trackNumber: i + 1,
+          runTimeSeconds: 180 + i * 30,
         ),
-      ));
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AlbumDetailPage(
+            album: const MusicAlbum(
+              id: 'a1',
+              name: '测试专辑',
+              serverUrl: 'http://test',
+            ),
+            fetchAlbumDetail: (_) async => const MusicAlbum(
+              id: 'a1',
+              name: '测试专辑',
+              serverUrl: 'http://test',
+              songCount: 3,
+            ),
+            fetchAlbumSongs: (_) async =>
+                MusicSongListResult(songs: songs, totalCount: 3),
+          ),
+        ),
+      );
 
       await tester.pumpAndSettle();
       expect(find.text('测试专辑'), findsOneWidget);
@@ -174,22 +284,36 @@ void main() {
       MusicSong? playedSong;
 
       final songs = [
-        const MusicSong(id: 's1', name: '点击测试', serverUrl: 'http://test', trackNumber: 1),
+        const MusicSong(
+          id: 's1',
+          name: '点击测试',
+          serverUrl: 'http://test',
+          trackNumber: 1,
+        ),
       ];
 
-      await tester.pumpWidget(MaterialApp(
-        home: AlbumDetailPage(
-          album: const MusicAlbum(id: 'a1', name: '专辑', serverUrl: 'http://test'),
-          fetchAlbumDetail: (_) async =>
-              const MusicAlbum(id: 'a1', name: '专辑', serverUrl: 'http://test'),
-          fetchAlbumSongs: (_) async =>
-              MusicSongListResult(songs: songs, totalCount: 1),
-          onPlaySong: (ctx, song, playlist, index) {
-            playCalled = true;
-            playedSong = song;
-          },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AlbumDetailPage(
+            album: const MusicAlbum(
+              id: 'a1',
+              name: '专辑',
+              serverUrl: 'http://test',
+            ),
+            fetchAlbumDetail: (_) async => const MusicAlbum(
+              id: 'a1',
+              name: '专辑',
+              serverUrl: 'http://test',
+            ),
+            fetchAlbumSongs: (_) async =>
+                MusicSongListResult(songs: songs, totalCount: 1),
+            onPlaySong: (ctx, song, playlist, index) {
+              playCalled = true;
+              playedSong = song;
+            },
+          ),
         ),
-      ));
+      );
 
       await tester.pumpAndSettle();
       await tester.tap(find.text('点击测试'));
@@ -199,14 +323,23 @@ void main() {
 
     testWidgets('显示加载中', (tester) async {
       final completer = Completer<MusicSongListResult>();
-      await tester.pumpWidget(MaterialApp(
-        home: AlbumDetailPage(
-          album: const MusicAlbum(id: 'a1', name: '加载专辑', serverUrl: 'http://test'),
-          fetchAlbumDetail: (_) async =>
-              const MusicAlbum(id: 'a1', name: '加载专辑', serverUrl: 'http://test'),
-          fetchAlbumSongs: (_) => completer.future,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AlbumDetailPage(
+            album: const MusicAlbum(
+              id: 'a1',
+              name: '加载专辑',
+              serverUrl: 'http://test',
+            ),
+            fetchAlbumDetail: (_) async => const MusicAlbum(
+              id: 'a1',
+              name: '加载专辑',
+              serverUrl: 'http://test',
+            ),
+            fetchAlbumSongs: (_) => completer.future,
+          ),
         ),
-      ));
+      );
 
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -219,20 +352,35 @@ void main() {
 
   group('ArtistDetailPage', () {
     testWidgets('显示艺术家名和专辑网格', (tester) async {
-      final albums = List.generate(2, (i) => MusicAlbum(
-        id: 'al$i', name: '专辑 $i', serverUrl: 'http://test',
-        primaryImageTag: 'tag$i',
-      ));
-
-      await tester.pumpWidget(MaterialApp(
-        home: ArtistDetailPage(
-          artist: const MusicArtist(id: 'ar1', name: '测试艺术家', serverUrl: 'http://test'),
-          fetchArtistDetail: (_) async =>
-              const MusicArtist(id: 'ar1', name: '测试艺术家', serverUrl: 'http://test', albumCount: 2),
-          fetchArtistAlbums: (_) async =>
-              MusicAlbumListResult(albums: albums, totalCount: 2),
+      final albums = List.generate(
+        2,
+        (i) => MusicAlbum(
+          id: 'al$i',
+          name: '专辑 $i',
+          serverUrl: 'http://test',
+          primaryImageTag: 'tag$i',
         ),
-      ));
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ArtistDetailPage(
+            artist: const MusicArtist(
+              id: 'ar1',
+              name: '测试艺术家',
+              serverUrl: 'http://test',
+            ),
+            fetchArtistDetail: (_) async => const MusicArtist(
+              id: 'ar1',
+              name: '测试艺术家',
+              serverUrl: 'http://test',
+              albumCount: 2,
+            ),
+            fetchArtistAlbums: (_) async =>
+                MusicAlbumListResult(albums: albums, totalCount: 2),
+          ),
+        ),
+      );
 
       await tester.pumpAndSettle();
       expect(find.text('测试艺术家'), findsOneWidget);
@@ -248,19 +396,28 @@ void main() {
         const MusicAlbum(id: 'al1', name: '目标专辑', serverUrl: 'http://test'),
       ];
 
-      await tester.pumpWidget(MaterialApp(
-        home: ArtistDetailPage(
-          artist: const MusicArtist(id: 'ar1', name: '艺术家', serverUrl: 'http://test'),
-          fetchArtistDetail: (_) async =>
-              const MusicArtist(id: 'ar1', name: '艺术家', serverUrl: 'http://test'),
-          fetchArtistAlbums: (_) async =>
-              MusicAlbumListResult(albums: albums, totalCount: 1),
-          onNavigateToAlbum: (ctx, album) {
-            navigated = true;
-            targetAlbum = album;
-          },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ArtistDetailPage(
+            artist: const MusicArtist(
+              id: 'ar1',
+              name: '艺术家',
+              serverUrl: 'http://test',
+            ),
+            fetchArtistDetail: (_) async => const MusicArtist(
+              id: 'ar1',
+              name: '艺术家',
+              serverUrl: 'http://test',
+            ),
+            fetchArtistAlbums: (_) async =>
+                MusicAlbumListResult(albums: albums, totalCount: 1),
+            onNavigateToAlbum: (ctx, album) {
+              navigated = true;
+              targetAlbum = album;
+            },
+          ),
         ),
-      ));
+      );
 
       await tester.pumpAndSettle();
       // 专辑可能不在视口中，使用 ensureVisible 滚动到可见
@@ -274,15 +431,24 @@ void main() {
     });
 
     testWidgets('无专辑显示空状态', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: ArtistDetailPage(
-          artist: const MusicArtist(id: 'ar1', name: '空艺术家', serverUrl: 'http://test'),
-          fetchArtistDetail: (_) async =>
-              const MusicArtist(id: 'ar1', name: '空艺术家', serverUrl: 'http://test'),
-          fetchArtistAlbums: (_) async =>
-              const MusicAlbumListResult(albums: [], totalCount: 0),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ArtistDetailPage(
+            artist: const MusicArtist(
+              id: 'ar1',
+              name: '空艺术家',
+              serverUrl: 'http://test',
+            ),
+            fetchArtistDetail: (_) async => const MusicArtist(
+              id: 'ar1',
+              name: '空艺术家',
+              serverUrl: 'http://test',
+            ),
+            fetchArtistAlbums: (_) async =>
+                const MusicAlbumListResult(albums: [], totalCount: 0),
+          ),
         ),
-      ));
+      );
 
       await tester.pumpAndSettle();
       expect(find.text('暂无专辑'), findsOneWidget);
@@ -307,7 +473,7 @@ void main() {
       expect(track.streamUrl, 'http://test/Audio/t1/stream');
       expect(track.coverUrl, 'http://test/cover.jpg');
       expect(track.artistText, '艺术家A');
-      expect(track.duration, Duration(minutes: 3, seconds: 30));
+      expect(track.duration, const Duration(minutes: 3, seconds: 30));
       expect(track.albumName, '专辑名');
       expect(track.trackNumber, 1);
       expect(track.isFavorite, true);
@@ -346,11 +512,46 @@ void main() {
     test('AudioTrack props 包含关键字段', () {
       const track1 = AudioTrack(id: 't1', name: 'A', streamUrl: 'http://s1');
       const track2 = AudioTrack(
-        id: 't1', name: 'A', streamUrl: 'http://s1',
+        id: 't1',
+        name: 'A',
+        streamUrl: 'http://s1',
         coverUrl: 'http://cover.jpg',
       );
       // track2 有额外字段但 props 只看 id+name+streamUrl
       expect(track1, track2);
+    });
+  });
+
+  group('MusicPlayerPage RVC action', () {
+    testWidgets('keeps a static RVC button and opens RVC on tap', (
+      tester,
+    ) async {
+      final port = _FakePlaybackPort();
+      await port.playSong(
+        const AudioTrack(id: 't1', name: 'Track', streamUrl: 'http://test/t1'),
+        const [
+          AudioTrack(id: 't1', name: 'Track', streamUrl: 'http://test/t1'),
+        ],
+        0,
+      );
+      var opened = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MusicPlayerPage(
+            playbackPort: port,
+            onOpenRvc: () => opened = true,
+          ),
+        ),
+      );
+
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.text('RVC'), findsOneWidget);
+      expect(find.text('AI翻唱'), findsNothing);
+
+      await tester.tap(find.text('RVC'));
+      expect(opened, true);
     });
   });
 }
@@ -360,10 +561,10 @@ class _FakePlaybackPort extends AudioPlaybackPort {
   final List<AudioTrack> _playlist = [];
   int _currentIndex = 0;
   bool _isPlaying = false;
-  bool _isLoading = false;
+  final bool _isLoading = false;
   String? _error;
   Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
+  final Duration _duration = Duration.zero;
   PlayMode _playMode = PlayMode.sequential;
   final _positionController = StreamController<Duration>.broadcast();
 
@@ -405,7 +606,11 @@ class _FakePlaybackPort extends AudioPlaybackPort {
   Stream<Duration> get onPositionChanged => _positionController.stream;
 
   @override
-  Future<void> playSong(AudioTrack track, List<AudioTrack> playlist, int startIndex) async {
+  Future<void> playSong(
+    AudioTrack track,
+    List<AudioTrack> playlist,
+    int startIndex,
+  ) async {
     _playlist
       ..clear()
       ..addAll(playlist);
