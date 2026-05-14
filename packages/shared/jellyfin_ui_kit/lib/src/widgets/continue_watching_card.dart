@@ -77,6 +77,21 @@ class _Thumbnail extends StatelessWidget {
     required this.item,
   });
 
+  JellyfinImageType get _imageType {
+    if (item.hasThumbImage) return JellyfinImageType.thumb;
+    if (item.hasBackdropImage) return JellyfinImageType.backdrop;
+    return JellyfinImageType.primary;
+  }
+
+  String? get _imageTag {
+    if (item.hasThumbImage) return item.thumbImageTag;
+    if (item.hasBackdropImage) return item.backdropImageTag;
+    return item.primaryImageTag;
+  }
+
+  bool get _hasAnyImage =>
+      item.hasThumbImage || item.hasBackdropImage || item.hasCoverImage;
+
   @override
   Widget build(BuildContext context) {
     final progress = ((item.playedPercentage ?? 0) / 100).clamp(0.0, 1.0);
@@ -88,11 +103,12 @@ class _Thumbnail extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            item.hasCoverImage
+            _hasAnyImage
                 ? JellyfinImage(
                     imageProvider: imageProvider,
                     itemId: item.id,
-                    imageTag: item.primaryImageTag,
+                    imageType: _imageType,
+                    imageTag: _imageTag,
                     fillWidth: 480,
                     fillHeight: 270,
                     fit: BoxFit.cover,

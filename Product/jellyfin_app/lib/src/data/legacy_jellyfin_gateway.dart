@@ -30,13 +30,14 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
     final client = ApiClient(config);
 
-    final response = await client.jellyfinClient.getUserApi()
+    final response = await client.jellyfinClient
+        .getUserApi()
         .authenticateUserByName(
-      authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
-        username: username,
-        pw: password,
-      ),
-    );
+          authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
+            username: username,
+            pw: password,
+          ),
+        );
 
     final data = response.data!;
     config.accessToken = data.accessToken;
@@ -68,13 +69,14 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
     final adminClient = ApiClient(config);
 
-    final authResponse = await adminClient.jellyfinClient.getUserApi()
+    final authResponse = await adminClient.jellyfinClient
+        .getUserApi()
         .authenticateUserByName(
-      authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
-        username: adminUsername,
-        pw: adminPassword,
-      ),
-    );
+          authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
+            username: adminUsername,
+            pw: adminPassword,
+          ),
+        );
     config.accessToken = authResponse.data!.accessToken;
     adminClient.updateAccessToken(authResponse.data!.accessToken);
 
@@ -99,12 +101,12 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     _requireClient();
     final config = _apiClient!.config;
 
-    final response = await _apiClient!.jellyfinClient.getUserViewsApi()
+    final response = await _apiClient!.jellyfinClient
+        .getUserViewsApi()
         .getUserViews(userId: config.userId);
 
     final items = response.data?.items ?? [];
-    return items.map((dto) => _mapLibrary(dto, config.serverUrl))
-        .toList();
+    return items.map((dto) => _mapLibrary(dto, config.serverUrl)).toList();
   }
 
   @override
@@ -112,15 +114,22 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     _requireClient();
     final config = _apiClient!.config;
 
-    final response = await _apiClient!.jellyfinClient.getItemsApi()
+    final response = await _apiClient!.jellyfinClient
+        .getItemsApi()
         .getResumeItems(
-      userId: config.userId,
-      limit: limit,
-    );
+          userId: config.userId,
+          limit: limit,
+          enableImages: true,
+          imageTypeLimit: 3,
+          enableImageTypes: const [
+            jellyfin_dart.ImageType.primary,
+            jellyfin_dart.ImageType.backdrop,
+            jellyfin_dart.ImageType.thumb,
+          ],
+        );
 
     final items = response.data?.items ?? [];
-    return items.map((dto) => mapMediaItem(dto, config.serverUrl))
-        .toList();
+    return items.map((dto) => mapMediaItem(dto, config.serverUrl)).toList();
   }
 
   @override
@@ -151,12 +160,14 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     _requireClient();
     final config = _apiClient!.config;
 
-    final response = await _apiClient!.jellyfinClient.getTvShowsApi()
+    final response = await _apiClient!.jellyfinClient
+        .getTvShowsApi()
         .getSeasons(seriesId: seriesId, userId: config.userId);
 
     final items = response.data?.items ?? [];
     return models.SeasonListResult(
-      seasons: items.map((dto) => _mapSeason(dto, seriesId, config.serverUrl))
+      seasons: items
+          .map((dto) => _mapSeason(dto, seriesId, config.serverUrl))
           .toList(),
       totalCount: response.data?.totalRecordCount,
     );
@@ -170,16 +181,18 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     _requireClient();
     final config = _apiClient!.config;
 
-    final response = await _apiClient!.jellyfinClient.getTvShowsApi()
+    final response = await _apiClient!.jellyfinClient
+        .getTvShowsApi()
         .getEpisodes(
-      seriesId: seriesId,
-      seasonId: seasonId,
-      userId: config.userId,
-    );
+          seriesId: seriesId,
+          seasonId: seasonId,
+          userId: config.userId,
+        );
 
     final items = response.data?.items ?? [];
     return models.EpisodeListResult(
-      episodes: items.map((dto) => _mapEpisode(dto, seriesId, seasonId, config.serverUrl))
+      episodes: items
+          .map((dto) => _mapEpisode(dto, seriesId, seasonId, config.serverUrl))
           .toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: response.data?.startIndex,
@@ -187,7 +200,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
   }
 
   @override
-  Future<movies.MovieFilterResult> fetchMovies(movies.MovieFilter filter) async {
+  Future<movies.MovieFilterResult> fetchMovies(
+    movies.MovieFilter filter,
+  ) async {
     _requireClient();
     final config = _apiClient!.config;
 
@@ -228,8 +243,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return movies.MovieFilterResult(
-      movies: items.map((dto) => mapMediaItem(dto, config.serverUrl))
-          .toList(),
+      movies: items.map((dto) => mapMediaItem(dto, config.serverUrl)).toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: filter.startIndex,
     );
@@ -260,8 +274,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return models.MediaItemListResult(
-      items: items.map((dto) => mapMediaItem(dto, config.serverUrl))
-          .toList(),
+      items: items.map((dto) => mapMediaItem(dto, config.serverUrl)).toList(),
       totalCount: response.data?.totalRecordCount,
     );
   }
@@ -290,7 +303,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return music.MusicAlbumListResult(
-      albums: items.map((dto) => _mapMusicAlbum(dto, config.serverUrl)).toList(),
+      albums: items
+          .map((dto) => _mapMusicAlbum(dto, config.serverUrl))
+          .toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: startIndex,
     );
@@ -317,7 +332,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return music.MusicArtistListResult(
-      artists: items.map((dto) => _mapMusicArtist(dto, config.serverUrl)).toList(),
+      artists: items
+          .map((dto) => _mapMusicArtist(dto, config.serverUrl))
+          .toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: startIndex,
     );
@@ -344,7 +361,11 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return music.MusicSongListResult(
-      songs: items.map((dto) => _mapMusicSong(dto, config.serverUrl, config.accessToken)).toList(),
+      songs: items
+          .map(
+            (dto) => _mapMusicSong(dto, config.serverUrl, config.accessToken),
+          )
+          .toList(),
       totalCount: response.data?.totalRecordCount,
       startIndex: startIndex,
     );
@@ -385,7 +406,11 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return music.MusicSongListResult(
-      songs: items.map((dto) => _mapMusicSong(dto, config.serverUrl, config.accessToken)).toList(),
+      songs: items
+          .map(
+            (dto) => _mapMusicSong(dto, config.serverUrl, config.accessToken),
+          )
+          .toList(),
       totalCount: response.data?.totalRecordCount,
     );
   }
@@ -426,7 +451,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     final items = response.data?.items ?? [];
     return music.MusicAlbumListResult(
-      albums: items.map((dto) => _mapMusicAlbum(dto, config.serverUrl)).toList(),
+      albums: items
+          .map((dto) => _mapMusicAlbum(dto, config.serverUrl))
+          .toList(),
       totalCount: response.data?.totalRecordCount,
     );
   }
@@ -494,7 +521,8 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     _requireClient();
 
     try {
-      final response = await _apiClient!.jellyfinClient.getLyricsApi()
+      final response = await _apiClient!.jellyfinClient
+          .getLyricsApi()
           .getLyrics(itemId: itemId);
       final dto = response.data;
       if (dto == null) return null;
@@ -509,7 +537,8 @@ class LegacyJellyfinGateway implements JellyfinGateway {
   Future<List<music.RemoteLyricsInfo>> searchRemoteLyrics(String itemId) async {
     _requireClient();
 
-    final response = await _apiClient!.jellyfinClient.getLyricsApi()
+    final response = await _apiClient!.jellyfinClient
+        .getLyricsApi()
         .searchRemoteLyrics(itemId: itemId);
     final items = response.data ?? [];
     return items.map(_mapRemoteLyricsInfo).toList();
@@ -522,7 +551,8 @@ class LegacyJellyfinGateway implements JellyfinGateway {
   }) async {
     _requireClient();
 
-    final response = await _apiClient!.jellyfinClient.getLyricsApi()
+    final response = await _apiClient!.jellyfinClient
+        .getLyricsApi()
         .downloadRemoteLyrics(itemId: itemId, lyricId: lyricId);
     final dto = response.data;
     if (dto == null) throw StateError('下载歌词失败');
@@ -549,14 +579,17 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     final hasImage = hasImageTag || hasBlurHash;
 
     final backdropImageTags = dto.backdropImageTags;
-    final hasBackdrop = backdropImageTags != null && backdropImageTags.isNotEmpty;
+    final hasBackdrop =
+        backdropImageTags != null && backdropImageTags.isNotEmpty;
 
     return models.MediaLibrary(
       id: dto.id ?? '',
       name: dto.name ?? '未知媒体库',
       type: _mapLibraryType(dto.collectionType),
       serverUrl: serverUrl,
-      primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
+      primaryImageTag: hasImageTag
+          ? primaryImageTag
+          : (hasImage ? 'has_image' : null),
       backdropImageTag: hasBackdrop ? backdropImageTags.first : null,
       itemCount: dto.childCount,
       accessToken: null,
@@ -619,33 +652,40 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       final personImageTag = person.primaryImageTag;
       String? personImageUrl;
       if (personImageTag != null && personImageTag.isNotEmpty) {
-        personImageUrl = '$serverUrl/Items/${person.id}/Images/Primary?tag=$personImageTag';
+        personImageUrl =
+            '$serverUrl/Items/${person.id}/Images/Primary?tag=$personImageTag';
       }
 
       if (person.type == jellyfin_dart.PersonKind.director) {
         directors.add(person.name!);
-        directorInfos.add(models.ActorInfo(
-          name: person.name!,
-          role: '导演',
-          imageUrl: personImageUrl,
-          id: person.id,
-        ));
+        directorInfos.add(
+          models.ActorInfo(
+            name: person.name!,
+            role: '导演',
+            imageUrl: personImageUrl,
+            id: person.id,
+          ),
+        );
       } else if (person.type == jellyfin_dart.PersonKind.writer) {
         writers.add(person.name!);
-        writerInfos.add(models.ActorInfo(
-          name: person.name!,
-          role: '编剧',
-          imageUrl: personImageUrl,
-          id: person.id,
-        ));
+        writerInfos.add(
+          models.ActorInfo(
+            name: person.name!,
+            role: '编剧',
+            imageUrl: personImageUrl,
+            id: person.id,
+          ),
+        );
       } else if (person.type == jellyfin_dart.PersonKind.actor) {
         actors.add(person.name!);
-        actorInfos.add(models.ActorInfo(
-          name: person.name!,
-          role: person.role,
-          imageUrl: personImageUrl,
-          id: person.id,
-        ));
+        actorInfos.add(
+          models.ActorInfo(
+            name: person.name!,
+            role: person.role,
+            imageUrl: personImageUrl,
+            id: person.id,
+          ),
+        );
       }
     }
 
@@ -654,17 +694,26 @@ class LegacyJellyfinGateway implements JellyfinGateway {
 
     // backdrop
     final backdropImageTags = dto.backdropImageTags;
-    final backdropTag = dto.imageTags?['Backdrop'] ??
+    final backdropTag =
+        dto.imageTags?['Backdrop'] ??
         (backdropImageTags != null && backdropImageTags.isNotEmpty
-            ? backdropImageTags.first : null);
+            ? backdropImageTags.first
+            : null);
+
+    // thumb
+    final thumbImageTag = imageTags?['Thumb'];
+    final hasThumbTag = thumbImageTag != null && thumbImageTag.isNotEmpty;
 
     return models.MediaItem(
       id: dto.id ?? '',
       name: dto.name ?? '未知媒体',
       type: typeString,
       serverUrl: serverUrl,
-      primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
+      primaryImageTag: hasImageTag
+          ? primaryImageTag
+          : (hasImage ? 'has_image' : null),
       backdropImageTag: backdropTag,
+      thumbImageTag: hasThumbTag ? thumbImageTag : null,
       productionYear: dto.productionYear,
       genres: dto.genres,
       communityRating: dto.communityRating,
@@ -707,7 +756,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       name: dto.name ?? _seasonName(indexNumber),
       indexNumber: indexNumber,
       serverUrl: serverUrl,
-      primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
+      primaryImageTag: hasImageTag
+          ? primaryImageTag
+          : (hasImage ? 'has_image' : null),
       overview: dto.overview,
       episodeCount: dto.childCount,
       accessToken: null,
@@ -741,7 +792,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       serverUrl: serverUrl,
       seasonNumber: null,
       episodeNumber: dto.indexNumber,
-      primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
+      primaryImageTag: hasImageTag
+          ? primaryImageTag
+          : (hasImage ? 'has_image' : null),
       overview: dto.overview,
       runTimeTicks: dto.runTimeTicks,
       runTimeMinutes: runTimeMinutes,
@@ -821,10 +874,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     final artistRefs = <music.ArtistRef>[];
     for (final artist in (dto.artistItems ?? [])) {
       artists.add(artist.name ?? '');
-      artistRefs.add(music.ArtistRef(
-        id: artist.id ?? '',
-        name: artist.name ?? '',
-      ));
+      artistRefs.add(
+        music.ArtistRef(id: artist.id ?? '', name: artist.name ?? ''),
+      );
     }
 
     // 专辑信息
@@ -863,6 +915,7 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       played: dto.userData?.played,
       playCount: dto.userData?.playCount,
       accessToken: accessToken,
+      path: dto.path,
     );
   }
 
@@ -875,7 +928,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
   }
 
-  static music.LyricsMetadata _mapLyricsMetadata(jellyfin_dart.LyricMetadata dto) {
+  static music.LyricsMetadata _mapLyricsMetadata(
+    jellyfin_dart.LyricMetadata dto,
+  ) {
     return music.LyricsMetadata(
       isSynced: dto.isSynced,
       artist: dto.artist,
@@ -887,13 +942,12 @@ class LegacyJellyfinGateway implements JellyfinGateway {
   }
 
   static music.LyricsLine _mapLyricsLine(jellyfin_dart.LyricLine dto) {
-    return music.LyricsLine(
-      text: dto.text,
-      startTicks: dto.start,
-    );
+    return music.LyricsLine(text: dto.text, startTicks: dto.start);
   }
 
-  static music.RemoteLyricsInfo _mapRemoteLyricsInfo(jellyfin_dart.RemoteLyricInfoDto dto) {
+  static music.RemoteLyricsInfo _mapRemoteLyricsInfo(
+    jellyfin_dart.RemoteLyricInfoDto dto,
+  ) {
     return music.RemoteLyricsInfo(
       id: dto.id,
       providerName: dto.providerName,

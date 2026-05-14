@@ -10,6 +10,8 @@ class FakeImageProvider implements JellyfinImageProvider {
   final bool _shouldFail;
   int callCount = 0;
   String? lastItemId;
+  JellyfinImageType? lastImageType;
+  final List<JellyfinImageType> requestedTypes = [];
 
   FakeImageProvider({Uint8List? imageData, bool shouldFail = false})
       : _imageData = imageData,
@@ -18,19 +20,23 @@ class FakeImageProvider implements JellyfinImageProvider {
   @override
   String buildImageUrl({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? imageTag,
     int? fillWidth,
     int? fillHeight,
   }) {
-    return 'http://test:8096/Items/$itemId/Images/Primary';
+    lastImageType = imageType;
+    requestedTypes.add(imageType);
+    return 'http://test:8096/Items/$itemId/Images/${imageType.pathSegment}';
   }
 
   @override
   Map<String, String>? get authHeaders => null;
 
   @override
-  Future<Uint8List> getPrimaryImage({
+  Future<Uint8List> getImage({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? tag,
     int? fillWidth,
     int? fillHeight,
@@ -38,6 +44,7 @@ class FakeImageProvider implements JellyfinImageProvider {
   }) async {
     callCount++;
     lastItemId = itemId;
+    lastImageType = imageType;
     if (_shouldFail) throw Exception('加载失败');
     return _imageData ?? Uint8List.fromList([1, 2, 3, 4]);
   }
@@ -47,7 +54,7 @@ void main() {
   group('JellyfinImageProvider', () {
     test('FakeImageProvider 应正常返回数据', () async {
       final provider = FakeImageProvider();
-      final data = await provider.getPrimaryImage(itemId: 'test-001');
+      final data = await provider.getImage(itemId: 'test-001');
       expect(data, isNotNull);
       expect(provider.callCount, 1);
       expect(provider.lastItemId, 'test-001');
@@ -56,9 +63,19 @@ void main() {
     test('FakeImageProvider 失败时应抛出异常', () async {
       final provider = FakeImageProvider(shouldFail: true);
       expect(
-        () => provider.getPrimaryImage(itemId: 'fail-001'),
+        () => provider.getImage(itemId: 'fail-001'),
         throwsException,
       );
+    });
+  });
+
+  group('JellyfinImageType', () {
+    test('pathSegment maps Jellyfin endpoints', () {
+      expect(JellyfinImageType.primary.pathSegment, 'Primary');
+      expect(JellyfinImageType.backdrop.pathSegment, 'Backdrop');
+      expect(JellyfinImageType.thumb.pathSegment, 'Thumb');
+      expect(JellyfinImageType.logo.pathSegment, 'Logo');
+      expect(JellyfinImageType.banner.pathSegment, 'Banner');
     });
   });
 

@@ -201,6 +201,7 @@ class _StubImageProvider implements JellyfinImageProvider {
   @override
   String buildImageUrl({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? imageTag,
     int? fillWidth,
     int? fillHeight,
@@ -212,8 +213,9 @@ class _StubImageProvider implements JellyfinImageProvider {
   Map<String, String>? get authHeaders => null;
 
   @override
-  Future<Uint8List> getPrimaryImage({
+  Future<Uint8List> getImage({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? tag,
     int? fillWidth,
     int? fillHeight,

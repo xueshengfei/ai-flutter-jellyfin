@@ -49,6 +49,7 @@ final class PersonalMediaCard extends StatelessWidget {
                   child: _Cover(
                     imageProvider: imageProvider,
                     item: item,
+                    layout: effectiveLayout,
                     actions: actions,
                     onFavoriteToggle: onFavoriteToggle,
                   ),
@@ -132,15 +133,33 @@ final class PersonalMediaCard extends StatelessWidget {
 class _Cover extends StatelessWidget {
   final JellyfinImageProvider imageProvider;
   final models.MediaItem item;
+  final PersonalMediaCardLayout layout;
   final PersonalActions actions;
   final ValueChanged<bool>? onFavoriteToggle;
 
   const _Cover({
     required this.imageProvider,
     required this.item,
+    required this.layout,
     required this.actions,
     required this.onFavoriteToggle,
   });
+
+  JellyfinImageType get _imageType {
+    if (layout == PersonalMediaCardLayout.landscape) {
+      if (item.hasThumbImage) return JellyfinImageType.thumb;
+      if (item.hasBackdropImage) return JellyfinImageType.backdrop;
+    }
+    return JellyfinImageType.primary;
+  }
+
+  String? get _imageTag {
+    if (layout == PersonalMediaCardLayout.landscape) {
+      if (item.hasThumbImage) return item.thumbImageTag;
+      if (item.hasBackdropImage) return item.backdropImageTag;
+    }
+    return item.primaryImageTag;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +172,8 @@ class _Cover extends StatelessWidget {
             ? JellyfinImage(
                 imageProvider: imageProvider,
                 itemId: item.id,
-                imageTag: item.primaryImageTag,
+                imageType: _imageType,
+                imageTag: _imageTag,
                 fillWidth: 360,
                 fillHeight: 360,
                 fit: BoxFit.cover,

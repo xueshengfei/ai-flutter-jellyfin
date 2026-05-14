@@ -114,16 +114,18 @@ final class _FakeImageProvider implements JellyfinImageProvider {
   @override
   String buildImageUrl({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? imageTag,
     int? fillWidth,
     int? fillHeight,
   }) {
-    return 'http://server/Items/$itemId/Images/Primary';
+    return 'http://server/Items/$itemId/Images/${imageType.pathSegment}';
   }
 
   @override
-  Future<Uint8List> getPrimaryImage({
+  Future<Uint8List> getImage({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? tag,
     int? fillWidth,
     int? fillHeight,

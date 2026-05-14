@@ -25,13 +25,14 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
     final client = ApiClient(config);
 
-    final response = await client.jellyfinClient.getUserApi()
+    final response = await client.jellyfinClient
+        .getUserApi()
         .authenticateUserByName(
-      authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
-        username: username,
-        pw: password,
-      ),
-    );
+          authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
+            username: username,
+            pw: password,
+          ),
+        );
 
     final data = response.data!;
     config.accessToken = data.accessToken;
@@ -62,13 +63,14 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     );
     final adminClient = ApiClient(config);
 
-    final authResponse = await adminClient.jellyfinClient.getUserApi()
+    final authResponse = await adminClient.jellyfinClient
+        .getUserApi()
         .authenticateUserByName(
-      authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
-        username: adminUsername,
-        pw: adminPassword,
-      ),
-    );
+          authenticateUserByName: jellyfin_dart.AuthenticateUserByName(
+            username: adminUsername,
+            pw: adminPassword,
+          ),
+        );
     config.accessToken = authResponse.data!.accessToken;
     adminClient.updateAccessToken(authResponse.data!.accessToken);
 
@@ -91,7 +93,8 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     _requireClient();
     final config = _apiClient!.config;
 
-    final response = await _apiClient!.jellyfinClient.getUserViewsApi()
+    final response = await _apiClient!.jellyfinClient
+        .getUserViewsApi()
         .getUserViews(userId: config.userId);
 
     final items = response.data?.items ?? [];
@@ -99,7 +102,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
   }
 
   @override
-  Future<movies.MovieFilterResult> fetchMovies(movies.MovieFilter filter) async {
+  Future<movies.MovieFilterResult> fetchMovies(
+    movies.MovieFilter filter,
+  ) async {
     _requireClient();
     final config = _apiClient!.config;
 
@@ -190,7 +195,9 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       name: dto.name ?? '未知媒体库',
       type: _mapLibraryType(dto.collectionType),
       serverUrl: serverUrl,
-      primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
+      primaryImageTag: hasImageTag
+          ? primaryImageTag
+          : (hasImage ? 'has_image' : null),
       itemCount: dto.childCount,
     );
   }
@@ -237,34 +244,45 @@ class LegacyJellyfinGateway implements JellyfinGateway {
       final personImageTag = person.primaryImageTag;
       String? personImageUrl;
       if (personImageTag != null && personImageTag.isNotEmpty) {
-        personImageUrl = '$serverUrl/Items/${person.id}/Images/Primary?tag=$personImageTag';
+        personImageUrl =
+            '$serverUrl/Items/${person.id}/Images/Primary?tag=$personImageTag';
       }
 
       if (person.type == jellyfin_dart.PersonKind.director) {
         directors.add(person.name!);
       } else if (person.type == jellyfin_dart.PersonKind.actor) {
         actors.add(person.name!);
-        actorInfos.add(models.ActorInfo(
-          name: person.name!,
-          role: person.role,
-          imageUrl: personImageUrl,
-          id: person.id,
-        ));
+        actorInfos.add(
+          models.ActorInfo(
+            name: person.name!,
+            role: person.role,
+            imageUrl: personImageUrl,
+            id: person.id,
+          ),
+        );
       }
     }
 
     final backdropImageTags = dto.backdropImageTags;
-    final backdropTag = dto.imageTags?['Backdrop'] ??
+    final backdropTag =
+        dto.imageTags?['Backdrop'] ??
         (backdropImageTags != null && backdropImageTags.isNotEmpty
-            ? backdropImageTags.first : null);
+            ? backdropImageTags.first
+            : null);
+
+    final thumbImageTag = imageTags?['Thumb'];
+    final hasThumbTag = thumbImageTag != null && thumbImageTag.isNotEmpty;
 
     return models.MediaItem(
       id: dto.id ?? '',
       name: dto.name ?? '未知媒体',
       type: dto.type?.name ?? 'unknown',
       serverUrl: serverUrl,
-      primaryImageTag: hasImageTag ? primaryImageTag : (hasImage ? 'has_image' : null),
+      primaryImageTag: hasImageTag
+          ? primaryImageTag
+          : (hasImage ? 'has_image' : null),
       backdropImageTag: backdropTag,
+      thumbImageTag: hasThumbTag ? thumbImageTag : null,
       productionYear: dto.productionYear,
       genres: dto.genres,
       communityRating: dto.communityRating,

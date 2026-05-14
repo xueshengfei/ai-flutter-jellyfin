@@ -145,8 +145,23 @@ void _showSnack(BuildContext ctx, String msg) {
 /// 占位图片加载器 — 返回 1x1 透明 PNG
 class _StubImageProvider implements JellyfinImageProvider {
   @override
-  Future<Uint8List> getPrimaryImage({
+  String buildImageUrl({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
+    String? imageTag,
+    int? fillWidth,
+    int? fillHeight,
+  }) {
+    return '';
+  }
+
+  @override
+  Map<String, String>? get authHeaders => null;
+
+  @override
+  Future<Uint8List> getImage({
+    required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? tag,
     int? fillWidth,
     int? fillHeight,
