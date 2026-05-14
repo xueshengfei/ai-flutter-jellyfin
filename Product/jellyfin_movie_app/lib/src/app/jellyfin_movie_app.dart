@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jellyfin_auth/jellyfin_auth.dart';
 import 'app_router.dart';
 import '../data/legacy_jellyfin_gateway.dart';
 import '../data/personal_repository_adapter.dart';
@@ -28,6 +29,7 @@ class _JellyfinMovieAppState extends State<JellyfinMovieApp> {
         gateway: _gateway,
         sessionController: _sessionController,
       ),
+      discoveryService: ServerDiscoveryService(),
     );
   }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jellyfin_auth/jellyfin_auth_pages.dart';
+import 'package:jellyfin_auth/jellyfin_auth.dart';
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_music/jellyfin_music.dart' as music;
@@ -8,6 +8,7 @@ import 'package:jellyfin_music/jellyfin_music_pages.dart';
 import 'package:jellyfin_personal/jellyfin_personal.dart';
 import 'package:rvc_flutter/rvc_flutter.dart';
 import '../data/jellyfin_gateway.dart';
+import '../features/ai/ai_route_page.dart';
 import '../features/home/media_libraries_page.dart';
 import '../features/media/media_route_pages.dart';
 import '../features/music/music_route_pages.dart';
@@ -38,6 +39,8 @@ GoRouter createAppRouter({
   PersonalRepository? personalRepository,
   music.AudioPlaybackPort? audioPlaybackPort,
   RvcTaskController? rvcTaskController,
+  String? aiServiceUrl,
+  ServerDiscoveryService? discoveryService,
   String initialLocation = '/login',
 }) {
   final effectiveGateway = gateway ?? _StubGateway();
@@ -54,19 +57,25 @@ GoRouter createAppRouter({
       GoRoute(
         path: '/login',
         builder: (context, state) => LoginPage(
-          onLogin: ({required serverUrl, required username, required password}) async {
-            try {
-              final session = await effectiveGateway.login(
-                serverUrl: serverUrl,
-                username: username,
-                password: password,
-              );
-              sessionController.setSession(session);
-              return null;
-            } catch (e) {
-              return '登录失败: $e';
-            }
-          },
+          discoveryService: discoveryService,
+          onLogin:
+              ({
+                required serverUrl,
+                required username,
+                required password,
+              }) async {
+                try {
+                  final session = await effectiveGateway.login(
+                    serverUrl: serverUrl,
+                    username: username,
+                    password: password,
+                  );
+                  sessionController.setSession(session);
+                  return null;
+                } catch (e) {
+                  return '登录失败: $e';
+                }
+              },
         ),
       ),
       GoRoute(
@@ -83,13 +92,17 @@ GoRouter createAppRouter({
             onLibraryTap: (library) {
               switch (library.type) {
                 case models.MediaLibraryType.movies:
-                  context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
+                  context.push(
+                    '/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}',
+                  );
                 case models.MediaLibraryType.tvshows:
                   context.push('/libraries/${library.id}/series');
                 case models.MediaLibraryType.music:
                   context.push('/libraries/${library.id}/music');
                 default:
-                  context.push('/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}');
+                  context.push(
+                    '/libraries/${library.id}/movies?name=${Uri.encodeComponent(library.name)}',
+                  );
               }
             },
             onContinueWatchingTap: (item) {
@@ -97,6 +110,9 @@ GoRouter createAppRouter({
             },
             onLogout: () => sessionController.clearSession(),
             onOpenPersonal: () => context.push('/personal'),
+            onOpenAiRecommendation: aiServiceUrl != null
+                ? () => context.push('/ai')
+                : null,
           );
         },
       ),
@@ -213,9 +229,9 @@ GoRouter createAppRouter({
             searchRemoteLyrics: effectiveGateway.searchRemoteLyrics,
             downloadRemoteLyrics: ({required itemId, required lyricId}) =>
                 effectiveGateway.downloadRemoteLyrics(
-              itemId: itemId,
-              lyricId: lyricId,
-            ),
+                  itemId: itemId,
+                  lyricId: lyricId,
+                ),
             albumCoverUrl: track?.coverUrl,
           );
         },
@@ -338,13 +354,29 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final repository = personalRepository;
           if (repository == null) {
-            return const Scaffold(
-              body: Center(child: Text('个人模块未配置')),
-            );
+            return const Scaffold(body: Center(child: Text('个人模块未配置')));
           }
           return PersonalRoutePage(
             repository: repository,
             sessionController: sessionController,
+          );
+        },
+      ),
+      // AI 推荐
+      GoRoute(
+        path: '/ai',
+        builder: (context, state) {
+          if (aiServiceUrl == null) {
+            return const Scaffold(body: Center(child: Text('AI 推荐服务未配置')));
+          }
+          final session = sessionController.currentSession;
+          return AiRecommendRoutePage(
+            gateway: effectiveGateway,
+            aiServiceUrl: aiServiceUrl,
+            imageProvider: JellyfinAppImageProvider(
+              serverUrl: session?.serverUrl ?? '',
+              accessToken: session?.accessToken ?? '',
+            ),
           );
         },
       ),
@@ -355,12 +387,22 @@ GoRouter createAppRouter({
 /// 测试用空 gateway（无 gateway 时不抛错）
 class _StubGateway implements JellyfinGateway {
   @override
-  Future<AppSession> login({required String serverUrl, required String username, required String password}) {
+  Future<AppSession> login({
+    required String serverUrl,
+    required String username,
+    required String password,
+  }) {
     throw UnimplementedError('No gateway configured');
   }
 
   @override
-  Future<void> register({required String serverUrl, required String adminUsername, required String adminPassword, required String username, required String password}) {
+  Future<void> register({
+    required String serverUrl,
+    required String adminUsername,
+    required String adminPassword,
+    required String username,
+    required String password,
+  }) {
     throw UnimplementedError('No gateway configured');
   }
 
@@ -371,7 +413,8 @@ class _StubGateway implements JellyfinGateway {
   Future<List<models.MediaLibrary>> getMediaLibraries() async => [];
 
   @override
-  Future<List<models.MediaItem>> getContinueWatching({int limit = 10}) async => [];
+  Future<List<models.MediaItem>> getContinueWatching({int limit = 10}) async =>
+      [];
 
   @override
   Future<models.MediaItem> getMediaItemDetail(String itemId) {
@@ -384,7 +427,10 @@ class _StubGateway implements JellyfinGateway {
   }
 
   @override
-  Future<models.EpisodeListResult> getEpisodes({required String seasonId, required String seriesId}) {
+  Future<models.EpisodeListResult> getEpisodes({
+    required String seasonId,
+    required String seriesId,
+  }) {
     throw UnimplementedError('No gateway configured');
   }
 
@@ -464,7 +510,9 @@ class _StubGateway implements JellyfinGateway {
   Future<music.LyricsData?> getLyrics(String itemId) async => null;
 
   @override
-  Future<List<music.RemoteLyricsInfo>> searchRemoteLyrics(String itemId) async => [];
+  Future<List<music.RemoteLyricsInfo>> searchRemoteLyrics(
+    String itemId,
+  ) async => [];
 
   @override
   Future<music.LyricsData> downloadRemoteLyrics({
