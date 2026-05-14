@@ -256,6 +256,7 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                           albumName: s.albumName,
                           trackNumber: s.trackNumber,
                           isFavorite: s.isFavorite,
+                          path: s.path,
                         ))
                     .toList();
                 widget.onPlayTracks!.call(context, tracks, index);

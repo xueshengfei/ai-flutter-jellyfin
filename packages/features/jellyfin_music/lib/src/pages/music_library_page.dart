@@ -360,6 +360,7 @@ class _SongsTabState extends State<_SongsTab>
                     albumName: s.albumName,
                     trackNumber: s.trackNumber,
                     isFavorite: s.isFavorite,
+                    path: s.path,
                   ),
                 )
                 .toList();
