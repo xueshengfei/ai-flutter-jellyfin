@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import '../../data/jellyfin_gateway.dart';
@@ -14,6 +15,7 @@ class MediaLibrariesPage extends StatefulWidget {
   final void Function(models.MediaItem item) onContinueWatchingTap;
   final VoidCallback onLogout;
   final VoidCallback? onOpenPersonal;
+  final VoidCallback? onOpenAiRecommendation;
 
   const MediaLibrariesPage({
     super.key,
@@ -24,6 +26,7 @@ class MediaLibrariesPage extends StatefulWidget {
     required this.onContinueWatchingTap,
     required this.onLogout,
     this.onOpenPersonal,
+    this.onOpenAiRecommendation,
   });
 
   @override
@@ -75,6 +78,8 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       appBar: AppBar(
         title: const Text('Jellyfin'),
         actions: [
+          if (widget.onOpenAiRecommendation != null)
+            AiRecommendPill(onPressed: widget.onOpenAiRecommendation!),
           if (widget.onOpenPersonal != null)
             IconButton(
               icon: const Icon(Icons.person),
