@@ -70,7 +70,9 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
   }
 
   void _applyFilter(MovieFilter newFilter) {
-    setState(() { _filter = newFilter; });
+    setState(() {
+      _filter = newFilter;
+    });
     _paginatedListKey.currentState?.refresh();
   }
 
@@ -146,6 +148,7 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
           SliverFillRemaining(
             child: PaginatedList<MediaItem>(
               key: _paginatedListKey,
+              refreshKey: _filter,
               pageSize: 100,
               fetcher: _fetchPage,
               loadingBuilder: (context) => SizedBox(
@@ -167,30 +170,45 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.movie_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
+                      Icon(Icons.movie_outlined,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.primary),
                       const SizedBox(height: 24),
-                      Text('暂无电影', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      Text('暂无电影',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
-                      Text('尝试调整筛选条件', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text('尝试调整筛选条件',
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                     ],
                   ),
                 ),
               ),
+              contentBuilder: widget.listBuilder == null
+                  ? null
+                  : (context, page) {
+                      return widget.listBuilder!(
+                        items: page.items,
+                        onTap: (item) =>
+                            widget.onNavigateToMovie?.call(context, item),
+                      );
+                    },
               itemBuilder: (context, movie, index) {
-                if (widget.listBuilder != null) {
-                  // 如果有自定义 listBuilder，用单个 item 包装
-                  return widget.listBuilder!(
-                    items: [movie],
-                    onTap: (item) => widget.onNavigateToMovie?.call(context, item),
-                  );
-                }
                 return ListTile(
                   leading: movie.hasCoverImage
-                      ? Image.network(movie.getCoverImageUrl()!, width: 50, fit: BoxFit.cover,
+                      ? Image.network(movie.getCoverImageUrl()!,
+                          width: 50,
+                          fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const Icon(Icons.movie))
                       : const Icon(Icons.movie),
                   title: Text(movie.name),
-                  subtitle: Text('${movie.productionYear ?? ""} ${movie.communityRating != null ? "⭐ ${movie.ratingText}" : ""}'),
+                  subtitle: Text(
+                      '${movie.productionYear ?? ""} ${movie.communityRating != null ? "⭐ ${movie.ratingText}" : ""}'),
                   onTap: () => widget.onNavigateToMovie?.call(context, movie),
                 );
               },
@@ -237,7 +255,10 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+        color: Theme.of(context)
+            .colorScheme
+            .primaryContainer
+            .withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -245,15 +266,16 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.movie_filter_outlined, color: Theme.of(context).colorScheme.primary, size: 20),
+              Icon(Icons.movie_filter_outlined,
+                  color: Theme.of(context).colorScheme.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   '找到 $_totalCount 部电影',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                 ),
               ),
               if (hasFilters)
@@ -300,37 +322,49 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
     if (_filter.genres?.isNotEmpty ?? false) {
       chips.add(_FilterChipWidget(
         label: '类型: ${_filter.genres!.join(", ")}',
-        onDeleted: () { _applyFilter(_filter.copyWith(clearGenres: true)); },
+        onDeleted: () {
+          _applyFilter(_filter.copyWith(clearGenres: true));
+        },
       ));
     }
     if (_filter.years?.isNotEmpty ?? false) {
       chips.add(_FilterChipWidget(
         label: '年份: ${_filter.years!.join(", ")}',
-        onDeleted: () { _applyFilter(_filter.copyWith(clearYears: true)); },
+        onDeleted: () {
+          _applyFilter(_filter.copyWith(clearYears: true));
+        },
       ));
     }
     if (_filter.nameStartsWith != null) {
       chips.add(_FilterChipWidget(
         label: '首字母: ${_filter.nameStartsWith}',
-        onDeleted: () { _applyFilter(_filter.copyWith(nameStartsWith: null)); },
+        onDeleted: () {
+          _applyFilter(_filter.copyWith(nameStartsWith: null));
+        },
       ));
     }
     if (_filter.searchTerm != null) {
       chips.add(_FilterChipWidget(
         label: '搜索: ${_filter.searchTerm}',
-        onDeleted: () { _applyFilter(_filter.copyWith(searchTerm: null)); },
+        onDeleted: () {
+          _applyFilter(_filter.copyWith(searchTerm: null));
+        },
       ));
     }
     if (_filter.studios?.isNotEmpty ?? false) {
       chips.add(_FilterChipWidget(
         label: '工作室: ${_filter.studios!.join(", ")}',
-        onDeleted: () { _applyFilter(_filter.copyWith(clearStudios: true)); },
+        onDeleted: () {
+          _applyFilter(_filter.copyWith(clearStudios: true));
+        },
       ));
     }
     if (_filter.minCommunityRating != null) {
       chips.add(_FilterChipWidget(
         label: '${_filter.minCommunityRating}+ 分',
-        onDeleted: () { _applyFilter(_filter.copyWith(minCommunityRating: null)); },
+        onDeleted: () {
+          _applyFilter(_filter.copyWith(minCommunityRating: null));
+        },
       ));
     }
     return chips;
@@ -386,9 +420,13 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
           // 拖拽指示器
           Container(
             margin: const EdgeInsets.symmetric(vertical: 12),
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -397,11 +435,18 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                Icon(Icons.filter_list, color: Theme.of(context).colorScheme.primary),
+                Icon(Icons.filter_list,
+                    color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 12),
-                Text('筛选电影', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                Text('筛选电影',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+                IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop()),
               ],
             ),
           ),
@@ -436,7 +481,11 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
         Row(children: [
           Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
-          Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text(title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
         ]),
         const SizedBox(height: 12),
         child,
@@ -448,7 +497,8 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
     final genres = ['动作', '喜剧', '科幻', '爱情', '恐怖', '剧情', '动画', '犯罪'];
     final selected = _filter.genres ?? [];
     return Wrap(
-      spacing: 8, runSpacing: 8,
+      spacing: 8,
+      runSpacing: 8,
       children: genres.map((g) {
         return FilterChip(
           label: Text(g),
@@ -470,7 +520,8 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
     final years = List.generate(15, (i) => currentYear - i);
     final selected = _filter.years ?? [];
     return Wrap(
-      spacing: 8, runSpacing: 8,
+      spacing: 8,
+      runSpacing: 8,
       children: years.take(10).map((y) {
         return FilterChip(
           label: Text('$y'),
@@ -491,7 +542,8 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
     final studios = ['漫威', '迪士尼', '华纳兄弟', '环球影业', '派拉蒙'];
     final selected = _filter.studios ?? [];
     return Wrap(
-      spacing: 8, runSpacing: 8,
+      spacing: 8,
+      runSpacing: 8,
       children: studios.map((s) {
         return FilterChip(
           label: Text(s),
@@ -512,12 +564,14 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
     final ratings = [6.0, 7.0, 8.0, 8.5, 9.0];
     final current = _filter.minCommunityRating;
     return Wrap(
-      spacing: 8, runSpacing: 8,
+      spacing: 8,
+      runSpacing: 8,
       children: ratings.map((r) {
         return FilterChip(
           label: Text('$r+ 分'),
           selected: current != null && current >= r,
-          onSelected: (_) => setState(() => _filter = _filter.copyWith(minCommunityRating: r)),
+          onSelected: (_) =>
+              setState(() => _filter = _filter.copyWith(minCommunityRating: r)),
         );
       }).toList(),
     );
@@ -541,7 +595,8 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
         CheckboxListTile(
           title: const Text('只显示未观看'),
           value: _filter.isUnplayed ?? false,
-          onChanged: (v) => setState(() => _filter = _filter.copyWith(isUnplayed: v)),
+          onChanged: (v) =>
+              setState(() => _filter = _filter.copyWith(isUnplayed: v)),
           contentPadding: EdgeInsets.zero,
         ),
       ],
@@ -553,7 +608,9 @@ class _MovieFilterSheetState extends State<_MovieFilterSheet> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+        border: Border(
+            top: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant)),
       ),
       child: SafeArea(
         top: false,

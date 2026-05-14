@@ -16,11 +16,13 @@ class MediaItemsPage extends StatefulWidget {
   final MediaItemsFetcher fetchMediaItems;
 
   /// 跳转到媒体详情页
-  final void Function(BuildContext context, MediaItem item)? onNavigateToMediaItem;
+  final void Function(BuildContext context, MediaItem item)?
+      onNavigateToMediaItem;
 
   /// 列表项构建器（用于自定义列表布局）
   /// 传入 items 和 onTap 回调，返回完整的列表 Widget
-  final Widget Function(List<MediaItem> items, ValueChanged<MediaItem> onTap)? listBuilder;
+  final Widget Function(List<MediaItem> items, ValueChanged<MediaItem> onTap)?
+      listBuilder;
 
   /// AppBar 右侧额外操作按钮（如 ViewModeSelector）
   final List<Widget>? appBarActions;
@@ -61,6 +63,7 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
       ),
       body: PaginatedList<MediaItem>(
         key: _paginatedListKey,
+        refreshKey: widget.library.id,
         pageSize: 100,
         padding: const EdgeInsets.all(16),
         fetcher: ({required startIndex, required limit}) async {
@@ -118,6 +121,27 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
             ],
           ),
         ),
+        contentBuilder: (context, page) {
+          if (widget.listBuilder != null) {
+            return widget.listBuilder!(
+              page.items,
+              (item) => widget.onNavigateToMediaItem?.call(context, item),
+            );
+          }
+
+          return GridView.builder(
+            padding: page.padding,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 0.67,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: page.items.length,
+            itemBuilder: (context, index) =>
+                page.itemBuilder(context, page.items[index], index),
+          );
+        },
         itemBuilder: (context, item, index) {
           // 如果提供了自定义列表构建器，这里只处理默认情况
           return _buildDefaultItem(context, item);
@@ -140,13 +164,16 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
                       item.getCoverImageUrl()!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Center(
-                        child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
+                        child: Text(item.typeIcon,
+                            style: const TextStyle(fontSize: 40)),
                       ),
                     )
                   : Container(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       child: Center(
-                        child: Text(item.typeIcon, style: const TextStyle(fontSize: 40)),
+                        child: Text(item.typeIcon,
+                            style: const TextStyle(fontSize: 40)),
                       ),
                     ),
             ),
@@ -154,7 +181,8 @@ class _MediaItemsPageState extends State<MediaItemsPage> {
               padding: const EdgeInsets.all(8.0),
               child: Text(
                 item.name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

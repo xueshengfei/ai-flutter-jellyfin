@@ -71,21 +71,29 @@ void main() {
     });
 
     test('crossAxisCount 应正确映射', () {
-      expect(const ViewModeConfig(gridColumn: GridColumn.two).crossAxisCount, 2);
-      expect(const ViewModeConfig(gridColumn: GridColumn.four).crossAxisCount, 4);
-      expect(const ViewModeConfig(gridColumn: GridColumn.five).crossAxisCount, 5);
+      expect(
+          const ViewModeConfig(gridColumn: GridColumn.two).crossAxisCount, 2);
+      expect(
+          const ViewModeConfig(gridColumn: GridColumn.four).crossAxisCount, 4);
+      expect(
+          const ViewModeConfig(gridColumn: GridColumn.five).crossAxisCount, 5);
     });
 
     test('childAspectRatio 应按视图模式返回正确值', () {
-      expect(const ViewModeConfig(viewMode: ViewMode.banner).childAspectRatio, 2.5);
-      expect(const ViewModeConfig(viewMode: ViewMode.list).childAspectRatio, 3.0);
-      expect(const ViewModeConfig(viewMode: ViewMode.poster).childAspectRatio, 0.67);
-      expect(const ViewModeConfig(viewMode: ViewMode.card).childAspectRatio, 0.7);
+      expect(const ViewModeConfig(viewMode: ViewMode.banner).childAspectRatio,
+          2.5);
+      expect(
+          const ViewModeConfig(viewMode: ViewMode.list).childAspectRatio, 3.0);
+      expect(const ViewModeConfig(viewMode: ViewMode.poster).childAspectRatio,
+          0.67);
+      expect(
+          const ViewModeConfig(viewMode: ViewMode.card).childAspectRatio, 0.7);
     });
 
     test('copyWith 应正确复制', () {
       const config = ViewModeConfig();
-      final copy = config.copyWith(viewMode: ViewMode.card, gridColumn: GridColumn.four);
+      final copy =
+          config.copyWith(viewMode: ViewMode.card, gridColumn: GridColumn.four);
       expect(copy.viewMode, ViewMode.card);
       expect(copy.gridColumn, GridColumn.four);
       // 原始不变
@@ -93,8 +101,10 @@ void main() {
     });
 
     test('Equatable 相等性', () {
-      const a = ViewModeConfig(viewMode: ViewMode.list, gridColumn: GridColumn.two);
-      const b = ViewModeConfig(viewMode: ViewMode.list, gridColumn: GridColumn.two);
+      const a =
+          ViewModeConfig(viewMode: ViewMode.list, gridColumn: GridColumn.two);
+      const b =
+          ViewModeConfig(viewMode: ViewMode.list, gridColumn: GridColumn.two);
       expect(a, equals(b));
     });
   });
@@ -142,6 +152,126 @@ void main() {
       expect(image.fillWidth, 200);
       expect(image.fillHeight, 300);
       expect(image.fit, BoxFit.cover);
+    });
+  });
+
+  group('PaginatedList Widget', () {
+    testWidgets('contentBuilder receives current page state',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 600,
+            child: PaginatedList<int>(
+              pageSize: 2,
+              fetcher: ({required startIndex, required limit}) async {
+                return const PagedResult(items: [1, 2], totalCount: 5);
+              },
+              contentBuilder: (context, page) {
+                return ListView(
+                  padding: page.padding,
+                  children: [
+                    Text('range ${page.startIndex}-${page.totalCount}'),
+                    for (final item in page.items)
+                      page.itemBuilder(context, item, page.items.indexOf(item)),
+                  ],
+                );
+              },
+              itemBuilder: (context, item, index) => Text('item $item'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('range 0-5'), findsOneWidget);
+      expect(find.text('item 1'), findsOneWidget);
+      expect(find.text('item 2'), findsOneWidget);
+    });
+
+    testWidgets('refreshKey controls refresh across parent rebuilds',
+        (WidgetTester tester) async {
+      var fetchCount = 0;
+      var refreshKey = 'a';
+
+      Widget buildSubject() {
+        return MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              height: 600,
+              child: PaginatedList<int>(
+                refreshKey: refreshKey,
+                fetcher: ({required startIndex, required limit}) async {
+                  fetchCount++;
+                  return PagedResult(items: [fetchCount], totalCount: 1);
+                },
+                itemBuilder: (context, item, index) => Text('item $item'),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildSubject());
+      await tester.pumpAndSettle();
+      expect(fetchCount, 1);
+      expect(find.text('item 1'), findsOneWidget);
+
+      await tester.pumpWidget(buildSubject());
+      await tester.pumpAndSettle();
+      expect(fetchCount, 1);
+
+      refreshKey = 'b';
+      await tester.pumpWidget(buildSubject());
+      await tester.pumpAndSettle();
+      expect(fetchCount, 2);
+      expect(find.text('item 2'), findsOneWidget);
+    });
+
+    testWidgets('renders grid page content with bounded card height',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 600,
+            child: PaginatedList<int>(
+              pageSize: 2,
+              fetcher: ({required startIndex, required limit}) async {
+                return const PagedResult(items: [1, 2], totalCount: 4);
+              },
+              contentBuilder: (context, page) {
+                return GridView.builder(
+                  padding: page.padding,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: page.items.length,
+                  itemBuilder: (context, index) =>
+                      page.itemBuilder(context, page.items[index], index),
+                );
+              },
+              itemBuilder: (context, item, index) {
+                return Card(
+                  child: Column(
+                    children: [
+                      const Expanded(child: ColoredBox(color: Colors.blue)),
+                      Text('item $item'),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ));
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('item 1'), findsOneWidget);
+      expect(find.text('item 2'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 

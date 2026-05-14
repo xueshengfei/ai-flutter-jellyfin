@@ -25,7 +25,8 @@ void main() {
     });
 
     test('copyWith clear 参数', () {
-      final filter = MovieFilter(parentId: 'lib1', genres: ['动作'], years: [2024]);
+      final filter =
+          MovieFilter(parentId: 'lib1', genres: ['动作'], years: [2024]);
       final cleared = filter.copyWith(clearGenres: true, clearYears: true);
       expect(cleared.genres, isNull);
       expect(cleared.years, isNull);
@@ -39,7 +40,13 @@ void main() {
       expect(empty.isNotEmpty, isFalse);
 
       const result = MovieFilterResult(
-        movies: [MediaItem(id: '1', name: '测试电影', type: 'movie', serverUrl: 'http://localhost')],
+        movies: [
+          MediaItem(
+              id: '1',
+              name: '测试电影',
+              type: 'movie',
+              serverUrl: 'http://localhost')
+        ],
         totalCount: 1,
       );
       expect(result.isNotEmpty, isTrue);
@@ -50,7 +57,8 @@ void main() {
   group('MovieFilterPage', () {
     testWidgets('显示加载状态', (WidgetTester tester) async {
       final completer = Completer<MovieFilterResult>();
-      addTearDown(() => completer.complete(const MovieFilterResult(movies: [])));
+      addTearDown(
+          () => completer.complete(const MovieFilterResult(movies: [])));
 
       await tester.pumpWidget(MaterialApp(
         home: MovieFilterPage(
@@ -67,19 +75,24 @@ void main() {
     testWidgets('显示电影列表', (WidgetTester tester) async {
       final movies = List.generate(
         3,
-        (i) => MediaItem(id: 'm$i', name: '电影 $i', type: 'movie', serverUrl: 'http://localhost'),
+        (i) => MediaItem(
+            id: 'm$i',
+            name: '电影 $i',
+            type: 'movie',
+            serverUrl: 'http://localhost'),
       );
 
       await tester.pumpWidget(MaterialApp(
         home: MovieFilterPage(
           libraryId: 'lib1',
           libraryName: '电影库',
-          fetchMovies: (_) => Future.value(MovieFilterResult(movies: movies, totalCount: 3)),
+          fetchMovies: (_) =>
+              Future.value(MovieFilterResult(movies: movies, totalCount: 3)),
         ),
       ));
 
       await tester.pumpAndSettle();
-      expect(find.textContaining('3 部电影'), findsOneWidget);
+      expect(find.byType(ListTile), findsNWidgets(3));
     });
 
     testWidgets('显示空状态', (WidgetTester tester) async {
@@ -98,15 +111,22 @@ void main() {
     testWidgets('点击电影触发回调', (WidgetTester tester) async {
       var tapped = false;
       final movies = [
-        MediaItem(id: 'm1', name: '测试电影', type: 'movie', serverUrl: 'http://localhost'),
+        MediaItem(
+            id: 'm1',
+            name: '测试电影',
+            type: 'movie',
+            serverUrl: 'http://localhost'),
       ];
 
       await tester.pumpWidget(MaterialApp(
         home: MovieFilterPage(
           libraryId: 'lib1',
           libraryName: '电影库',
-          fetchMovies: (_) => Future.value(MovieFilterResult(movies: movies, totalCount: 1)),
-          onNavigateToMovie: (ctx, item) { tapped = true; },
+          fetchMovies: (_) =>
+              Future.value(MovieFilterResult(movies: movies, totalCount: 1)),
+          onNavigateToMovie: (ctx, item) {
+            tapped = true;
+          },
         ),
       ));
 
@@ -124,12 +144,20 @@ void main() {
     testWidgets('显示加载状态', (WidgetTester tester) async {
       final completer = Completer<MediaItem>();
       addTearDown(() => completer.complete(
-        MediaItem(id: '1', name: '测试电影', type: 'movie', serverUrl: 'http://localhost'),
-      ));
+            MediaItem(
+                id: '1',
+                name: '测试电影',
+                type: 'movie',
+                serverUrl: 'http://localhost'),
+          ));
 
       await tester.pumpWidget(MaterialApp(
         home: MovieDetailPage(
-          movie: MediaItem(id: '1', name: '测试电影', type: 'movie', serverUrl: 'http://localhost'),
+          movie: MediaItem(
+              id: '1',
+              name: '测试电影',
+              type: 'movie',
+              serverUrl: 'http://localhost'),
           fetchDetail: (_) => completer.future,
         ),
       ));
@@ -175,7 +203,8 @@ void main() {
 
     testWidgets('播放按钮触发回调', (WidgetTester tester) async {
       var triggered = false;
-      final movie = MediaItem(id: '1', name: '测试', type: 'movie', serverUrl: 'http://localhost');
+      final movie = MediaItem(
+          id: '1', name: '测试', type: 'movie', serverUrl: 'http://localhost');
 
       await tester.pumpWidget(MaterialApp(
         home: SingleChildScrollView(
@@ -184,7 +213,9 @@ void main() {
             child: MovieDetailPage(
               movie: movie,
               fetchDetail: (_) => Future.value(movie),
-              onStartPlayback: (ctx, item) { triggered = true; },
+              onStartPlayback: (ctx, item) {
+                triggered = true;
+              },
             ),
           ),
         ),
