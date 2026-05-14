@@ -294,6 +294,67 @@ void main() {
     });
   });
 
+  group('LibraryCard responsive layout', () {
+    testWidgets('LibraryCard caps width on wide screens',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1400, 900)),
+          child: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: LibraryCard(
+                imageProvider: FakeImageProvider(),
+                library: const MediaLibrary(
+                  id: 'lib-wide',
+                  name: 'Wide library',
+                  type: MediaLibraryType.movies,
+                  serverUrl: 'http://test:8096',
+                  itemCount: 50,
+                ),
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      ));
+
+      final size = tester.getSize(find.byType(LibraryCard));
+      expect(size.width, lessThanOrEqualTo(360));
+      expect(size.height, inInclusiveRange(72, 96));
+    });
+  });
+
+  group('ContinueWatchingCard Widget', () {
+    testWidgets('uses a landscape rail card size without overflow',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: ContinueWatchingCard(
+              imageProvider: FakeImageProvider(),
+              item: const MediaItem(
+                id: 'continue-001',
+                name: 'A very long episode title that still fits cleanly',
+                type: 'Episode',
+                serverUrl: 'http://test:8096',
+                productionYear: 2026,
+                playedPercentage: 42,
+              ),
+              onTap: () {},
+            ),
+          ),
+        ),
+      ));
+
+      final size = tester.getSize(find.byType(ContinueWatchingCard));
+      expect(size.width, inInclusiveRange(220, 280));
+      expect(size.height, inInclusiveRange(148, 188));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('MediaItemCard Widget', () {
     test('MediaItemCard 应接受 JellyfinImageProvider', () {
       final provider = FakeImageProvider();

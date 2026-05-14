@@ -5,25 +5,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_personal/jellyfin_personal.dart';
 import 'package:jellyfin_personal/jellyfin_personal_pages.dart';
+import 'package:jellyfin_personal/src/widgets/personal_media_card.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 void main() {
-  testWidgets('history card tap opens detail instead of playback',
-      (tester) async {
+  testWidgets('history card tap opens detail instead of playback', (
+    tester,
+  ) async {
     models.MediaItem? opened;
     models.MediaItem? played;
 
-    await tester.pumpWidget(MaterialApp(
-      home: PersonalPage(
-        repository: _FakeRepository(),
-        config: const PersonalModuleConfig.full(),
-        imageProvider: _FakeImageProvider(),
-        actions: PersonalActions(
-          onOpenMedia: (_, item) => opened = item,
-          onPlayMedia: (_, item) => played = item,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PersonalPage(
+          repository: _FakeRepository(),
+          config: const PersonalModuleConfig.full(),
+          imageProvider: _FakeImageProvider(),
+          actions: PersonalActions(
+            onOpenMedia: (_, item) => opened = item,
+            onPlayMedia: (_, item) => played = item,
+          ),
         ),
       ),
-    ));
+    );
 
     await tester.pumpAndSettle();
     await tester.tap(find.text('Zootopia').first);
@@ -31,6 +35,31 @@ void main() {
 
     expect(opened?.id, 'movie-1');
     expect(played, isNull);
+  });
+
+  testWidgets('personal sections use compact cards without overflow', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PersonalPage(
+          repository: _FakeRepository(),
+          config: const PersonalModuleConfig.full(),
+          imageProvider: _FakeImageProvider(),
+          actions: PersonalActions(
+            onOpenMedia: (_, __) {},
+            onPlayMedia: (_, __) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final cardSize = tester.getSize(find.byType(PersonalMediaCard).first);
+    expect(cardSize.width, inInclusiveRange(168, 220));
+    expect(cardSize.height, lessThanOrEqualTo(224));
+    expect(tester.takeException(), isNull);
   });
 }
 
