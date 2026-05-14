@@ -453,8 +453,9 @@ void main() {
 /// 测试用 Fake 图片加载器
 class _FakeImageProvider implements JellyfinImageProvider {
   @override
-  Future<Uint8List> getPrimaryImage({
+  Future<Uint8List> getImage({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? tag,
     int? fillWidth,
     int? fillHeight,
@@ -466,11 +467,12 @@ class _FakeImageProvider implements JellyfinImageProvider {
   @override
   String buildImageUrl({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? imageTag,
     int? fillWidth,
     int? fillHeight,
   }) {
-    return 'http://localhost/Items/$itemId/Images/Primary';
+    return 'http://localhost/Items/$itemId/Images/${imageType.pathSegment}';
   }
 
   @override

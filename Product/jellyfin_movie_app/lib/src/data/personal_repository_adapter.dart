@@ -53,13 +53,19 @@ final class JellyfinPersonalRepositoryAdapter
     _requireClient();
     final client = _client!;
     final response = await client.jellyfinClient.getItemsApi().getResumeItems(
-          userId: client.config.userId,
-          startIndex: query.startIndex,
-          limit: query.limit,
-          includeItemTypes: _mapKinds(query.mediaKinds),
-          enableUserData: true,
-          enableImages: true,
-        );
+      userId: client.config.userId,
+      startIndex: query.startIndex,
+      limit: query.limit,
+      includeItemTypes: _mapKinds(query.mediaKinds),
+      enableUserData: true,
+      enableImages: true,
+      imageTypeLimit: 3,
+      enableImageTypes: const [
+        jellyfin_dart.ImageType.primary,
+        jellyfin_dart.ImageType.backdrop,
+        jellyfin_dart.ImageType.thumb,
+      ],
+    );
     return _mapResult(response.data, client.config.serverUrl);
   }
 
@@ -98,7 +104,10 @@ final class JellyfinPersonalRepositoryAdapter
     if (isFavorite) {
       await api.markFavoriteItem(itemId: itemId, userId: client.config.userId);
     } else {
-      await api.unmarkFavoriteItem(itemId: itemId, userId: client.config.userId);
+      await api.unmarkFavoriteItem(
+        itemId: itemId,
+        userId: client.config.userId,
+      );
     }
   }
 
@@ -127,24 +136,30 @@ final class JellyfinPersonalRepositoryAdapter
     _requireClient();
     final client = _client!;
     final response = await client.jellyfinClient.getItemsApi().getItems(
-          userId: client.config.userId,
-          startIndex: query.startIndex,
-          limit: query.limit,
-          recursive: true,
-          includeItemTypes: _mapKinds(query.mediaKinds),
-          isFavorite: isFavorite,
-          isPlayed: isPlayed,
-          sortBy: sortBy,
-          sortOrder: sortOrder,
-          enableUserData: true,
-          enableImages: true,
-          fields: const [
-            jellyfin_dart.ItemFields.overview,
-            jellyfin_dart.ItemFields.people,
-            jellyfin_dart.ItemFields.studios,
-            jellyfin_dart.ItemFields.genres,
-          ],
-        );
+      userId: client.config.userId,
+      startIndex: query.startIndex,
+      limit: query.limit,
+      recursive: true,
+      includeItemTypes: _mapKinds(query.mediaKinds),
+      isFavorite: isFavorite,
+      isPlayed: isPlayed,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
+      enableUserData: true,
+      enableImages: true,
+      imageTypeLimit: 3,
+      enableImageTypes: const [
+        jellyfin_dart.ImageType.primary,
+        jellyfin_dart.ImageType.backdrop,
+        jellyfin_dart.ImageType.thumb,
+      ],
+      fields: const [
+        jellyfin_dart.ItemFields.overview,
+        jellyfin_dart.ItemFields.people,
+        jellyfin_dart.ItemFields.studios,
+        jellyfin_dart.ItemFields.genres,
+      ],
+    );
     return _mapResult(response.data, client.config.serverUrl);
   }
 
@@ -154,7 +169,9 @@ final class JellyfinPersonalRepositoryAdapter
   ) {
     final items = result?.items ?? const <jellyfin_dart.BaseItemDto>[];
     return models.MediaItemListResult(
-      items: items.map((dto) => LegacyJellyfinGateway.mapMediaItem(dto, serverUrl)).toList(),
+      items: items
+          .map((dto) => LegacyJellyfinGateway.mapMediaItem(dto, serverUrl))
+          .toList(),
       totalCount: result?.totalRecordCount,
       startIndex: result?.startIndex,
     );
@@ -167,8 +184,10 @@ final class JellyfinPersonalRepositoryAdapter
       for (final kind in kinds)
         switch (kind) {
           personal.PersonalMediaKind.movie => jellyfin_dart.BaseItemKind.movie,
-          personal.PersonalMediaKind.series => jellyfin_dart.BaseItemKind.series,
-          personal.PersonalMediaKind.episode => jellyfin_dart.BaseItemKind.episode,
+          personal.PersonalMediaKind.series =>
+            jellyfin_dart.BaseItemKind.series,
+          personal.PersonalMediaKind.episode =>
+            jellyfin_dart.BaseItemKind.episode,
           personal.PersonalMediaKind.audio => jellyfin_dart.BaseItemKind.audio,
           personal.PersonalMediaKind.musicAlbum =>
             jellyfin_dart.BaseItemKind.musicAlbum,

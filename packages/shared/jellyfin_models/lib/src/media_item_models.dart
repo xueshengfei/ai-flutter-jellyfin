@@ -14,12 +14,7 @@ class ActorInfo extends Equatable {
   /// 演员ID
   final String? id;
 
-  const ActorInfo({
-    required this.name,
-    this.role,
-    this.imageUrl,
-    this.id,
-  });
+  const ActorInfo({required this.name, this.role, this.imageUrl, this.id});
 
   @override
   List<Object?> get props => [name, role, imageUrl, id];
@@ -45,6 +40,9 @@ class MediaItem extends Equatable {
 
   /// 背景图片标签
   final String? backdropImageTag;
+
+  /// 缩略图标签（横向图片，用于剧集截图、继续观看等）
+  final String? thumbImageTag;
 
   /// 制作年份
   final int? productionYear;
@@ -116,6 +114,7 @@ class MediaItem extends Equatable {
     required this.serverUrl,
     this.primaryImageTag,
     this.backdropImageTag,
+    this.thumbImageTag,
     this.productionYear,
     this.genres,
     this.communityRating,
@@ -164,6 +163,19 @@ class MediaItem extends Equatable {
 
   bool get hasCoverImage => primaryImageTag != null;
   bool get hasBackdropImage => backdropImageTag != null;
+  bool get hasThumbImage => thumbImageTag != null;
+
+  /// 获取缩略图URL
+  String? getThumbImageUrl() {
+    if (thumbImageTag == null) return null;
+    var url = '$serverUrl/Items/$id/Images/Thumb';
+    if (thumbImageTag != null && thumbImageTag!.isNotEmpty) {
+      url += '?tag=$thumbImageTag';
+    } else if (accessToken != null && accessToken!.isNotEmpty) {
+      url += '?api_key=$accessToken';
+    }
+    return url;
+  }
 
   /// 获取播放时长显示文本
   String get durationText {
@@ -183,41 +195,77 @@ class MediaItem extends Equatable {
   /// 获取类型显示名称
   String get typeDisplayName {
     switch (type.toLowerCase()) {
-      case 'movie': return '电影';
-      case 'series': return '剧集';
-      case 'episode': return '单集';
-      case 'musicalbum': return '专辑';
-      case 'musicartist': return '艺术家';
-      case 'audio': return '音频';
-      case 'boxset': return '合集';
-      default: return type;
+      case 'movie':
+        return '电影';
+      case 'series':
+        return '剧集';
+      case 'episode':
+        return '单集';
+      case 'musicalbum':
+        return '专辑';
+      case 'musicartist':
+        return '艺术家';
+      case 'audio':
+        return '音频';
+      case 'boxset':
+        return '合集';
+      default:
+        return type;
     }
   }
 
   /// 获取类型图标
   String get typeIcon {
     switch (type.toLowerCase()) {
-      case 'movie': return '\u{1F3AC}';
-      case 'series': return '\u{1F4FA}';
-      case 'episode': return '\u{1F4F9}';
-      case 'musicalbum': return '\u{1F4BF}';
-      case 'musicartist': return '\u{1F3A4}';
-      case 'audio': return '\u{1F3B5}';
-      case 'boxset': return '\u{1F4E6}';
-      default: return '\u{1F4C4}';
+      case 'movie':
+        return '\u{1F3AC}';
+      case 'series':
+        return '\u{1F4FA}';
+      case 'episode':
+        return '\u{1F4F9}';
+      case 'musicalbum':
+        return '\u{1F4BF}';
+      case 'musicartist':
+        return '\u{1F3A4}';
+      case 'audio':
+        return '\u{1F3B5}';
+      case 'boxset':
+        return '\u{1F4E6}';
+      default:
+        return '\u{1F4C4}';
     }
   }
 
   @override
   List<Object?> get props => [
-        id, name, type, serverUrl,
-        primaryImageTag, backdropImageTag, productionYear, genres,
-        communityRating, voteCount, officialRating,
-        runTimeTicks, runTimeMinutes, overview,
-        studios, directors, writers, actors,
-        actorInfos, directorInfos, writerInfos,
-        parentId, accessToken, isFavorite, played, playedPercentage,
-      ];
+    id,
+    name,
+    type,
+    serverUrl,
+    primaryImageTag,
+    backdropImageTag,
+    thumbImageTag,
+    productionYear,
+    genres,
+    communityRating,
+    voteCount,
+    officialRating,
+    runTimeTicks,
+    runTimeMinutes,
+    overview,
+    studios,
+    directors,
+    writers,
+    actors,
+    actorInfos,
+    directorInfos,
+    writerInfos,
+    parentId,
+    accessToken,
+    isFavorite,
+    played,
+    playedPercentage,
+  ];
 
   @override
   String toString() =>
@@ -288,9 +336,16 @@ class Season extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, seriesId, name, indexNumber, serverUrl,
-        primaryImageTag, overview, episodeCount, accessToken,
-      ];
+    id,
+    seriesId,
+    name,
+    indexNumber,
+    serverUrl,
+    primaryImageTag,
+    overview,
+    episodeCount,
+    accessToken,
+  ];
 
   @override
   String toString() =>
@@ -362,11 +417,22 @@ class Episode extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, seriesId, seasonId, name,
-        seasonNumber, episodeNumber, serverUrl,
-        primaryImageTag, overview, runTimeTicks, runTimeMinutes,
-        communityRating, playedPercentage, played, accessToken,
-      ];
+    id,
+    seriesId,
+    seasonId,
+    name,
+    seasonNumber,
+    episodeNumber,
+    serverUrl,
+    primaryImageTag,
+    overview,
+    runTimeTicks,
+    runTimeMinutes,
+    communityRating,
+    playedPercentage,
+    played,
+    accessToken,
+  ];
 
   @override
   String toString() =>

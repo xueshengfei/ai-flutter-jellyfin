@@ -12,6 +12,7 @@ import 'jellyfin_image_provider.dart';
 class JellyfinImage extends StatefulWidget {
   final JellyfinImageProvider imageProvider;
   final String itemId;
+  final JellyfinImageType imageType;
   final String? imageTag;
   final int? fillWidth;
   final int? fillHeight;
@@ -23,6 +24,7 @@ class JellyfinImage extends StatefulWidget {
     super.key,
     required this.imageProvider,
     required this.itemId,
+    this.imageType = JellyfinImageType.primary,
     this.imageTag,
     this.fillWidth,
     this.fillHeight,
@@ -52,6 +54,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
   void didUpdateWidget(covariant JellyfinImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.itemId != widget.itemId ||
+        oldWidget.imageType != widget.imageType ||
         oldWidget.imageTag != widget.imageTag ||
         oldWidget.fillWidth != widget.fillWidth ||
         oldWidget.fillHeight != widget.fillHeight ||
@@ -63,6 +66,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
   void _initImage() {
     final url = widget.imageProvider.buildImageUrl(
       itemId: widget.itemId,
+      imageType: widget.imageType,
       imageTag: widget.imageTag,
       fillWidth: widget.fillWidth,
       fillHeight: widget.fillHeight,
@@ -86,8 +90,9 @@ class _JellyfinImageState extends State<JellyfinImage> {
   Future<void> _loadFallback() async {
     if (!mounted) return;
     try {
-      final imageData = await widget.imageProvider.getPrimaryImage(
+      final imageData = await widget.imageProvider.getImage(
         itemId: widget.itemId,
+        imageType: widget.imageType,
         tag: widget.imageTag,
         fillWidth: widget.fillWidth,
         fillHeight: widget.fillHeight,
@@ -120,6 +125,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
   Widget _buildCachedNetworkImage() {
     final url = widget.imageProvider.buildImageUrl(
       itemId: widget.itemId,
+      imageType: widget.imageType,
       imageTag: widget.imageTag,
       fillWidth: widget.fillWidth,
       fillHeight: widget.fillHeight,
@@ -132,8 +138,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
       httpHeaders: headers,
       fit: widget.fit,
       placeholder: (_, __) => widget.placeholder ?? _defaultPlaceholder(),
-      errorWidget: (_, __, ___) =>
-          widget.errorWidget ?? _defaultError(),
+      errorWidget: (_, __, ___) => widget.errorWidget ?? _defaultError(),
       memCacheWidth: widget.fillWidth,
       memCacheHeight: widget.fillHeight,
     );

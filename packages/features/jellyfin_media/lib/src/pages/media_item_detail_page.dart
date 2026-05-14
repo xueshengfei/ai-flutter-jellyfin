@@ -20,10 +20,12 @@ class MediaItemDetailPage extends StatefulWidget {
   final SeasonsFetcher? fetchSeasons;
 
   /// 跳转到人员详情页
-  final void Function(BuildContext context, String personId, String personName, String personType)? onNavigateToPerson;
+  final void Function(BuildContext context, String personId, String personName,
+      String personType)? onNavigateToPerson;
 
   /// 跳转到剧集列表页
-  final void Function(BuildContext context, MediaItem series, Season season)? onNavigateToEpisodes;
+  final void Function(BuildContext context, MediaItem series, Season season)?
+      onNavigateToEpisodes;
 
   /// 开始播放
   final void Function(BuildContext context, MediaItem item)? onStartPlayback;
@@ -60,7 +62,8 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
     setState(() {
       _detailFuture = widget.fetchDetail(widget.item.id);
 
-      if (widget.item.type.toLowerCase() == 'series' && widget.fetchSeasons != null) {
+      if (widget.item.type.toLowerCase() == 'series' &&
+          widget.fetchSeasons != null) {
         _seasonsFuture = widget.fetchSeasons!(widget.item.id);
       }
     });
@@ -103,7 +106,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               ),
             ],
           ),
-
           FutureBuilder<MediaItem>(
             future: _detailFuture,
             builder: (context, snapshot) {
@@ -128,7 +130,8 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const Icon(Icons.error_outline,
+                            size: 64, color: Colors.red),
                         const SizedBox(height: 16),
                         Text('加载失败: ${snapshot.error}'),
                         const SizedBox(height: 16),
@@ -162,6 +165,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
             JellyfinImage(
               imageProvider: widget.imageProvider!,
               itemId: widget.item.id,
+              imageType: JellyfinImageType.backdrop,
               imageTag: widget.item.backdropImageTag,
               fillWidth: 800,
               fillHeight: 450,
@@ -258,8 +262,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           ),
 
         // 季列表
-        if (item.type.toLowerCase() == 'series')
-          _buildSeasonsList(),
+        if (item.type.toLowerCase() == 'series') _buildSeasonsList(),
         const SizedBox(height: 24),
 
         // 演员列表
@@ -271,7 +274,8 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               person: person,
               onTap: () {
                 if (person.id != null) {
-                  widget.onNavigateToPerson?.call(context, person.id!, person.name, 'actor');
+                  widget.onNavigateToPerson
+                      ?.call(context, person.id!, person.name, 'actor');
                 }
               },
             ),
@@ -287,7 +291,8 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               person: person,
               onTap: () {
                 if (person.id != null) {
-                  widget.onNavigateToPerson?.call(context, person.id!, person.name, 'director');
+                  widget.onNavigateToPerson
+                      ?.call(context, person.id!, person.name, 'director');
                 }
               },
             ),
@@ -303,7 +308,8 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               person: person,
               onTap: () {
                 if (person.id != null) {
-                  widget.onNavigateToPerson?.call(context, person.id!, person.name, 'writer');
+                  widget.onNavigateToPerson
+                      ?.call(context, person.id!, person.name, 'writer');
                 }
               },
             ),
@@ -355,7 +361,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                   ),
           ),
         const SizedBox(width: 16),
-
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,7 +372,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                     ),
               ),
               const SizedBox(height: 8),
-
               Wrap(
                 spacing: 8,
                 children: [
@@ -390,7 +394,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                 ],
               ),
               const SizedBox(height: 8),
-
               if (item.communityRating != null)
                 Row(
                   children: [
@@ -424,7 +427,9 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           );
         }
 
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.seasons.isEmpty) {
+        if (snapshot.hasError ||
+            !snapshot.hasData ||
+            snapshot.data!.seasons.isEmpty) {
           return const SizedBox.shrink();
         }
 
@@ -489,11 +494,15 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                                 fillHeight: 360,
                                 fit: BoxFit.cover,
                                 errorWidget: Container(
-                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
                                   child: Center(
                                     child: Text(
                                       season.seasonNumberText,
-                                      style: Theme.of(context).textTheme.titleLarge,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge,
                                     ),
                                   ),
                                 ),
@@ -503,11 +512,15 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
-                                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest,
                                     child: Center(
                                       child: Text(
                                         season.seasonNumberText,
-                                        style: Theme.of(context).textTheme.titleLarge,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge,
                                       ),
                                     ),
                                   );
@@ -523,7 +536,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               ),
             ),
             const SizedBox(height: 4),
-
             Text(
               season.name,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -532,7 +544,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-
             if (season.episodeCount != null)
               Text(
                 '${season.episodeCount} 集',
@@ -569,7 +580,6 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           ),
           const SizedBox(height: 24),
         ],
-
         if (item.studios != null && item.studios!.isNotEmpty) ...[
           _buildSectionTitle('工作室'),
           const SizedBox(height: 8),

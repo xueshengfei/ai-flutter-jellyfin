@@ -28,12 +28,13 @@ class JellyfinAppImageProvider implements JellyfinImageProvider {
   @override
   String buildImageUrl({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? imageTag,
     int? fillWidth,
     int? fillHeight,
   }) {
     if (serverUrl.isEmpty) return '';
-    var url = '$serverUrl/Items/$itemId/Images/Primary';
+    var url = '$serverUrl/Items/$itemId/Images/${imageType.pathSegment}';
     final params = <String, String>{};
     if (imageTag != null && imageTag.isNotEmpty) params['tag'] = imageTag;
     if (fillWidth != null) params['fillWidth'] = '$fillWidth';
@@ -51,14 +52,15 @@ class JellyfinAppImageProvider implements JellyfinImageProvider {
   }
 
   @override
-  Future<Uint8List> getPrimaryImage({
+  Future<Uint8List> getImage({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? tag,
     int? fillWidth,
     int? fillHeight,
     int? quality,
   }) async {
-    var url = '$serverUrl/Items/$itemId/Images/Primary';
+    var url = '$serverUrl/Items/$itemId/Images/${imageType.pathSegment}';
     final params = <String, String>{};
     if (tag != null && tag.isNotEmpty) params['tag'] = tag;
     if (fillWidth != null) params['fillWidth'] = '$fillWidth';

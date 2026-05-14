@@ -70,7 +70,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               background: _buildBackdrop(),
             ),
             actions: [
-              IconButton(icon: const Icon(Icons.refresh), onPressed: _loadDetail),
+              IconButton(
+                  icon: const Icon(Icons.refresh), onPressed: _loadDetail),
             ],
           ),
           FutureBuilder<MediaItem>(
@@ -78,7 +79,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SliverFillRemaining(
-                  child: Center(child: Column(
+                  child: Center(
+                      child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(),
@@ -90,14 +92,17 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               }
               if (snapshot.hasError) {
                 return SliverFillRemaining(
-                  child: Center(child: Column(
+                  child: Center(
+                      child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const Icon(Icons.error_outline,
+                          size: 64, color: Colors.red),
                       const SizedBox(height: 16),
                       Text('加载失败: ${snapshot.error}'),
                       const SizedBox(height: 16),
-                      FilledButton(onPressed: _loadDetail, child: const Text('重试')),
+                      FilledButton(
+                          onPressed: _loadDetail, child: const Text('重试')),
                     ],
                   )),
                 );
@@ -119,24 +124,30 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
             JellyfinImage(
               imageProvider: widget.imageProvider!,
               itemId: widget.movie.id,
+              imageType: JellyfinImageType.backdrop,
               imageTag: widget.movie.backdropImageTag,
               fillWidth: 800,
               fillHeight: 450,
               fit: BoxFit.cover,
-              errorWidget: Container(color: Theme.of(context).colorScheme.surface),
+              errorWidget:
+                  Container(color: Theme.of(context).colorScheme.surface),
             )
           else
             Image.network(
               widget.movie.getBackdropImageUrl()!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surface),
+              errorBuilder: (_, __, ___) =>
+                  Container(color: Theme.of(context).colorScheme.surface),
             ),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.8)
+                ],
               ),
             ),
           ),
@@ -145,7 +156,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
     return Container(
       color: Theme.of(context).colorScheme.surface,
-      child: Icon(Icons.movie_outlined, size: 100, color: Theme.of(context).colorScheme.onSurfaceVariant),
+      child: Icon(Icons.movie_outlined,
+          size: 100, color: Theme.of(context).colorScheme.onSurfaceVariant),
     );
   }
 
@@ -163,20 +175,31 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               onPressed: () => widget.onStartPlayback?.call(context, movie),
               icon: const Icon(Icons.play_arrow),
               label: const Text('播放'),
-              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+              style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16)),
             ),
           ),
           const SizedBox(height: 24),
           if (movie.overview != null && movie.overview!.isNotEmpty) ...[
             _sectionTitle('剧情简介'),
             const SizedBox(height: 8),
-            Text(movie.overview!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5, color: Colors.grey.shade700)),
+            Text(movie.overview!,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(height: 1.5, color: Colors.grey.shade700)),
             const SizedBox(height: 24),
           ],
           if (movie.genres?.isNotEmpty ?? false) ...[
             _sectionTitle('类型'),
             const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: movie.genres!.map((g) => Chip(label: Text(g), visualDensity: VisualDensity.compact)).toList()),
+            Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: movie.genres!
+                    .map((g) => Chip(
+                        label: Text(g), visualDensity: VisualDensity.compact))
+                    .toList()),
             const SizedBox(height: 24),
           ],
           if (movie.communityRating != null) ...[
@@ -185,26 +208,54 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
             Row(children: [
               const Icon(Icons.star, color: Colors.amber, size: 20),
               const SizedBox(width: 4),
-              Text(movie.ratingText, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              Text(movie.ratingText,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
             ]),
             const SizedBox(height: 24),
           ],
           if (movie.directors?.isNotEmpty ?? false) ...[
             _sectionTitle('导演'),
             const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: movie.directors!.map((d) => Chip(avatar: const Icon(Icons.person, size: 16), label: Text(d), visualDensity: VisualDensity.compact)).toList()),
+            Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: movie.directors!
+                    .map((d) => Chip(
+                        avatar: const Icon(Icons.person, size: 16),
+                        label: Text(d),
+                        visualDensity: VisualDensity.compact))
+                    .toList()),
             const SizedBox(height: 24),
           ],
           if (movie.writers?.isNotEmpty ?? false) ...[
             _sectionTitle('作者'),
             const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: movie.writers!.map((w) => Chip(avatar: const Icon(Icons.edit, size: 16), label: Text(w), visualDensity: VisualDensity.compact)).toList()),
+            Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: movie.writers!
+                    .map((w) => Chip(
+                        avatar: const Icon(Icons.edit, size: 16),
+                        label: Text(w),
+                        visualDensity: VisualDensity.compact))
+                    .toList()),
             const SizedBox(height: 24),
           ],
           if (movie.studios?.isNotEmpty ?? false) ...[
             _sectionTitle('工作室'),
             const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: movie.studios!.map((s) => Chip(avatar: const Icon(Icons.business, size: 16), label: Text(s), visualDensity: VisualDensity.compact)).toList()),
+            Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: movie.studios!
+                    .map((s) => Chip(
+                        avatar: const Icon(Icons.business, size: 16),
+                        label: Text(s),
+                        visualDensity: VisualDensity.compact))
+                    .toList()),
             const SizedBox(height: 24),
           ],
           const SizedBox(height: 32),
@@ -230,15 +281,21 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                       fillHeight: 300,
                       fit: BoxFit.cover,
                       errorWidget: Container(
-                        width: 100, height: 150,
+                        width: 100,
+                        height: 150,
                         color: Colors.grey.shade300,
                         child: const Icon(Icons.movie, color: Colors.grey),
                       ),
                     )
                   : Image.network(
                       movie.getCoverImageUrl()!,
-                      width: 100, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(width: 100, height: 150, color: Colors.grey.shade300, child: const Icon(Icons.movie, color: Colors.grey)),
+                      width: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                          width: 100,
+                          height: 150,
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.movie, color: Colors.grey)),
                     ),
             ),
           ),
@@ -247,14 +304,28 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(movie.name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text(movie.name,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: [
-                  if (movie.productionYear != null) Chip(label: Text('${movie.productionYear}'), visualDensity: VisualDensity.compact),
-                  if (movie.officialRating != null) Chip(label: Text(movie.officialRating!), visualDensity: VisualDensity.compact, backgroundColor: Colors.orange.shade100),
-                  if (movie.runTimeMinutes != null) Chip(label: Text(movie.durationText), visualDensity: VisualDensity.compact),
+                  if (movie.productionYear != null)
+                    Chip(
+                        label: Text('${movie.productionYear}'),
+                        visualDensity: VisualDensity.compact),
+                  if (movie.officialRating != null)
+                    Chip(
+                        label: Text(movie.officialRating!),
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: Colors.orange.shade100),
+                  if (movie.runTimeMinutes != null)
+                    Chip(
+                        label: Text(movie.durationText),
+                        visualDensity: VisualDensity.compact),
                 ],
               ),
             ],
@@ -265,6 +336,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   Widget _sectionTitle(String title) {
-    return Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold));
+    return Text(title,
+        style: Theme.of(context)
+            .textTheme
+            .titleMedium
+            ?.copyWith(fontWeight: FontWeight.bold));
   }
 }

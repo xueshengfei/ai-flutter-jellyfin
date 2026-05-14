@@ -7,8 +7,23 @@ import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 /// 测试用 Fake 图片加载器
 class FakeImageProvider implements JellyfinImageProvider {
   @override
-  Future<Uint8List> getPrimaryImage({
+  String buildImageUrl({
     required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
+    String? imageTag,
+    int? fillWidth,
+    int? fillHeight,
+  }) {
+    return 'http://localhost/Items/$itemId/Images/${imageType.pathSegment}';
+  }
+
+  @override
+  Map<String, String>? get authHeaders => null;
+
+  @override
+  Future<Uint8List> getImage({
+    required String itemId,
+    JellyfinImageType imageType = JellyfinImageType.primary,
     String? tag,
     int? fillWidth,
     int? fillHeight,
