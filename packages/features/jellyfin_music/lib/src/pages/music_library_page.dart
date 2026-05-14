@@ -133,6 +133,7 @@ class _AlbumsTabState extends State<_AlbumsTab>
   Widget build(BuildContext context) {
     super.build(context);
     return PaginatedList<MusicAlbum>(
+      refreshKey: widget.libraryId,
       pageSize: 100,
       padding: const EdgeInsets.all(16),
       fetcher: ({required startIndex, required limit}) async {
@@ -150,6 +151,20 @@ class _AlbumsTabState extends State<_AlbumsTab>
           const _EmptyBody(icon: '💿', message: '没有找到专辑'),
       errorBuilder: (context, error, retry) =>
           _ErrorBody(error: error, onRetry: retry),
+      contentBuilder: (context, page) {
+        return GridView.builder(
+          padding: page.padding,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 0.67,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: page.items.length,
+          itemBuilder: (context, index) =>
+              page.itemBuilder(context, page.items[index], index),
+        );
+      },
       itemBuilder: (context, album, index) => _AlbumCard(
         album: album,
         imageProvider: widget.imageProvider,
@@ -187,6 +202,7 @@ class _ArtistsTabState extends State<_ArtistsTab>
   Widget build(BuildContext context) {
     super.build(context);
     return PaginatedList<MusicArtist>(
+      refreshKey: widget.libraryId,
       pageSize: 100,
       padding: const EdgeInsets.all(16),
       fetcher: ({required startIndex, required limit}) async {
@@ -204,6 +220,20 @@ class _ArtistsTabState extends State<_ArtistsTab>
           const _EmptyBody(icon: '🎤', message: '没有找到艺术家'),
       errorBuilder: (context, error, retry) =>
           _ErrorBody(error: error, onRetry: retry),
+      contentBuilder: (context, page) {
+        return GridView.builder(
+          padding: page.padding,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 0.85,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: page.items.length,
+          itemBuilder: (context, index) =>
+              page.itemBuilder(context, page.items[index], index),
+        );
+      },
       itemBuilder: (context, artist, index) {
         return InkWell(
           onTap: () => widget.onOpenArtist?.call(context, artist),
@@ -212,8 +242,9 @@ class _ArtistsTabState extends State<_ArtistsTab>
               Expanded(
                 child: CircleAvatar(
                   radius: double.infinity,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
                   child: artist.hasImage && widget.imageProvider != null
                       ? ClipOval(
                           child: JellyfinImage(
@@ -225,21 +256,31 @@ class _ArtistsTabState extends State<_ArtistsTab>
                             fit: BoxFit.cover,
                           ),
                         )
-                      : Icon(Icons.person,
-                          size: 40, color: Colors.grey.shade400),
+                      : Icon(
+                          Icons.person,
+                          size: 40,
+                          color: Colors.grey.shade400,
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
-              Text(artist.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              Text(
+                artist.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+              if (artist.albumCount != null)
+                Text(
+                  '${artist.albumCount} 张专辑',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center),
-              if (artist.albumCount != null)
-                Text('${artist.albumCount} 张专辑',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                ),
             ],
           ),
         );
@@ -279,6 +320,7 @@ class _SongsTabState extends State<_SongsTab>
   Widget build(BuildContext context) {
     super.build(context);
     return PaginatedList<MusicSong>(
+      refreshKey: widget.libraryId,
       pageSize: 100,
       fetcher: ({required startIndex, required limit}) async {
         final result = await widget.fetchSongs(
@@ -302,20 +344,24 @@ class _SongsTabState extends State<_SongsTab>
             // 在页面内部将 MusicSong 转为 AudioTrack，
             // 通过 onPlayTracks 回调抛给 App 层
             final tracks = _currentSongs
-                .map((s) => AudioTrack(
-                      id: s.id,
-                      name: s.name,
-                      streamUrl: s.getStreamUrl(),
-                      coverUrl: s.getAlbumCoverUrl(
-                          fillWidth: 480, fillHeight: 480),
-                      artistText: s.artistText,
-                      duration: s.runTimeSeconds != null
-                          ? Duration(seconds: s.runTimeSeconds!)
-                          : null,
-                      albumName: s.albumName,
-                      trackNumber: s.trackNumber,
-                      isFavorite: s.isFavorite,
-                    ))
+                .map(
+                  (s) => AudioTrack(
+                    id: s.id,
+                    name: s.name,
+                    streamUrl: s.getStreamUrl(),
+                    coverUrl: s.getAlbumCoverUrl(
+                      fillWidth: 480,
+                      fillHeight: 480,
+                    ),
+                    artistText: s.artistText,
+                    duration: s.runTimeSeconds != null
+                        ? Duration(seconds: s.runTimeSeconds!)
+                        : null,
+                    albumName: s.albumName,
+                    trackNumber: s.trackNumber,
+                    isFavorite: s.isFavorite,
+                  ),
+                )
                 .toList();
             widget.onPlayTracks?.call(context, tracks, index);
           },
@@ -337,26 +383,27 @@ class _SongsTabState extends State<_SongsTab>
                   ),
                 )
               : song.albumId != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: song.getAlbumCoverUrl() != null
-                            ? Image.network(song.getAlbumCoverUrl()!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    const Icon(Icons.music_note))
-                            : const Icon(Icons.music_note),
-                      ),
-                    )
-                  : const SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Icon(Icons.music_note),
-                    ),
-          title: Text(song.name,
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: song.getAlbumCoverUrl() != null
+                        ? Image.network(
+                            song.getAlbumCoverUrl()!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.music_note),
+                          )
+                        : const Icon(Icons.music_note),
+                  ),
+                )
+              : const SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Icon(Icons.music_note),
+                ),
+          title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text(
             '${song.artistText}${song.albumName != null ? " · ${song.albumName}" : ""}',
             maxLines: 1,
@@ -364,9 +411,10 @@ class _SongsTabState extends State<_SongsTab>
             style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
           trailing: song.durationText.isNotEmpty
-              ? Text(song.durationText,
-                  style: TextStyle(
-                      fontSize: 12, color: Colors.grey.shade400))
+              ? Text(
+                  song.durationText,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                )
               : null,
         );
       },
@@ -384,7 +432,11 @@ class _AlbumCard extends StatelessWidget {
   final VoidCallback onTap;
   final JellyfinImageProvider? imageProvider;
 
-  const _AlbumCard({required this.album, required this.onTap, this.imageProvider});
+  const _AlbumCard({
+    required this.album,
+    required this.onTap,
+    this.imageProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -405,45 +457,58 @@ class _AlbumCard extends StatelessWidget {
                       fillHeight: 300,
                       fit: BoxFit.cover,
                       errorWidget: Center(
-                        child: Icon(Icons.album,
-                            size: 40, color: Colors.grey.shade400),
+                        child: Icon(
+                          Icons.album,
+                          size: 40,
+                          color: Colors.grey.shade400,
+                        ),
                       ),
                     )
                   : album.hasCoverImage
-                      ? Image.network(
-                          album.getCoverImageUrl(
-                              fillWidth: 300, fillHeight: 300)!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
-                            child: Icon(Icons.album,
-                                size: 40, color: Colors.grey.shade400),
-                          ),
-                        )
-                      : Container(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          child: Center(
-                            child: Icon(Icons.album,
-                                size: 40, color: Colors.grey.shade400),
-                          ),
+                  ? Image.network(
+                      album.getCoverImageUrl(fillWidth: 300, fillHeight: 300)!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Icon(
+                          Icons.album,
+                          size: 40,
+                          color: Colors.grey.shade400,
                         ),
+                      ),
+                    )
+                  : Container(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      child: Center(
+                        child: Icon(
+                          Icons.album,
+                          size: 40,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(album.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  Text(album.artistText,
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    album.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    album.artistText,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -466,9 +531,11 @@ class _ErrorBody extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red)),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
           const SizedBox(height: 16),
           FilledButton(onPressed: onRetry, child: const Text('重试')),
         ],

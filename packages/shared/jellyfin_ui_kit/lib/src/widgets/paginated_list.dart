@@ -3,6 +3,38 @@ import 'package:flutter/material.dart';
 import '../models/paged_result.dart';
 import 'pagination_nav_bar.dart';
 
+typedef PaginatedItemBuilder<T> = Widget Function(
+  BuildContext context,
+  T item,
+  int index,
+);
+
+typedef PaginatedContentBuilder<T> = Widget Function(
+  BuildContext context,
+  PaginatedPage<T> page,
+);
+
+/// Immutable snapshot for rendering the currently loaded page.
+class PaginatedPage<T> {
+  final List<T> items;
+  final int startIndex;
+  final int pageSize;
+  final int totalCount;
+  final bool isLoading;
+  final EdgeInsets padding;
+  final PaginatedItemBuilder<T> itemBuilder;
+
+  const PaginatedPage({
+    required this.items,
+    required this.startIndex,
+    required this.pageSize,
+    required this.totalCount,
+    required this.isLoading,
+    required this.padding,
+    required this.itemBuilder,
+  });
+}
+
 /// 分页列表组件
 ///
 /// 自动管理分页状态：顶部和底部各一条 [PaginationNavBar]，
@@ -26,7 +58,20 @@ class PaginatedList<T> extends StatefulWidget {
   final int pageSize;
 
   /// 列表项构建器
-  final Widget Function(BuildContext context, T item, int index) itemBuilder;
+  final PaginatedItemBuilder<T> itemBuilder;
+
+  /// Builds the current page content from pagination state.
+  ///
+  /// This keeps pagination state and navigation inside [PaginatedList], while
+  /// letting callers choose list, grid, or domain-specific media layouts.
+  final PaginatedContentBuilder<T>? contentBuilder;
+
+  /// Explicit key for query changes that should reset the list to page one.
+  ///
+  /// When set, ordinary parent rebuilds and new closure instances for [fetcher]
+  /// do not trigger reloads. Change this value when filters or library ids
+  /// change.
+  final Object? refreshKey;
 
   /// 加载中占位组件
   final WidgetBuilder? loadingBuilder;
@@ -45,6 +90,8 @@ class PaginatedList<T> extends StatefulWidget {
     super.key,
     required this.fetcher,
     required this.itemBuilder,
+    this.contentBuilder,
+    this.refreshKey,
     this.pageSize = 100,
     this.loadingBuilder,
     this.errorBuilder,
@@ -73,8 +120,12 @@ class PaginatedListState<T> extends State<PaginatedList<T>> {
   @override
   void didUpdateWidget(covariant PaginatedList<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // fetcher 变化时重置
-    if (oldWidget.fetcher != widget.fetcher) {
+    final usesExplicitRefreshKey =
+        oldWidget.refreshKey != null || widget.refreshKey != null;
+    final shouldRefresh = usesExplicitRefreshKey
+        ? oldWidget.refreshKey != widget.refreshKey
+        : oldWidget.fetcher != widget.fetcher;
+    if (shouldRefresh) {
       refresh();
     }
   }
@@ -148,8 +199,7 @@ class PaginatedListState<T> extends State<PaginatedList<T>> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.red)),
                   const SizedBox(height: 16),
-                  FilledButton(
-                      onPressed: refresh, child: const Text('重试')),
+                  FilledButton(onPressed: refresh, child: const Text('重试')),
                 ],
               ),
             );
@@ -179,12 +229,7 @@ class PaginatedListState<T> extends State<PaginatedList<T>> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async => refresh(),
-            child: ListView.builder(
-              padding: widget.padding,
-              itemCount: _items.length,
-              itemBuilder: (context, index) =>
-                  widget.itemBuilder(context, _items[index], index),
-            ),
+            child: _buildPageContent(context),
           ),
         ),
         // 底部导航条
@@ -198,6 +243,30 @@ class PaginatedListState<T> extends State<PaginatedList<T>> {
             isLoading: _isLoading,
           ),
       ],
+    );
+  }
+
+  Widget _buildPageContent(BuildContext context) {
+    final page = PaginatedPage<T>(
+      items: List<T>.unmodifiable(_items),
+      startIndex: _startIndex,
+      pageSize: widget.pageSize,
+      totalCount: _totalCount,
+      isLoading: _isLoading,
+      padding: widget.padding,
+      itemBuilder: widget.itemBuilder,
+    );
+
+    final contentBuilder = widget.contentBuilder;
+    if (contentBuilder != null) {
+      return contentBuilder(context, page);
+    }
+
+    return ListView.builder(
+      padding: page.padding,
+      itemCount: page.items.length,
+      itemBuilder: (context, index) =>
+          page.itemBuilder(context, page.items[index], index),
     );
   }
 }

@@ -71,8 +71,6 @@ class _SeriesListRoutePageState extends State<SeriesListRoutePage> {
           items: items,
           config: _viewModeConfig,
           onTap: onTap,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
         );
       },
     );
@@ -138,8 +136,6 @@ class _MoviesRoutePageState extends State<MoviesRoutePage> {
           items: items,
           config: _viewModeConfig,
           onTap: onTap,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
         );
       },
     );

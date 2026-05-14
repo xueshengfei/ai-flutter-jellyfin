@@ -27,12 +27,18 @@ void main() {
     });
 
     test('typeDisplayName 中文显示', () {
-      expect(const Person(id: '', name: '', type: 'actor').typeDisplayName, '演员');
-      expect(const Person(id: '', name: '', type: 'director').typeDisplayName, '导演');
-      expect(const Person(id: '', name: '', type: 'writer').typeDisplayName, '编剧');
-      expect(const Person(id: '', name: '', type: 'producer').typeDisplayName, '制片人');
-      expect(const Person(id: '', name: '', type: 'composer').typeDisplayName, '作曲家');
-      expect(const Person(id: '', name: '', type: 'other').typeDisplayName, 'other');
+      expect(
+          const Person(id: '', name: '', type: 'actor').typeDisplayName, '演员');
+      expect(const Person(id: '', name: '', type: 'director').typeDisplayName,
+          '导演');
+      expect(
+          const Person(id: '', name: '', type: 'writer').typeDisplayName, '编剧');
+      expect(const Person(id: '', name: '', type: 'producer').typeDisplayName,
+          '制片人');
+      expect(const Person(id: '', name: '', type: 'composer').typeDisplayName,
+          '作曲家');
+      expect(const Person(id: '', name: '', type: 'other').typeDisplayName,
+          'other');
     });
 
     test('props 包含所有字段', () {
@@ -53,7 +59,13 @@ void main() {
       expect(empty.length, 0);
 
       const result = PersonCreditsResult(
-        items: [MediaItem(id: '1', name: 'test', type: 'movie', serverUrl: 'http://localhost')],
+        items: [
+          MediaItem(
+              id: '1',
+              name: 'test',
+              type: 'movie',
+              serverUrl: 'http://localhost')
+        ],
         totalCount: 1,
       );
       expect(result.isNotEmpty, isTrue);
@@ -71,7 +83,8 @@ void main() {
     testWidgets('显示加载状态', (WidgetTester tester) async {
       // 使用 Completer 让 Future 永远不完成
       final completer = Completer<MediaItemListResult>();
-      addTearDown(() => completer.complete(const MediaItemListResult(items: [])));
+      addTearDown(
+          () => completer.complete(const MediaItemListResult(items: [])));
 
       await tester.pumpWidget(MaterialApp(
         home: MediaItemsPage(
@@ -81,7 +94,11 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
+          fetchMediaItems: (
+              {required parentId,
+              recursive = true,
+              int? startIndex,
+              int? limit}) {
             return completer.future;
           },
         ),
@@ -110,14 +127,19 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
-            return Future.value(MediaItemListResult(items: items, totalCount: items.length));
+          fetchMediaItems: (
+              {required parentId,
+              recursive = true,
+              int? startIndex,
+              int? limit}) {
+            return Future.value(
+                MediaItemListResult(items: items, totalCount: items.length));
           },
         ),
       ));
 
       await tester.pumpAndSettle();
-      expect(find.text('3 项'), findsOneWidget);
+      expect(find.byType(Card), findsNWidgets(3));
     });
 
     testWidgets('显示错误状态并重试', (WidgetTester tester) async {
@@ -131,7 +153,11 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
+          fetchMediaItems: (
+              {required parentId,
+              recursive = true,
+              int? startIndex,
+              int? limit}) {
             callCount++;
             if (callCount == 1) {
               throw Exception('网络错误');
@@ -158,7 +184,11 @@ void main() {
             type: MediaLibraryType.movies,
             serverUrl: 'http://localhost',
           ),
-          fetchMediaItems: ({required parentId, recursive = true, int? startIndex, int? limit}) {
+          fetchMediaItems: (
+              {required parentId,
+              recursive = true,
+              int? startIndex,
+              int? limit}) {
             return Future.value(const MediaItemListResult(items: []));
           },
         ),
@@ -173,12 +203,20 @@ void main() {
     testWidgets('显示加载状态', (WidgetTester tester) async {
       final completer = Completer<MediaItem>();
       addTearDown(() => completer.complete(
-        MediaItem(id: '1', name: '测试电影', type: 'movie', serverUrl: 'http://localhost'),
-      ));
+            MediaItem(
+                id: '1',
+                name: '测试电影',
+                type: 'movie',
+                serverUrl: 'http://localhost'),
+          ));
 
       await tester.pumpWidget(MaterialApp(
         home: MediaItemDetailPage(
-          item: MediaItem(id: '1', name: '测试电影', type: 'movie', serverUrl: 'http://localhost'),
+          item: MediaItem(
+              id: '1',
+              name: '测试电影',
+              type: 'movie',
+              serverUrl: 'http://localhost'),
           fetchDetail: (_) => completer.future,
         ),
       ));
@@ -189,7 +227,11 @@ void main() {
     testWidgets('显示错误状态', (WidgetTester tester) async {
       await tester.pumpWidget(MaterialApp(
         home: MediaItemDetailPage(
-          item: MediaItem(id: '1', name: '测试电影', type: 'movie', serverUrl: 'http://localhost'),
+          item: MediaItem(
+              id: '1',
+              name: '测试电影',
+              type: 'movie',
+              serverUrl: 'http://localhost'),
           fetchDetail: (_) => Future.error(Exception('加载失败')),
         ),
       ));
@@ -278,7 +320,8 @@ void main() {
       final detailCompleter = Completer<Person>();
       final creditsCompleter = Completer<PersonCreditsResult>();
       addTearDown(() {
-        detailCompleter.complete(const Person(id: 'p1', name: '张三', type: 'actor'));
+        detailCompleter
+            .complete(const Person(id: 'p1', name: '张三', type: 'actor'));
         creditsCompleter.complete(const PersonCreditsResult(items: []));
       });
 
@@ -288,7 +331,8 @@ void main() {
           personName: '张三',
           personType: 'actor',
           fetchPersonDetail: (_, __) => detailCompleter.future,
-          fetchPersonCredits: (_, {includeItemTypes}) => creditsCompleter.future,
+          fetchPersonCredits: (_, {includeItemTypes}) =>
+              creditsCompleter.future,
           imageProvider: _FakeImageProvider(),
         ),
       ));
