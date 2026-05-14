@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jellyfin_auth/jellyfin_auth_pages.dart';
+import 'package:jellyfin_auth/jellyfin_auth.dart';
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_personal/jellyfin_personal.dart';
@@ -31,6 +31,7 @@ GoRouter createAppRouter({
   required AppSessionController sessionController,
   JellyfinGateway? gateway,
   PersonalRepository? personalRepository,
+  ServerDiscoveryService? discoveryService,
   String initialLocation = '/login',
 }) {
   final effectiveGateway = gateway ?? _StubGateway();
@@ -47,6 +48,7 @@ GoRouter createAppRouter({
       GoRoute(
         path: '/login',
         builder: (context, state) => LoginPage(
+          discoveryService: discoveryService,
           onLogin: ({required serverUrl, required username, required password}) async {
             try {
               final session = await effectiveGateway.login(

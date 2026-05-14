@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jellyfin_auth/jellyfin_auth.dart';
 import 'package:rvc_flutter/rvc_flutter.dart';
 import 'app_router.dart';
 import '../data/audio_playback_adapter.dart';
@@ -43,6 +44,8 @@ class _JellyfinAppState extends State<JellyfinApp> {
       ),
       audioPlaybackPort: AudioPlaybackAdapter.instance,
       rvcTaskController: _getOrCreateRvcController(),
+      aiServiceUrl: 'http://localhost:8000',
+      discoveryService: ServerDiscoveryService(),
     );
   }
 
