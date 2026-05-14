@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -23,10 +22,12 @@ class RvcTaskController extends ChangeNotifier {
   String? _connectionError;
 
   // ---- 任务状态 ----
-  RvcTaskSnapshot? _currentTask;
+  final Map<String, RvcTaskSnapshot> _tasksBySourceKey = {};
+  String? _activeSourceKey;
+  String? _playingTaskId;
 
   // ---- 播放 ----
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  AudioPlayer? _audioPlayer;
   bool _isPlaying = false;
   StreamSubscription? _playerStateSub;
 
@@ -34,9 +35,7 @@ class RvcTaskController extends ChangeNotifier {
     required String serverUrl,
     RVCClient? client,
   })  : _serverUrl = serverUrl,
-        _client = client ?? RVCClient(baseUrl: serverUrl) {
-    _setupAudioListener();
-  }
+        _client = client ?? RVCClient(baseUrl: serverUrl);
 
   // ==================== 服务连接 ====================
 
@@ -79,15 +78,46 @@ class RvcTaskController extends ChangeNotifier {
     _status = null;
     _models = [];
     _connectionError = null;
-    _currentTask = null;
+    _tasksBySourceKey.clear();
+    _activeSourceKey = null;
+    _playingTaskId = null;
     notifyListeners();
     connect();
   }
 
   // ==================== 任务执行 ====================
 
-  RvcTaskSnapshot? get currentTask => _currentTask;
-  bool get hasRunningTask => _currentTask?.status == RvcTaskStatus.running;
+  RvcTaskSnapshot? get currentTask => activeTask;
+  RvcTaskSnapshot? get activeTask => taskForSource(_activeSourceKey);
+  List<RvcTaskSnapshot> get tasks {
+    final sorted = _tasksBySourceKey.values.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return List.unmodifiable(sorted);
+  }
+
+  bool get hasRunningTask => activeTask?.status == RvcTaskStatus.running;
+  int get runningTaskCount => _tasksBySourceKey.values
+      .where((task) => task.status == RvcTaskStatus.running)
+      .length;
+  String? get activeSourceKey => _activeSourceKey;
+
+  String activateSource({String? inputPath, String? audioFilename}) {
+    final sourceKey = _sourceKeyFor(
+      inputPath: inputPath,
+      audioFilename: audioFilename,
+    );
+    _activeSourceKey = sourceKey;
+    notifyListeners();
+    return sourceKey;
+  }
+
+  RvcTaskSnapshot? taskForSource(String? sourceKey) {
+    if (sourceKey == null || sourceKey.isEmpty) return null;
+    return _tasksBySourceKey[sourceKey];
+  }
+
+  bool hasRunningTaskForSource(String? sourceKey) =>
+      taskForSource(sourceKey)?.status == RvcTaskStatus.running;
 
   /// 执行音色转换
   Future<void> startConvert({
@@ -102,12 +132,18 @@ class RvcTaskController extends ChangeNotifier {
     int resampleSr = 0,
     double protect = 0.33,
   }) async {
+    final sourceKey = activateSource(
+      inputPath: inputPath,
+      audioFilename: audioFilename,
+    );
     final taskId = DateTime.now().microsecondsSinceEpoch.toString();
-    _currentTask = RvcTaskSnapshot(
+    _tasksBySourceKey[sourceKey] = RvcTaskSnapshot(
       id: taskId,
       status: RvcTaskStatus.running,
+      sourceKey: sourceKey,
+      sourcePath: inputPath,
       mode: 'convert',
-      sourceName: audioFilename ?? inputPath?.split(Platform.pathSeparator).last,
+      sourceName: _sourceNameFor(inputPath, audioFilename),
       modelName: modelName,
       createdAt: DateTime.now(),
     );
@@ -127,16 +163,16 @@ class RvcTaskController extends ChangeNotifier {
         protect: protect,
       );
 
-      if (_currentTask?.id != taskId) return;
+      if (_tasksBySourceKey[sourceKey]?.id != taskId) return;
 
       if (!result.success) {
-        _currentTask = _currentTask!.copyWith(
+        _tasksBySourceKey[sourceKey] = _tasksBySourceKey[sourceKey]!.copyWith(
           status: RvcTaskStatus.failed,
           errorMessage: '转换失败',
           completedAt: DateTime.now(),
         );
       } else {
-        _currentTask = _currentTask!.copyWith(
+        _tasksBySourceKey[sourceKey] = _tasksBySourceKey[sourceKey]!.copyWith(
           status: RvcTaskStatus.succeeded,
           result: result,
           completedAt: DateTime.now(),
@@ -144,8 +180,8 @@ class RvcTaskController extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      if (_currentTask?.id != taskId) return;
-      _currentTask = _currentTask!.copyWith(
+      if (_tasksBySourceKey[sourceKey]?.id != taskId) return;
+      _tasksBySourceKey[sourceKey] = _tasksBySourceKey[sourceKey]!.copyWith(
         status: RvcTaskStatus.failed,
         errorMessage: e.toString(),
         completedAt: DateTime.now(),
@@ -169,12 +205,18 @@ class RvcTaskController extends ChangeNotifier {
     double vocalVol = 1.0,
     double instVol = 0.8,
   }) async {
+    final sourceKey = activateSource(
+      inputPath: inputPath,
+      audioFilename: audioFilename,
+    );
     final taskId = DateTime.now().microsecondsSinceEpoch.toString();
-    _currentTask = RvcTaskSnapshot(
+    _tasksBySourceKey[sourceKey] = RvcTaskSnapshot(
       id: taskId,
       status: RvcTaskStatus.running,
+      sourceKey: sourceKey,
+      sourcePath: inputPath,
       mode: 'cover',
-      sourceName: audioFilename ?? inputPath?.split(Platform.pathSeparator).last,
+      sourceName: _sourceNameFor(inputPath, audioFilename),
       modelName: modelName,
       createdAt: DateTime.now(),
     );
@@ -196,16 +238,16 @@ class RvcTaskController extends ChangeNotifier {
         instVol: instVol,
       );
 
-      if (_currentTask?.id != taskId) return;
+      if (_tasksBySourceKey[sourceKey]?.id != taskId) return;
 
       if (!result.success) {
-        _currentTask = _currentTask!.copyWith(
+        _tasksBySourceKey[sourceKey] = _tasksBySourceKey[sourceKey]!.copyWith(
           status: RvcTaskStatus.failed,
           errorMessage: '翻唱失败',
           completedAt: DateTime.now(),
         );
       } else {
-        _currentTask = _currentTask!.copyWith(
+        _tasksBySourceKey[sourceKey] = _tasksBySourceKey[sourceKey]!.copyWith(
           status: RvcTaskStatus.succeeded,
           result: result,
           completedAt: DateTime.now(),
@@ -213,8 +255,8 @@ class RvcTaskController extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      if (_currentTask?.id != taskId) return;
-      _currentTask = _currentTask!.copyWith(
+      if (_tasksBySourceKey[sourceKey]?.id != taskId) return;
+      _tasksBySourceKey[sourceKey] = _tasksBySourceKey[sourceKey]!.copyWith(
         status: RvcTaskStatus.failed,
         errorMessage: e.toString(),
         completedAt: DateTime.now(),
@@ -225,15 +267,22 @@ class RvcTaskController extends ChangeNotifier {
 
   /// 清除当前任务结果
   void clearTask() {
-    _currentTask = null;
-    _stopPlayback();
+    clearTaskForSource(_activeSourceKey);
+  }
+
+  void clearTaskForSource(String? sourceKey) {
+    if (sourceKey == null || sourceKey.isEmpty) return;
+    final removed = _tasksBySourceKey.remove(sourceKey);
+    if (removed?.id == _playingTaskId) {
+      _stopPlayback();
+    }
     notifyListeners();
   }
 
   // ==================== 结果播放 ====================
 
   bool get isPlaying => _isPlaying;
-  AudioPlayer get audioPlayer => _audioPlayer;
+  AudioPlayer get audioPlayer => _ensureAudioPlayer();
 
   /// 切换播放/停止
   Future<void> togglePlayback() async {
@@ -242,12 +291,15 @@ class RvcTaskController extends ChangeNotifier {
       return;
     }
 
-    final playUrl = _currentTask?.playUrl;
+    final task = activeTask;
+    final playUrl = task?.playUrl;
     if (playUrl == null) return;
 
     try {
-      await _audioPlayer.setUrl(playUrl);
-      await _audioPlayer.play();
+      final player = _ensureAudioPlayer();
+      await player.setUrl(playUrl);
+      await player.play();
+      _playingTaskId = task?.id;
       _isPlaying = true;
       notifyListeners();
     } catch (_) {
@@ -256,18 +308,41 @@ class RvcTaskController extends ChangeNotifier {
   }
 
   void _stopPlayback() {
-    _audioPlayer.stop();
+    _audioPlayer?.stop();
     _isPlaying = false;
+    _playingTaskId = null;
     notifyListeners();
   }
 
-  void _setupAudioListener() {
-    _playerStateSub = _audioPlayer.playerStateStream.listen((state) {
+  String _sourceKeyFor({String? inputPath, String? audioFilename}) {
+    if (inputPath != null && inputPath.isNotEmpty) return inputPath;
+    if (audioFilename != null && audioFilename.isNotEmpty) {
+      return 'manual:$audioFilename';
+    }
+    return 'manual:audio';
+  }
+
+  String? _sourceNameFor(String? inputPath, String? audioFilename) {
+    if (audioFilename != null && audioFilename.isNotEmpty) {
+      return audioFilename;
+    }
+    if (inputPath == null || inputPath.isEmpty) return null;
+    return inputPath.split(RegExp(r'[\\/]')).last;
+  }
+
+  AudioPlayer _ensureAudioPlayer() {
+    final existing = _audioPlayer;
+    if (existing != null) return existing;
+    final player = AudioPlayer();
+    _audioPlayer = player;
+    _playerStateSub = player.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         _isPlaying = false;
+        _playingTaskId = null;
         notifyListeners();
       }
     });
+    return player;
   }
 
   // ==================== 生命周期 ====================
@@ -275,7 +350,7 @@ class RvcTaskController extends ChangeNotifier {
   @override
   void dispose() {
     _playerStateSub?.cancel();
-    _audioPlayer.dispose();
+    _audioPlayer?.dispose();
     _client.close();
     super.dispose();
   }

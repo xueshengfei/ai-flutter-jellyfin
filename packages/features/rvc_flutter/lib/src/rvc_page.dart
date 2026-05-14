@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -36,6 +35,7 @@ class _RvcPageState extends State<RvcPage> {
   String? _selectedFilePath;
   String? _selectedFileName;
   Uint8List? _selectedAudioBytes;
+  String? _sourceKey;
   String _convertMode = 'convert';
 
   // ---- 转换参数 ----
@@ -51,16 +51,32 @@ class _RvcPageState extends State<RvcPage> {
   @override
   void initState() {
     super.initState();
-    // 处理透传的音频路径
-    if (widget.audioPath != null) {
-      _selectedFilePath = widget.audioPath;
-      _selectedFileName =
-          widget.audioPath!.split(Platform.pathSeparator).last;
-    }
+    _activateAudioPath(widget.audioPath);
     // 首次连接（controller 未连接时）
     if (!controller.isConnected && !controller.isConnecting) {
       controller.connect();
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant RvcPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.audioPath != widget.audioPath) {
+      _activateAudioPath(widget.audioPath);
+    }
+  }
+
+  void _activateAudioPath(String? audioPath) {
+    if (audioPath != null) {
+      _selectedFilePath = audioPath;
+      _selectedFileName = _fileNameFromPath(audioPath);
+      _selectedAudioBytes = null;
+      _convertMode = 'cover';
+    }
+    _sourceKey = controller.activateSource(
+      inputPath: _selectedFilePath,
+      audioFilename: _selectedFileName,
+    );
   }
 
   // =========================================================================
@@ -70,6 +86,11 @@ class _RvcPageState extends State<RvcPage> {
   void _startConvert() {
     if (_selectedModel == null) return;
     if (_selectedFilePath == null && _selectedAudioBytes == null) return;
+
+    _sourceKey = controller.activateSource(
+      inputPath: _selectedFilePath,
+      audioFilename: _selectedFileName,
+    );
 
     if (_convertMode == 'cover') {
       controller.startCover(
@@ -114,6 +135,22 @@ class _RvcPageState extends State<RvcPage> {
       appBar: AppBar(
         title: const Text('RVC 语音转换'),
         actions: [
+          ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) {
+              final runningCount = controller.runningTaskCount;
+              final icon = IconButton(
+                icon: const Icon(Icons.task_alt),
+                tooltip: 'RVC 任务',
+                onPressed: _showTaskCenter,
+              );
+              if (runningCount == 0) return icon;
+              return Badge.count(
+                count: runningCount,
+                child: icon,
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: '服务器设置',
@@ -194,7 +231,7 @@ class _RvcPageState extends State<RvcPage> {
           _buildParamsSection(theme),
           const SizedBox(height: 24),
           _buildConvertButton(theme),
-          if (controller.currentTask != null)
+          if (controller.taskForSource(_sourceKey) != null)
             const SizedBox(height: 16),
           _buildResultSection(theme),
         ],
@@ -222,14 +259,14 @@ class _RvcPageState extends State<RvcPage> {
                       style: theme.textTheme.titleSmall),
                   const SizedBox(height: 4),
                   Text('状态: ${status.status}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant)),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
             Text('${controller.models.length} 个模型',
-                style: theme.textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant)),
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: colorScheme.onSurfaceVariant)),
           ],
         ),
       ),
@@ -360,12 +397,18 @@ class _RvcPageState extends State<RvcPage> {
               Expanded(
                 child: Slider(
                   value: _f0UpKey.toDouble(),
-                  min: -24, max: 24, divisions: 48,
+                  min: -24,
+                  max: 24,
+                  divisions: 48,
                   label: '$_f0UpKey',
                   onChanged: (v) => setState(() => _f0UpKey = v.toInt()),
                 ),
               ),
-              SizedBox(width: 48, child: Text('$_f0UpKey', textAlign: TextAlign.end, style: theme.textTheme.bodySmall)),
+              SizedBox(
+                  width: 48,
+                  child: Text('$_f0UpKey',
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodySmall)),
             ]),
             const SizedBox(height: 8),
             Row(children: [
@@ -375,10 +418,12 @@ class _RvcPageState extends State<RvcPage> {
                   segments: const [
                     ButtonSegment(value: F0Method.rmvpe, label: Text('rmvpe')),
                     ButtonSegment(value: F0Method.pm, label: Text('pm')),
-                    ButtonSegment(value: F0Method.harvest, label: Text('harvest')),
+                    ButtonSegment(
+                        value: F0Method.harvest, label: Text('harvest')),
                   ],
                   selected: {_f0Method},
-                  onSelectionChanged: (v) => setState(() => _f0Method = v.first),
+                  onSelectionChanged: (v) =>
+                      setState(() => _f0Method = v.first),
                 ),
               ),
             ]),
@@ -387,36 +432,57 @@ class _RvcPageState extends State<RvcPage> {
               const SizedBox(width: 100, child: Text('检索比率')),
               Expanded(
                 child: Slider(
-                  value: _indexRate, min: 0, max: 1, divisions: 20,
+                  value: _indexRate,
+                  min: 0,
+                  max: 1,
+                  divisions: 20,
                   label: _indexRate.toStringAsFixed(2),
                   onChanged: (v) => setState(() => _indexRate = v),
                 ),
               ),
-              SizedBox(width: 48, child: Text(_indexRate.toStringAsFixed(2), textAlign: TextAlign.end, style: theme.textTheme.bodySmall)),
+              SizedBox(
+                  width: 48,
+                  child: Text(_indexRate.toStringAsFixed(2),
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodySmall)),
             ]),
             const SizedBox(height: 8),
             Row(children: [
               const SizedBox(width: 100, child: Text('辅音保护')),
               Expanded(
                 child: Slider(
-                  value: _protect, min: 0, max: 0.5, divisions: 50,
+                  value: _protect,
+                  min: 0,
+                  max: 0.5,
+                  divisions: 50,
                   label: _protect.toStringAsFixed(2),
                   onChanged: (v) => setState(() => _protect = v),
                 ),
               ),
-              SizedBox(width: 48, child: Text(_protect.toStringAsFixed(2), textAlign: TextAlign.end, style: theme.textTheme.bodySmall)),
+              SizedBox(
+                  width: 48,
+                  child: Text(_protect.toStringAsFixed(2),
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodySmall)),
             ]),
             const SizedBox(height: 8),
             Row(children: [
               const SizedBox(width: 100, child: Text('输出采样率')),
               Expanded(
                 child: Slider(
-                  value: _resampleSr.toDouble(), min: 0, max: 48000, divisions: 8,
+                  value: _resampleSr.toDouble(),
+                  min: 0,
+                  max: 48000,
+                  divisions: 8,
                   label: _resampleSr == 0 ? '原始' : '$_resampleSr',
                   onChanged: (v) => setState(() => _resampleSr = v.toInt()),
                 ),
               ),
-              SizedBox(width: 64, child: Text(_resampleSr == 0 ? '原始' : '$_resampleSr Hz', textAlign: TextAlign.end, style: theme.textTheme.bodySmall)),
+              SizedBox(
+                  width: 64,
+                  child: Text(_resampleSr == 0 ? '原始' : '$_resampleSr Hz',
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodySmall)),
             ]),
           ],
         ),
@@ -426,11 +492,10 @@ class _RvcPageState extends State<RvcPage> {
 
   // ---- 转换按钮 ----
   Widget _buildConvertButton(ThemeData theme) {
-    final task = controller.currentTask;
+    final task = controller.taskForSource(_sourceKey);
     final isRunning = task?.status == RvcTaskStatus.running;
 
-    final canConvert =
-        _selectedModel != null &&
+    final canConvert = _selectedModel != null &&
         (_selectedFilePath != null || _selectedAudioBytes != null) &&
         !isRunning;
 
@@ -438,13 +503,19 @@ class _RvcPageState extends State<RvcPage> {
       children: [
         SegmentedButton<String>(
           segments: const [
-            ButtonSegment(value: 'convert', label: Text('音色转换'), icon: Icon(Icons.auto_fix_high)),
-            ButtonSegment(value: 'cover', label: Text('一键翻唱'), icon: Icon(Icons.music_note)),
+            ButtonSegment(
+                value: 'convert',
+                label: Text('音色转换'),
+                icon: Icon(Icons.auto_fix_high)),
+            ButtonSegment(
+                value: 'cover',
+                label: Text('一键翻唱'),
+                icon: Icon(Icons.music_note)),
           ],
           selected: {_convertMode},
           onSelectionChanged: (v) => setState(() {
             _convertMode = v.first;
-            controller.clearTask();
+            controller.clearTaskForSource(_sourceKey);
           }),
         ),
         if (_convertMode == 'cover') ...[
@@ -456,9 +527,13 @@ class _RvcPageState extends State<RvcPage> {
           onPressed: canConvert ? _startConvert : null,
           icon: isRunning
               ? SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary))
-              : Icon(_convertMode == 'cover' ? Icons.music_note : Icons.auto_fix_high),
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: theme.colorScheme.onPrimary))
+              : Icon(_convertMode == 'cover'
+                  ? Icons.music_note
+                  : Icons.auto_fix_high),
           label: Text(isRunning
               ? (_convertMode == 'cover' ? '正在翻唱...' : '正在转换...')
               : (_convertMode == 'cover' ? '一键翻唱' : '开始转换')),
@@ -475,13 +550,33 @@ class _RvcPageState extends State<RvcPage> {
         child: Column(children: [
           Row(children: [
             const SizedBox(width: 80, child: Text('人声音量')),
-            Expanded(child: Slider(value: _vocalVol, min: 0, max: 2, divisions: 20, label: _vocalVol.toStringAsFixed(1), onChanged: (v) => setState(() => _vocalVol = v))),
-            SizedBox(width: 40, child: Text(_vocalVol.toStringAsFixed(1), textAlign: TextAlign.end)),
+            Expanded(
+                child: Slider(
+                    value: _vocalVol,
+                    min: 0,
+                    max: 2,
+                    divisions: 20,
+                    label: _vocalVol.toStringAsFixed(1),
+                    onChanged: (v) => setState(() => _vocalVol = v))),
+            SizedBox(
+                width: 40,
+                child: Text(_vocalVol.toStringAsFixed(1),
+                    textAlign: TextAlign.end)),
           ]),
           Row(children: [
             const SizedBox(width: 80, child: Text('伴奏音量')),
-            Expanded(child: Slider(value: _instVol, min: 0, max: 2, divisions: 20, label: _instVol.toStringAsFixed(1), onChanged: (v) => setState(() => _instVol = v))),
-            SizedBox(width: 40, child: Text(_instVol.toStringAsFixed(1), textAlign: TextAlign.end)),
+            Expanded(
+                child: Slider(
+                    value: _instVol,
+                    min: 0,
+                    max: 2,
+                    divisions: 20,
+                    label: _instVol.toStringAsFixed(1),
+                    onChanged: (v) => setState(() => _instVol = v))),
+            SizedBox(
+                width: 40,
+                child: Text(_instVol.toStringAsFixed(1),
+                    textAlign: TextAlign.end)),
           ]),
         ]),
       ),
@@ -490,7 +585,7 @@ class _RvcPageState extends State<RvcPage> {
 
   // ---- 结果区 ----
   Widget _buildResultSection(ThemeData theme) {
-    final task = controller.currentTask;
+    final task = controller.taskForSource(_sourceKey);
     if (task == null) return const SizedBox.shrink();
 
     // 转换中
@@ -521,13 +616,17 @@ class _RvcPageState extends State<RvcPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
+                Icon(Icons.error_outline,
+                    color: theme.colorScheme.onErrorContainer),
                 const SizedBox(width: 8),
-                Text('转换失败', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onErrorContainer)),
+                Text('转换失败',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(color: theme.colorScheme.onErrorContainer)),
               ]),
               const SizedBox(height: 8),
               Text(task.errorMessage ?? '未知错误',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onErrorContainer)),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onErrorContainer)),
             ],
           ),
         ),
@@ -550,11 +649,13 @@ class _RvcPageState extends State<RvcPage> {
               ]),
               const SizedBox(height: 12),
               Wrap(
-                spacing: 16, runSpacing: 4,
+                spacing: 16,
+                runSpacing: 4,
                 children: [
                   _infoChip('采样率', '${result.sampleRate} Hz'),
                   _infoChip('时长', '${result.durationSec.toStringAsFixed(1)}s'),
-                  _infoChip('大小', '${(result.fileSize / 1024).toStringAsFixed(1)} KB'),
+                  _infoChip('大小',
+                      '${(result.fileSize / 1024).toStringAsFixed(1)} KB'),
                 ],
               ),
               const SizedBox(height: 16),
@@ -562,7 +663,8 @@ class _RvcPageState extends State<RvcPage> {
                 Expanded(
                   child: FilledButton.tonalIcon(
                     onPressed: () => controller.togglePlayback(),
-                    icon: Icon(controller.isPlaying ? Icons.stop : Icons.play_arrow),
+                    icon: Icon(
+                        controller.isPlaying ? Icons.stop : Icons.play_arrow),
                     label: Text(controller.isPlaying ? '停止播放' : '播放结果'),
                   ),
                 ),
@@ -592,7 +694,10 @@ class _RvcPageState extends State<RvcPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label: ', style: TextStyle(fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text('$label: ',
+            style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
         Text(value),
       ],
     );
@@ -612,7 +717,12 @@ class _RvcPageState extends State<RvcPage> {
       final file = result.files.first;
       setState(() {
         _selectedFileName = file.name;
+        _selectedFilePath = file.path;
         _selectedAudioBytes = file.bytes;
+        _sourceKey = controller.activateSource(
+          inputPath: file.path,
+          audioFilename: file.name,
+        );
       });
     } catch (e) {
       if (mounted) {
@@ -622,6 +732,107 @@ class _RvcPageState extends State<RvcPage> {
       }
     }
   }
+
+  // =========================================================================
+  // 任务中心
+  // =========================================================================
+
+  Future<void> _showTaskCenter() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) {
+            final tasks = controller.tasks.toList()
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('RVC 任务', style: Theme.of(ctx).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    if (tasks.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: Text('暂无任务')),
+                      )
+                    else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 360),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: tasks.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final task = tasks[index];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: _taskStatusIcon(task),
+                              title: Text(
+                                task.sourceName ?? task.sourcePath ?? '未知音频',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${task.mode == 'cover' ? '一键翻唱' : '音色转换'}'
+                                '${task.modelName == null ? '' : ' · ${task.modelName}'}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: Text(_taskStatusText(task.status)),
+                              onTap: () {
+                                setState(() {
+                                  _sourceKey = controller.activateSource(
+                                    inputPath: task.sourcePath,
+                                    audioFilename: task.sourceName,
+                                  );
+                                  _selectedFilePath = task.sourcePath;
+                                  _selectedFileName = task.sourceName;
+                                  _selectedAudioBytes = null;
+                                });
+                                Navigator.pop(ctx);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _taskStatusIcon(RvcTaskSnapshot task) {
+    return switch (task.status) {
+      RvcTaskStatus.running => const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      RvcTaskStatus.succeeded => const Icon(Icons.check_circle),
+      RvcTaskStatus.failed => const Icon(Icons.error_outline),
+      RvcTaskStatus.idle => const Icon(Icons.radio_button_unchecked),
+    };
+  }
+
+  String _taskStatusText(RvcTaskStatus status) {
+    return switch (status) {
+      RvcTaskStatus.idle => '等待',
+      RvcTaskStatus.running => '进行中',
+      RvcTaskStatus.succeeded => '完成',
+      RvcTaskStatus.failed => '失败',
+    };
+  }
+
+  String _fileNameFromPath(String path) => path.split(RegExp(r'[\\/]')).last;
 
   // =========================================================================
   // 服务器地址对话框
@@ -660,7 +871,8 @@ class _RvcPageState extends State<RvcPage> {
 
     textController.dispose();
 
-    if (result == null || result == controller.serverUrl || result.isEmpty) return;
+    if (result == null || result == controller.serverUrl || result.isEmpty)
+      return;
     controller.updateServerUrl(result);
   }
 }

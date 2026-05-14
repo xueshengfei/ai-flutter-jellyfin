@@ -23,6 +23,10 @@ class RvcTaskSnapshot {
   final String id;
   final RvcTaskStatus status;
 
+  final String sourceKey;
+
+  final String? sourcePath;
+
   /// 'convert' 或 'cover'
   final String mode;
 
@@ -47,6 +51,8 @@ class RvcTaskSnapshot {
   const RvcTaskSnapshot({
     required this.id,
     required this.status,
+    required this.sourceKey,
+    this.sourcePath,
     required this.mode,
     this.sourceName,
     this.modelName,
@@ -75,6 +81,8 @@ class RvcTaskSnapshot {
   /// 便捷 copyWith
   RvcTaskSnapshot copyWith({
     RvcTaskStatus? status,
+    String? sourceKey,
+    String? sourcePath,
     String? mode,
     String? sourceName,
     String? modelName,
@@ -85,6 +93,8 @@ class RvcTaskSnapshot {
     return RvcTaskSnapshot(
       id: id,
       status: status ?? this.status,
+      sourceKey: sourceKey ?? this.sourceKey,
+      sourcePath: sourcePath ?? this.sourcePath,
       mode: mode ?? this.mode,
       sourceName: sourceName ?? this.sourceName,
       modelName: modelName ?? this.modelName,
