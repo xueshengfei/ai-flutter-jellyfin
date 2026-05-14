@@ -105,6 +105,7 @@ class TtsPlaybackService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    if (_isDisposed) return;
     await _player.stop();
     _buffer.clear();
     _segments.clear();
@@ -115,9 +116,13 @@ class TtsPlaybackService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _isDisposed = false;
+
   @override
   void dispose() {
+    _isDisposed = true;
     _playerSub?.cancel();
+    _player.stop();
     _player.dispose();
     _ttsClient.close();
     super.dispose();

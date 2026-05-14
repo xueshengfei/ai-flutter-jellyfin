@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:jellyfin_ai_recommendation/src/models/ai_recommendation_models.dart';
 
 // 条件导入：Web 用 fetch API，原生用 Dio
@@ -41,6 +42,9 @@ class AiStreamService {
   /// 当前会话 ID（多轮对话自动传递）
   String? sessionId;
 
+  /// 当前 SSE 请求的取消令牌
+  CancelToken? _cancelToken;
+
   /// [aiServiceUrl] AI 服务完整地址（如 http://192.168.1.100:5005）
   /// 可通过 JellyfinConfiguration.resolvedAiServiceUrl 获取
   AiStreamService({required String aiServiceUrl})
@@ -68,7 +72,8 @@ class AiStreamService {
 
   /// 取消当前请求
   void cancel() {
-    // TODO: 支持 AbortController (web) / CancelToken (native)
+    _cancelToken?.cancel('用户取消');
+    _cancelToken = null;
   }
 
   /// 建立 SSE 连接并解析事件流
@@ -87,9 +92,11 @@ class AiStreamService {
       );
 
       // 使用平台适配的流式连接（GET 请求）
+      _cancelToken = CancelToken();
       final stream = createSseStream(
         uri.toString(),
         {'Accept': 'text/event-stream'},
+        cancelToken: _cancelToken,
       );
 
       _connectStartTime = DateTime.now();
