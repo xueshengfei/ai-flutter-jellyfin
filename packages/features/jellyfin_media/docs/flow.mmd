@@ -1,0 +1,178 @@
+%% jellyfin_media 模块业务流程图
+%% 模块包含: 媒体详情页 / 人物详情页 / 媒体列表页
+
+flowchart TD
+
+  %% ============================================================
+  %% 一、媒体详情页流程
+  %% ============================================================
+  subgraph 媒体详情页["MediaItemDetailPage 媒体详情页流程"]
+    direction TD
+
+    进入详情页["用户点击媒体项\n(onNavigateToMediaItem 回调)"]
+    初始化详情["initState\n创建 FutureBuilder"]
+    加载详情["fetchDetail(itemId)\n获取完整 MediaItem"]
+    详情加载中["加载中\nCircularProgressIndicator"]
+    详情加载失败["加载失败\n显示错误 + 重试按钮"]
+    详情加载成功["加载成功\n构建详情内容"]
+
+    subgraph 详情内容区["详情内容区 _buildContent"]
+      direction TD
+      展示头部信息["头部信息区 _buildHeaderInfo\n封面图 + 标题 + 年份/评级/时长 + 评分"]
+      播放按钮["播放按钮\nFilledButton '播放'"]
+      展示剧情简介["剧情简介\nitem.overview"]
+      季列表判断{"type == series?"}
+      加载季列表["fetchSeasons(seriesId)\nSeasonListResult"]
+      展示季列表["横向滚动季卡片列表\n每季显示封面+名称+集数"]
+      演员列表["演员列表 PersonListRow\nPersonAvatarCard 横向滚动"]
+      导演列表["导演列表 PersonListRow\nPersonAvatarCard 横向滚动"]
+      编剧列表["编剧列表 PersonListRow\nPersonAvatarCard 横向滚动"]
+      附加信息["附加信息\n类型标签 + 工作室标签"]
+    end
+
+    进入详情页 --> 初始化详情
+    初始化详情 --> 加载详情
+    加载详情 --> 详情加载中
+    详情加载中 -->|成功| 详情加载成功
+    详情加载中 -->|失败| 详情加载失败
+    详情加载失败 -->|点击重试| 加载详情
+    详情加载成功 --> 展示头部信息
+    展示头部信息 --> 播放按钮
+    播放按钮 --> 展示剧情简介
+    展示剧情简介 --> 季列表判断
+    季列表判断 -->|是| 加载季列表
+    加载季列表 --> 展示季列表
+    季列表判断 -->|否| 演员列表
+    展示季列表 --> 演员列表
+    演员列表 --> 导演列表
+    导演列表 --> 编剧列表
+    编剧列表 --> 附加信息
+  end
+
+  %% 媒体详情页的跳转出口
+  播放按钮 -->|"onStartPlayback"| 触发播放["外部: 视频播放页\nVideoPlaybackRoutePage"]
+  展示季列表 -->|"onNavigateToEpisodes\n(series, season)"| 跳转集列表["外部: 剧集列表页\nEpisodeListPage"]
+  演员列表 -->|"点击演员头像\nonNavigateToPerson"| 进入人物详情
+  导演列表 -->|"点击导演头像\nonNavigateToPerson"| 进入人物详情
+  编剧列表 -->|"点击编剧头像\nonNavigateToPerson"| 进入人物详情
+
+  %% ============================================================
+  %% 二、人物详情页流程
+  %% ============================================================
+  subgraph 人物详情页["PersonDetailPage 人物详情页流程"]
+    direction TD
+
+    进入人物详情["从媒体详情页/其他入口\n传入 personId + personName + personType"]
+    初始化人物["initState\n并行发起两个请求"]
+    加载人物详情["fetchPersonDetail(personId, personType)\n获取 Person 模型"]
+    加载人物作品["fetchPersonCredits(personId)\nincludeItemTypes: movie, series"]
+    人物加载中["加载中\nCircularProgressIndicator"]
+    人物加载失败["加载失败\n显示错误"]
+    人物加载成功["加载成功"]
+
+    subgraph 人物信息区["人物信息区 _buildPersonInfo"]
+      direction TD
+      人物头像["头像 imageUrl\n圆形裁剪 120x120"]
+      人物姓名["姓名 person.name\nheadlineSmall 粗体"]
+      人物类型标签["类型标签 typeDisplayName\n演员/导演/编剧/制片人/作曲家"]
+      人物简介["个人简介 bio"]
+      出生日期["出生日期 birthDate"]
+      逝世日期["逝世日期 deathDate"]
+      人物类型["关联类型 genres\nChip 标签组"]
+    end
+
+    subgraph 作品列表区["参与作品列表区"]
+      direction TD
+      作品标题["标题: '参与作品'"]
+      作品网格["3列网格 SliverGrid\nMediaItemCard 卡片"]
+    end
+
+    进入人物详情 --> 初始化人物
+    初始化人物 --> 加载人物详情
+    初始化人物 --> 加载人物作品
+    加载人物详情 --> 人物加载中
+    人物加载中 -->|成功| 人物加载成功
+    人物加载中 -->|失败| 人物加载失败
+    人物加载失败 -->|点击刷新| 加载人物详情
+    人物加载成功 --> 人物头像
+    人物头像 --> 人物姓名
+    人物姓名 --> 人物类型标签
+    人物类型标签 --> 人物简介
+    人物简介 --> 出生日期
+    出生日期 --> 逝世日期
+    逝世日期 --> 人物类型
+  end
+
+  %% 人物详情页的跳转出口
+  作品网格 -->|"点击作品卡片\nonNavigateToMediaItem"| 返回详情页["外部: 媒体详情页\nMediaItemDetailPage"]
+
+  %% ============================================================
+  %% 三、媒体列表页流程
+  %% ============================================================
+  subgraph 媒体列表页["MediaItemsPage 媒体列表页流程"]
+    direction TD
+
+    进入列表页["用户从媒体库首页\n选择一个媒体库"]
+    初始化列表["MediaItemsPage\n接收 library + fetchMediaItems"]
+    判断类型{"library.type\n== tvshows?"}
+    设置递归["recursive = false\n(电视剧不递归)"]
+    设置不递归["recursive = true\n(其他类型递归)"]
+    分页加载["PaginatedList 分页组件\npageSize = 100"]
+    调用获取["fetchMediaItems(\n  parentId, recursive,\n  startIndex, limit\n)"]
+    列表加载中["加载中\nCircularProgressIndicator + 提示文本"]
+    列表加载失败["加载失败\n错误图标 + 错误信息 + 重试按钮"]
+    列表为空["列表为空\n媒体库类型图标 + 空提示"]
+    列表加载成功["加载成功"]
+
+    subgraph 列表展示区["列表展示区"]
+      direction TD
+      自定义构建器{"listBuilder\n已提供?"}
+      自定义列表["使用外部 listBuilder\n(items, onTap) -> Widget"]
+      默认网格["默认 3 列 GridView\n封面图 + 标题\nInkWell 点击"]
+    end
+
+    subgraph 操作区["页面操作"]
+      direction TD
+      刷新按钮["刷新按钮\n调用 PaginatedList.refresh()"]
+      额外操作["appBarActions\n外部自定义操作按钮\n(如 ViewModeSelector)"]
+    end
+
+    进入列表页 --> 初始化列表
+    初始化列表 --> 判断类型
+    判断类型 -->|是| 设置递归
+    判断类型 -->|否| 设置不递归
+    设置递归 --> 分页加载
+    设置不递归 --> 分页加载
+    分页加载 --> 调用获取
+    调用获取 --> 列表加载中
+    列表加载中 -->|成功| 列表加载成功
+    列表加载中 -->|失败| 列表加载失败
+    列表加载失败 -->|点击重试| 调用获取
+    列表加载中 -->|空数据| 列表为空
+    列表加载成功 --> 自定义构建器
+    自定义构建器 -->|是| 自定义列表
+    自定义构建器 -->|否| 默认网格
+  end
+
+  %% 媒体列表页的跳转出口
+  默认网格 -->|"点击媒体项\nonNavigateToMediaItem"| 进入详情页
+  自定义列表 -->|"点击媒体项\nonNavigateToMediaItem"| 进入详情页
+
+  %% ============================================================
+  %% 样式定义
+  %% ============================================================
+  classDef pageStyle fill:#4a90d9,stroke:#2c5f8a,color:#fff,font-weight:bold
+  classDef loadStyle fill:#f5a623,stroke:#c77d00,color:#fff
+  classDef errorStyle fill:#d0021b,stroke:#9b0014,color:#fff
+  classDef successStyle fill:#7ed321,stroke:#5a9a18,color:#fff
+  classDef decisionStyle fill:#bd10e0,stroke:#8e0ba8,color:#fff
+  classDef callbackStyle fill:#50e3c2,stroke:#2da88e,color:#000
+  classDef externalStyle fill:#9b9b9b,stroke:#6b6b6b,color:#fff,stroke-dasharray: 5 5
+
+  class 进入详情页,进入人物详情,进入列表页 pageStyle
+  class 详情加载中,人物加载中,列表加载中 loadStyle
+  class 详情加载失败,人物加载失败,列表加载失败 errorStyle
+  class 详情加载成功,人物加载成功,列表加载成功 successStyle
+  class 季列表判断,判断类型,自定义构建器 decisionStyle
+  class 触发播放,跳转集列表,返回详情页 callbackStyle
+  class 加载详情,加载人物详情,加载人物作品,调用获取,加载季列表 externalStyle

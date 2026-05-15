@@ -1,0 +1,256 @@
+%% jellyfin_music 模块业务流程图
+%% 生成日期: 2026-05-16
+
+flowchart TD
+
+  =====================================================================
+  ## 一、音乐库浏览主流程
+  =====================================================================
+
+  subgraph BROWSE["音乐库浏览主流程"]
+    direction TD
+
+    ENTRY["用户进入音乐库<br/>MusicLibraryPage"] --> TABS["三 Tab 布局<br/>TabController(length: 3)"]
+
+    TABS --> TAB_ALBUM["Tab: 专辑<br/>_AlbumsTab"]
+    TABS --> TAB_ARTIST["Tab: 艺术家<br/>_ArtistsTab"]
+    TABS --> TAB_SONG["Tab: 歌曲<br/>_SongsTab"]
+
+    TAB_ALBUM --> FETCH_ALBUM["AlbumsFetcher 回调<br/>分页加载专辑列表"]
+    FETCH_ALBUM --> ALBUM_GRID["GridView 展示<br/>_AlbumCard 封面+名称+艺术家"]
+    ALBUM_GRID --> CLICK_ALBUM{"用户点击专辑?"}
+    CLICK_ALBUM -->|"是"| OPEN_ALBUM["OnOpenAlbum 回调<br/>跳转专辑详情"]
+
+    TAB_ARTIST --> FETCH_ARTIST["ArtistsFetcher 回调<br/>分页加载艺术家列表"]
+    FETCH_ARTIST --> ARTIST_GRID["GridView 展示<br/>CircleAvatar+名称+专辑数"]
+    ARTIST_GRID --> CLICK_ARTIST{"用户点击艺术家?"}
+    CLICK_ARTIST -->|"是"| OPEN_ARTIST["OnOpenArtist 回调<br/>跳转艺术家详情"]
+
+    TAB_SONG --> FETCH_SONG["SongsFetcher 回调<br/>分页加载歌曲列表"]
+    FETCH_SONG --> SONG_LIST["ListView 展示<br/>ListTile: 封面+歌名+艺术家+时长"]
+    SONG_LIST --> CLICK_SONG{"用户点击歌曲?"}
+    CLICK_SONG -->|"是"| CONVERT_TRACK["MusicSong → AudioTrack<br/>（页面内部转换）"]
+    CONVERT_TRACK --> PLAY_TRACK["OnPlayTracks 回调<br/>传入 tracks + startIndex"]
+
+    SEARCH_BTN["AppBar 搜索按钮"] --> SEARCH_PAGE["onSearch 回调<br/>跳转搜索页"]
+  end
+
+  =====================================================================
+  ## 二、专辑详情与艺术家详情
+  =====================================================================
+
+  subgraph DETAIL["详情页流程"]
+    direction TD
+
+    OPEN_ALBUM --> ALBUM_DETAIL["AlbumDetailPage"]
+    ALBUM_DETAIL --> FETCH_DETAIL_A["AlbumDetailFetcher<br/>获取专辑完整信息"]
+    ALBUM_DETAIL --> FETCH_SONGS_A["AlbumSongsFetcher<br/>获取专辑歌曲列表"]
+
+    FETCH_DETAIL_A --> ALBUM_HEADER["专辑头部<br/>封面+名称+艺术家+年份+风格"]
+    FETCH_SONGS_A --> SONG_ROWS["歌曲列表<br/>_SongRow: 序号+歌名+时长"]
+
+    ALBUM_HEADER --> PLAY_ALL["播放全部按钮<br/>_playAll()"]
+    PLAY_ALL --> PLAY_ALL_CB["OnPlaySong 回调<br/>(首曲, 全部歌曲, index=0)"]
+
+    SONG_ROWS --> CLICK_SONG_A{"用户点击<br/>某首歌曲?"}
+    CLICK_SONG_A -->|"是"| PLAY_SONG_A["OnPlaySong 回调<br/>(当前曲, 全部歌曲, index)"]
+
+    OPEN_ARTIST --> ARTIST_DETAIL["ArtistDetailPage"]
+    ARTIST_DETAIL --> FETCH_DETAIL_R["ArtistDetailFetcher<br/>获取艺术家完整信息"]
+    ARTIST_DETAIL --> FETCH_ALBUMS_R["ArtistAlbumsFetcher<br/>获取艺术家专辑列表"]
+
+    FETCH_DETAIL_R --> ARTIST_HEADER["艺术家头部<br/>头像+名称+专辑数+歌曲数+风格"]
+    FETCH_ALBUMS_R --> ALBUM_GRID_R["专辑网格<br/>_AlbumCard 封面+名称"]
+
+    ALBUM_GRID_R --> CLICK_ALBUM_R{"用户点击<br/>某张专辑?"}
+    CLICK_ALBUM_R -->|"是"| NAV_ALBUM_R["OnNavigateToAlbum 回调<br/>跳转专辑详情页"]
+  end
+
+  =====================================================================
+  ## 三、音乐播放流程
+  =====================================================================
+
+  subgraph PLAYBACK["音乐播放流程"]
+    direction TD
+
+    PLAY_TRACK --> PORT_PLAY["AudioPlaybackPort.playSong()<br/>传入 AudioTrack + 播放列表"]
+    PLAY_SONG_A --> PORT_PLAY
+    PLAY_ALL_CB --> PORT_PLAY
+
+    PORT_PLAY --> PORT_IMPL["AudioPlaybackAdapter<br/>（App 层单例，just_audio 实现）"]
+    PORT_IMPL --> JUST_AUDIO["just_audio 播放器<br/>加载 streamUrl"]
+
+    JUST_AUDIO --> PLAY_STATE{"播放状态"}
+
+    PLAY_STATE -->|"播放中"| VINYL_SPIN["唱片旋转动画<br/>AnimationController.repeat()"]
+    PLAY_STATE -->|"暂停"| VINYL_STOP["唱片停止旋转<br/>AnimationController.stop()"]
+    PLAY_STATE -->|"加载中"| LOADING_IND["CircularProgressIndicator"]
+    PLAY_STATE -->|"出错"| ERROR_MSG["显示错误信息"]
+
+    VINYL_SPIN --> PLAYER_PAGE["MusicPlayerPage"]
+    VINYL_STOP --> PLAYER_PAGE
+    LOADING_IND --> PLAYER_PAGE
+
+    PLAYER_PAGE --> SCREEN_CHECK{"屏幕宽度 > 700?"}
+
+    SCREEN_CHECK -->|"窄屏（移动端）"| NARROW_LAYOUT["移动端布局<br/>唱片 + 歌名 + 进度条 + 控制栏"]
+    SCREEN_CHECK -->|"宽屏（桌面端）"| WIDE_LAYOUT["宽屏布局<br/>唱片 + 右侧歌词面板"]
+
+    subgraph CONTROLS["播放控制栏"]
+      direction LR
+      MODE_BTN["播放模式切换<br/>顺序/随机/单曲循环<br/>cyclePlayMode()"]
+      PREV_BTN["上一首<br/>playPrevious()"]
+      PLAY_PAUSE["播放/暂停<br/>resume() / pause()"]
+      NEXT_BTN["下一首<br/>playNext()"]
+      FAV_BTN["收藏/取消<br/>updateTrackFavorite()"]
+      RVC_BTN["RVC 按钮<br/>onOpenRvc 回调"]
+    end
+
+    NARROW_LAYOUT --> CONTROLS
+    WIDE_LAYOUT --> CONTROLS
+
+    MODE_BTN --> MODE_CYCLE["PlayMode 切换<br/>sequential → shuffle → repeatOne"]
+  end
+
+  =====================================================================
+  ## 四、迷你播放器与音乐壳
+  =====================================================================
+
+  subgraph MINI_PLAYER["迷你播放器流程"]
+    direction TD
+
+    subgraph SHELL["MusicAreaShell（音乐模块壳）"]
+      SHELL_CHILD["页面内容（Expanded）"]
+      SHELL_MINI["MiniPlayerBar（底部）"]
+    end
+
+    SHELL_MINI --> HAS_PLAYLIST{"hasPlaylist<br/>且有 currentTrack?"}
+    HAS_PLAYLIST -->|"否"| HIDDEN["隐藏<br/>SizedBox.shrink()"]
+    HAS_PLAYLIST -->|"是"| SHOW_MINI["显示迷你播放器<br/>封面+歌名+歌手+进度条"]
+
+    SHOW_MINI --> MINI_CTRL["迷你控制"]
+    MINI_CTRL --> MINI_PLAY_PAUSE["播放/暂停按钮"]
+    MINI_CTRL --> MINI_NEXT["下一首按钮"]
+    MINI_CTRL --> MINI_TAP["点击迷你播放器"]
+
+    MINI_TAP --> OPEN_PLAYER["onOpenPlayer 回调<br/>跳转 MusicPlayerPage"]
+  end
+
+  =====================================================================
+  ## 五、音乐搜索流程
+  =====================================================================
+
+  subgraph SEARCH["音乐搜索流程"]
+    direction TD
+
+    SEARCH_PAGE --> SEARCH_INPUT["MusicSearchPage<br/>TextField 输入"]
+
+    SEARCH_INPUT --> INPUT_CHANGE["onChanged 触发<br/>_onSearchChanged()"]
+
+    INPUT_CHANGE --> EMPTY_CHECK{"输入为空?"}
+    EMPTY_CHECK -->|"是"| CLEAR_RESULT["清空结果<br/>_hasSearched = false"]
+    EMPTY_CHECK -->|"否"| DEBOUNCE["Timer 防抖<br/>500ms"]
+
+    DEBOUNCE --> SEARCH_FETCH["MusicSearchFetcher 回调<br/>searchTerm + parentId"]
+    SEARCH_FETCH --> SEARCH_API["Gateway.searchMusic()<br/>调用 Jellyfin API"]
+
+    SEARCH_API --> SEARCH_RESULT["MusicSearchResult<br/>artists + albums + songs"]
+
+    SEARCH_RESULT --> HAS_RESULT{"有结果?"}
+    HAS_RESULT -->|"否"| NO_RESULT["显示未找到提示"]
+    HAS_RESULT -->|"是"| SHOW_RESULT["分类展示结果"]
+
+    SHOW_RESULT --> ARTIST_RESULT["艺术家横滚列表<br/>_ArtistChip"]
+    SHOW_RESULT --> ALBUM_RESULT["专辑横滚列表<br/>_AlbumChip"]
+    SHOW_RESULT --> SONG_RESULT["歌曲列表<br/>ListTile"]
+
+    ARTIST_RESULT --> CLICK_ARTIST_S{"点击艺术家?"}
+    CLICK_ARTIST_S -->|"是"| OPEN_ARTIST_S["OnOpenArtist 回调"]
+
+    ALBUM_RESULT --> CLICK_ALBUM_S{"点击专辑?"}
+    CLICK_ALBUM_S -->|"是"| OPEN_ALBUM_S["OnOpenAlbum 回调"]
+
+    SONG_RESULT --> CLICK_SONG_S{"点击歌曲?"}
+    CLICK_SONG_S -->|"是"| CONVERT_SONG_S["MusicSong → AudioTrack"]
+    CONVERT_SONG_S --> PLAY_SONG_S["OnPlayTracks 回调"]
+
+    SEARCH_INPUT --> SUBMIT["回车提交<br/>立即搜索（跳过防抖）"]
+  end
+
+  =====================================================================
+  ## 六、歌词流程
+  =====================================================================
+
+  subgraph LYRICS["歌词流程"]
+    direction TD
+
+    PLAYER_PAGE --> LYRICS_BTN["歌词按钮（词标签）"]
+    LYRICS_BTN --> SCREEN_CHECK_LYRICS{"屏幕宽度 > 700?"}
+
+    SCREEN_CHECK_LYRICS -->|"窄屏"| OPEN_LYRICS_PAGE["onOpenLyrics 回调<br/>跳转 LyricsPage"]
+    SCREEN_CHECK_LYRICS -->|"宽屏"| TOGGLE_WEB_LYRICS["切换宽屏歌词面板<br/>_showWebLyrics"]
+
+    OPEN_LYRICS_PAGE --> LYRICS_PAGE["LyricsPage<br/>背景模糊+顶部歌曲信息+底部控制"]
+
+    LYRICS_PAGE --> LYRICS_PANEL["LyricsPanel 组件"]
+    TOGGLE_WEB_LYRICS --> LOAD_WEB_LYRICS["_loadLyrics()"]
+
+    LOAD_WEB_LYRICS --> FETCH_LYRICS
+    LYRICS_PANEL --> FETCH_LYRICS["LyricsFetcher 回调<br/>fetchLyrics(itemId)"]
+
+    FETCH_LYRICS --> LYRICS_DATA{"获取到<br/>LyricsData?"}
+
+    LYRICS_DATA -->|"有歌词"| HAS_SYNC{"isSynced<br/>同步歌词?"}
+    LYRICS_DATA -->|"无歌词"| NO_LYRICS["显示暂无歌词<br/>搜索在线歌词按钮"]
+
+    HAS_SYNC -->|"是"| TRACK_POS["监听位置流<br/>onPositionChanged"]
+    TRACK_POS --> UPDATE_LINE["_updateCurrentLine()<br/>匹配当前行"]
+    UPDATE_LINE --> SYNC_SCROLL["同步滚动<br/>_scrollToLine()"]
+    SYNC_SCROLL --> USER_SCROLL_CHECK{"用户正在<br/>手动滚动?"}
+    USER_SCROLL_CHECK -->|"是"| WAIT_RESUME["等待 3 秒后<br/>恢复自动滚动"]
+    USER_SCROLL_CHECK -->|"否"| AUTO_SCROLL["自动滚动到<br/>当前歌词行"]
+
+    HAS_SYNC -->|"否"| STATIC_LYRICS["静态展示<br/>（无时间戳，不滚动）"]
+
+    NO_LYRICS --> REMOTE_SEARCH_BTN{"有<br/>searchRemoteLyrics?"}
+    REMOTE_SEARCH_BTN -->|"是"| CLICK_REMOTE["点击搜索在线歌词"]
+    REMOTE_SEARCH_BTN -->|"否"| NO_ACTION["无可操作项"]
+
+    CLICK_REMOTE --> REMOTE_API["RemoteLyricsSearcher 回调<br/>searchRemoteLyrics(itemId)"]
+
+    REMOTE_API --> REMOTE_RESULT{"找到远程歌词?"}
+    REMOTE_RESULT -->|"否"| NO_REMOTE["提示未找到在线歌词"]
+    REMOTE_RESULT -->|"是"| SHOW_BOTTOM["弹出 BottomSheet<br/>展示搜索结果列表"]
+
+    SHOW_BOTTOM --> SELECT_LYRICS["用户选择一条歌词"]
+    SELECT_LYRICS --> DOWNLOAD_LYRICS["RemoteLyricsDownloader 回调<br/>downloadRemoteLyrics()"]
+
+    DOWNLOAD_LYRICS --> LYRICS_SAVED["歌词已下载保存"]
+    LYRICS_SAVED --> RELOAD_LYRICS["重新加载歌词<br/>更新 _lyricsData"]
+    RELOAD_LYRICS --> TRACK_POS
+
+    subgraph LYRICS_INTERACTION["歌词交互"]
+      TAP_LINE["点击某行歌词<br/>_onLineTap()"]
+      TAP_LINE --> SEEK_POS["seek(startTime)<br/>跳转到该行对应时间"]
+    end
+
+    SYNC_SCROLL --> LYRICS_INTERACTION
+  end
+
+  =====================================================================
+  ## 样式定义
+  =====================================================================
+
+  classDef page fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000
+  classDef callback fill:#fff3e0,stroke:#e65100,stroke-width:1px,color:#000
+  classDef decision fill:#fce4ec,stroke:#c62828,stroke-width:2px,color:#000
+  classDef model fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px,color:#000
+  classDef port fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#000
+  classDef widget fill:#e0f7fa,stroke:#00695c,stroke-width:1px,color:#000
+
+  class ENTRY,TABS,TAB_ALBUM,TAB_ARTIST,TAB_SONG,ALBUM_GRID,ARTIST_GRID,SONG_LIST,ALBUM_HEADER,ARTIST_HEADER,SONG_ROWS,PLAYER_PAGE,NARROW_LAYOUT,WIDE_LAYOUT,LYRICS_PAGE,SEARCH_INPUT page
+  class FETCH_ALBUM,FETCH_ARTIST,FETCH_SONG,FETCH_DETAIL_A,FETCH_SONGS_A,FETCH_DETAIL_R,FETCH_ALBUMS_R,SEARCH_FETCH,REMOTE_API,DOWNLOAD_LYRICS,FETCH_LYRICS callback
+  class CLICK_ALBUM,CLICK_ARTIST,CLICK_SONG,CLICK_SONG_A,CLICK_ALBUM_R,HAS_RESULT,LYRICS_DATA,HAS_SYNC,SCREEN_CHECK,SCREEN_CHECK_LYRICS,EMPTY_CHECK,REMOTE_RESULT,USER_SCROLL_CHECK decision
+  class CONVERT_TRACK,SEARCH_RESULT,LYRICS_DATA model
+  class PORT_PLAY,PORT_IMPL,JUST_AUDIO,TRACK_POS port
+  class MINI_PLAYER,SHELL,SHOW_MINI,CONTROLS,LYRICS_INTERACTION widget

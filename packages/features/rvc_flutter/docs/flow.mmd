@@ -1,0 +1,186 @@
+%% RVC 语音转换模块 — 业务流程图
+%% 文件: packages/features/rvc_flutter/docs/flow.mmd
+
+flowchart TD
+
+%% ============================================================================
+%% 一、RVC 任务主流程
+%% ============================================================================
+subgraph 主流程["RVC 任务主流程"]
+  direction TD
+
+  START([用户进入 RVC 页面]) --> CONNECT{服务是否已连接?}
+
+  CONNECT -- 否 --> DO_CONNECT[\"RvcTaskController.connect()
+  并行获取: getStatus + listModels"/]
+  DO_CONNECT --> CONNECT_RESULT{连接结果}
+
+  CONNECT_RESULT -- 成功 --> SHOW_STATUS["显示服务状态卡片
+  服务名 / 版本 / 模型数量"]
+  CONNECT_RESULT -- 失败 --> SHOW_ERROR["显示连接失败页面
+  错误信息 + 重试按钮"]
+  SHOW_ERROR --> RETRY[用户点击重试]
+  RETRY --> DO_CONNECT
+
+  CONNECT -- 是 --> SHOW_STATUS
+
+  SHOW_STATUS --> SELECT_MODEL["选择音色模型
+  (DropdownButtonFormField)"]
+  SELECT_MODEL --> AUDIO_INPUT{音频来源}
+
+  AUDIO_INPUT -- "外部传入 audioPath" --> PRESET_AUDIO["使用预设音频路径
+  (同机场景, 服务端直接读取)"]
+  AUDIO_INPUT -- "用户手动选择" --> PICK_FILE["FilePicker 选择音频文件
+  (withData: true)"]
+
+  PRESET_AUDIO --> SET_PARAMS["设置转换参数
+  音高偏移 f0UpKey
+  F0 算法 rmvpe/pm/harvest
+  检索比率 indexRate
+  辅音保护 protect
+  采样率 resampleSr"]
+  PICK_FILE --> SET_PARAMS
+
+  SET_PARAMS --> CHOOSE_MODE{选择转换模式}
+
+  CHOOSE_MODE -- "音色转换 convert" --> SET_CONVERT["/convert 接口
+  仅音色转换"]
+  CHOOSE_MODE -- "一键翻唱 cover" --> SET_COVER["/cover 接口
+  人声分离 → 去混响 → RVC → 混音
+  额外参数: 人声音量 vocalVol
+  伴奏音量 instVol"]
+
+  SET_CONVERT --> CHECK_READY{模型 + 音频
+  已就绪?}
+  SET_COVER --> CHECK_READY
+
+  CHECK_READY -- 否 --> WAIT["等待用户完成选择
+  按钮禁用状态"]
+  WAIT --> CHECK_READY
+
+  CHECK_READY -- 是 --> SUBMIT["点击开始转换
+  调用 startConvert / startCover"]
+
+  SUBMIT --> TASK_EXEC["创建 RvcTaskSnapshot
+  status = running
+  通过 RVCClient 发起 HTTP 请求"]
+
+  TASK_EXEC --> API_RESULT{API 返回结果}
+
+  API_RESULT -- "success = true" --> TASK_SUCCESS["status = succeeded
+  保存 ConvertResult / CoverResult"]
+  API_RESULT -- "success = false" --> TASK_FAIL_BIZ["status = failed
+  errorMessage = 转换失败"]
+  API_RESULT -- "异常抛出" --> TASK_FAIL_ERR["status = failed
+  errorMessage = e.toString()"]
+
+  TASK_SUCCESS --> SHOW_RESULT["显示结果卡片
+  采样率 / 时长 / 文件大小"]
+  TASK_FAIL_BIZ --> SHOW_FAIL["显示失败卡片
+  错误信息"]
+  TASK_FAIL_ERR --> SHOW_FAIL
+
+  SHOW_RESULT --> PLAY_OR_SAVE{用户操作}
+  PLAY_OR_SAVE -- "播放结果" --> PLAY_AUDIO["controller.togglePlayback
+  AudioPlayer 播放 playUrl"]
+  PLAY_OR_SAVE -- "保存文件" --> SAVE_AUDIO["显示下载链接
+  downloadUrl"]
+end
+
+%% ============================================================================
+%% 二、任务状态流转
+%% ============================================================================
+subgraph 状态流转["任务状态流转 (RvcTaskStatus)"]
+
+  S_IDLE(["idle — 空闲
+  无任务, 不显示结果区"])
+
+  S_RUNNING["running — 转换中
+  UI: CircularProgressIndicator + 正在转换音频
+  按钮显示 正在转换... 且禁用
+  AppBar 任务角标计数 +1"]
+
+  S_SUCCEEDED["succeeded — 成功
+  UI: 结果卡片 (采样率/时长/大小)
+  播放按钮 / 保存按钮 可用"]
+
+  S_FAILED["failed — 失败
+  UI: errorContainer 卡片
+  显示 errorMessage"]
+
+  S_IDLE -->|"startConvert / startCover"| S_RUNNING
+  S_RUNNING -->|"result.success = true"| S_SUCCEEDED
+  S_RUNNING -->|"result.success = false
+  或 catch 异常"| S_FAILED
+  S_SUCCEEDED -->|"clearTask
+  或切换转换模式"| S_IDLE
+  S_FAILED -->|"clearTask
+  或重新转换"| S_IDLE
+end
+
+%% ============================================================================
+%% 三、RvcTaskController 生命周期
+%% ============================================================================
+subgraph 生命周期["RvcTaskController 生命周期"]
+
+  APP_CREATE["JellyfinApp 启动
+  延迟创建 RvcTaskController
+  (App 级单例, ChangeNotifier)"]
+
+  INJECT_ROUTE["RvcRoutePage (注入层)
+  将 controller 传给 RvcPage"]
+
+  PAGE_USE["RvcPage (UI 层)
+  通过 ListenableBuilder 监听
+  不持有任务生命周期"]
+
+  TASK_MAP["内部任务池
+  Map sourceKey → RvcTaskSnapshot
+  按时间排序, 支持多源切换"]
+
+  AUDIO_PLAYER["内置 AudioPlayer (just_audio)
+  播放转换结果 playUrl
+  监听 playerStateStream → 自动停止"]
+
+  TASK_CENTER["任务中心 BottomSheet
+  显示全部历史任务
+  点击可切换 activeSource"]
+
+  SERVER_SWITCH["切换服务器地址
+  updateServerUrl → 重置全部状态
+  重新连接新服务"]
+
+  DISPOSE(["App 退出时 dispose
+  取消播放订阅
+  释放 AudioPlayer
+  关闭 RVCClient"])
+
+  APP_CREATE --> INJECT_ROUTE --> PAGE_USE
+  PAGE_USE --> TASK_MAP
+  PAGE_USE --> TASK_CENTER
+  TASK_MAP --> AUDIO_PLAYER
+  PAGE_USE -->|"settings 按钮"| SERVER_SWITCH
+  SERVER_SWITCH -->|"自动重连"| PAGE_USE
+  APP_CREATE -.->|"App 销毁"| DISPOSE
+end
+
+%% ============================================================================
+%% 四、关键决策点标注
+%% ============================================================================
+
+subgraph 决策点["关键决策点"]
+
+  D1{"sourceKey 唯一标识"}
+  D1 -- "inputPath 非空" --> D1A["sourceKey = inputPath"]
+  D1 -- "audioFilename 非空" --> D1B["sourceKey = manual:audioFilename"]
+  D1 -- "均为空" --> D1C["sourceKey = manual:audio"]
+
+  D2{"任务过期检查
+  (startConvert/startCover 内部)"}
+  D2 -- "sourceKey 对应 taskId 匹配" --> D2_YES["更新任务状态"]
+  D2 -- "不匹配 (用户已切换源)" --> D2_NO["丢弃结果, 不更新"]
+
+  D3{"播放切换 togglePlayback"}
+  D3 -- "当前正在播放" --> D3_STOP["停止播放, _isPlaying = false"]
+  D3 -- "当前未播放" --> D3_PLAY["设置 URL → play → _isPlaying = true"]
+end

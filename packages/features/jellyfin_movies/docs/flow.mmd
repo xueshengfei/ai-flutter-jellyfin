@@ -1,0 +1,167 @@
+%% jellyfin_movies 模块业务流程图
+%% 生成日期: 2026-05-16
+
+flowchart TD
+
+    %% ============================================================
+    %%  一、电影筛选主流程
+    %% ============================================================
+    subgraph 筛选主流程["电影筛选主流程"]
+        direction TD
+        A1["用户点击电影媒体库卡片"] --> A2["GoRouter 匹配路由<br/>/libraries/:libraryId/movies"]
+        A2 --> A3["MoviesRoutePage.build()"]
+        A3 --> A4["注入回调<br/>fetchMovies = gateway.fetchMovies<br/>onNavigateToMovie = push /movies/:itemId<br/>listBuilder = MediaListBuilder<br/>appBarActions = ViewModeSelector"]
+        A4 --> A5["MovieFilterPage.initState()"]
+        A5 --> A6["创建默认过滤器<br/>MovieFilter.defaultFilter(parentId: libraryId)<br/>sortBy: dateCreated + sortName + productionYear<br/>sortOrder: ascending"]
+        A6 --> A7["PaginatedList 首次加载"]
+        A7 --> A8["_fetchPage(startIndex: 0, limit: 100)"]
+        A8 --> A9["调用 fetchMovies(filter.copyWith(<br/>startIndex, limit))"]
+    end
+
+    %% ============================================================
+    %%  二、筛选条件交互
+    %% ============================================================
+    subgraph 筛选交互["筛选条件交互"]
+        direction TD
+        B1{"用户操作选择"} -->|"点击搜索图标"| B2["_showSearchDialog()"]
+        B1 -->|"点击筛选图标"| B3["_showFilterDialog()<br/>弹出 BottomSheet"]
+        B2 --> B4["输入关键词<br/>searchController.text"]
+        B4 --> B5["_applyFilter(filter.copyWith(<br/>searchTerm: value))"]
+        B3 --> B6["_MovieFilterSheet<br/>85% 高度底部表单"]
+        B6 --> B7["用户调整筛选条件"]
+        B7 --> B8["类型 / 年份 / 工作室 / 评分 / HD / 4K / 未观看"]
+        B8 --> B9{"点击操作"}
+        B9 -->|"重置"| B10["MovieFilter.defaultFilter(parentId)"]
+        B9 -->|"应用筛选"| B11["onApply(filter)"]
+        B10 --> B12["_applyFilter(resetFilter)"]
+        B11 --> B12
+    end
+
+    %% ============================================================
+    %%  三、筛选应用与列表刷新
+    %% ============================================================
+    subgraph 筛选刷新["筛选应用与列表刷新"]
+        direction TD
+        C1["_applyFilter(newFilter)"] --> C2["setState: _filter = newFilter"]
+        C2 --> C3["PaginatedListState.refresh()"]
+        C3 --> C4["_fetchPage(startIndex: 0, limit: 100)"]
+        C4 --> C5{"有活跃筛选条件?"}
+        C5 -->|"是"| C6["显示结果头部<br/>找到 N 部电影 + FilterChips<br/>类型/年份/首字母/搜索词/工作室/评分"]
+        C5 -->|"否"| C7["隐藏结果头部"]
+        C6 --> C8["渲染列表内容"]
+        C7 --> C8
+        C8 --> C9{"listBuilder 是否注入?"}
+        C9 -->|"是"| C10["使用注入的 listBuilder<br/>MediaListBuilder<br/>支持 Banner / VerticalList / PosterGrid / CardGrid"]
+        C9 -->|"否"| C11["使用默认 ListTile<br/>封面 + 名称 + 年份 + 评分"]
+    end
+
+    %% ============================================================
+    %%  四、电影详情页流程
+    %% ============================================================
+    subgraph 详情页流程["电影详情页流程"]
+        direction TD
+        D1["用户点击电影列表项<br/>onNavigateToMovie(context, item)"] --> D2["GoRouter.push<br/>/movies/:itemId"]
+        D2 --> D3["MovieDetailRoutePage.build()"]
+        D3 --> D4["FutureBuilder<br/>gateway.getMediaItemDetail(itemId)"]
+        D4 --> D5{"加载状态"}
+        D5 -->|"loading"| D6["CircularProgressIndicator"]
+        D5 -->|"error"| D7["错误页面<br/>显示错误信息 + 返回按钮"]
+        D5 -->|"success"| D8["MovieDetailPage(movie: data)"]
+        D8 --> D9["构建 SliverAppBar<br/>背景图: JellyfinImage(backdrop)"]
+        D9 --> D10["内部 FutureBuilder<br/>fetchDetail(movie.id)"]
+        D10 --> D11{"详情加载状态"}
+        D11 -->|"loading"| D12["CircularProgressIndicator"]
+        D11 -->|"error"| D13["错误页 + 重试按钮<br/>_loadDetail()"]
+        D11 -->|"success"| D14["_buildContent(movie)"]
+        D14 --> D15["头部信息行<br/>封面图 + 名称 + 年份 + 评级 + 时长"]
+        D15 --> D16["播放按钮<br/>onStartPlayback(context, movie)"]
+        D16 --> D17{"条件渲染各区块"}
+    end
+
+    %% ============================================================
+    %%  五、详情页条件渲染
+    %% ============================================================
+    subgraph 详情页区块["详情页条件渲染区块"]
+        direction TD
+        E1{"overview 不为空?"} -->|"是"| E2["剧情简介"]
+        E1 -->|"否"| E3["跳过"]
+        E2 --> E4{"genres 不为空?"}
+        E3 --> E4
+        E4 -->|"是"| E5["类型标签 Wrap<br/>Chip 组件列表"]
+        E4 -->|"否"| E6["跳过"]
+        E5 --> E7{"communityRating 不为空?"}
+        E6 --> E7
+        E7 -->|"是"| E8["评分区块<br/>星星图标 + ratingText"]
+        E7 -->|"否"| E9["跳过"]
+        E8 --> E10{"directors 不为空?"}
+        E9 --> E10
+        E10 -->|"是"| E11["导演列表<br/>Chip + person 图标"]
+        E10 -->|"否"| E12["跳过"]
+        E11 --> E13{"writers 不为空?"}
+        E12 --> E13
+        E13 -->|"是"| E14["作者列表<br/>Chip + edit 图标"]
+        E13 -->|"否"| E15["跳过"]
+        E14 --> E16{"studios 不为空?"}
+        E15 --> E16
+        E16 -->|"是"| E17["工作室列表<br/>Chip + business 图标"]
+        E16 -->|"否"| E18["详情渲染结束"]
+        E17 --> E18
+    end
+
+    %% ============================================================
+    %%  六、筛选条件传递链路（MovieFilter → Gateway → 渲染）
+    %% ============================================================
+    subgraph 筛选传递链路["筛选条件传递链路"]
+        direction TD
+
+        subgraph 模型层["模型层 - jellyfin_movies 包"]
+            F1["MovieFilter<br/>parentId / startIndex / limit<br/>genres / years / studios / tags<br/>searchTerm / nameStartsWith<br/>minCommunityRating / isHD / is4K<br/>isPlayed / isFavorite / isUnplayed<br/>sortBy: MovieSortField<br/>sortOrder: MovieSortOrder"]
+            F1 -.->|copyWith| F1
+        end
+
+        subgraph 注入层["注入层 - MoviesRoutePage"]
+            F2["gateway.fetchMovies<br/>类型: MoviesFetcher<br/>typedef Future<MovieFilterResult><br/>Function(MovieFilter)"]
+        end
+
+        subgraph 网关层["网关层 - LegacyJellyfinGateway"]
+            F3["fetchMovies(MovieFilter filter)"]
+            F3 --> F4["MovieSortField → ItemSortBy<br/>dateCreated / sortName /<br/>productionYear / premiereDate /<br/>random / communityRating"]
+            F3 --> F5["MovieSortOrder → SortOrder<br/>ascending / descending"]
+            F4 --> F6["jellyfinClient.getItemsApi()<br/>.getItems(<br/>parentId / startIndex / limit<br/>includeItemTypes: movie<br/>sortBy / sortOrder / recursive<br/>genres / years / searchTerm / ...<br/>fields: overview, people, studios, genres)"]
+            F5 --> F6
+        end
+
+        subgraph 转换层["DTO 转换层"]
+            F7["BaseItemDto → MediaItem<br/>mapMediaItem(dto, serverUrl)"]
+            F7 --> F8["提取字段<br/>id / name / type / overview<br/>genres / studios / communityRating<br/>people → directors / writers / actors<br/>imageTags → primaryImageTag<br/>backdropImageTags → backdropImageTag<br/>userData → isFavorite / played"]
+        end
+
+        subgraph 结果层["结果模型"]
+            F9["MovieFilterResult<br/>movies: List of MediaItem<br/>totalCount: int<br/>startIndex: int"]
+        end
+
+        F1 -->|"MovieFilterPage._fetchPage()"| F2
+        F2 -->|"fetchMovies(filter)"| F3
+        F6 -->|"Response<List<BaseItemDto>>"| F7
+        F8 --> F9
+    end
+
+    %% ============================================================
+    %%  七、播放跳转
+    %% ============================================================
+    subgraph 播放跳转["播放跳转链路"]
+        direction TD
+        G1["详情页播放按钮<br/>onStartPlayback(context, movie)"] --> G2["GoRouter.push<br/>/playback/video/:itemId"]
+        G2 --> G3["PlaybackRoutePage<br/>加载 MediaItem → PlaybackAdapter<br/>→ VideoPlayerPage"]
+    end
+
+    %% ============================================================
+    %%  跨模块连接
+    %% ============================================================
+    A9 -.->|"MovieFilter"| F1
+    B5 -.->|"更新 filter"| C1
+    B12 -.->|"新 filter"| C1
+    C10 -.->|"点击项"| D1
+    C11 -.->|"点击项"| D1
+    D16 -->|"点击播放"| G1
+    F9 -.->|"返回结果"| C8

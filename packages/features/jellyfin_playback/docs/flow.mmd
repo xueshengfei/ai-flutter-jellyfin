@@ -1,0 +1,219 @@
+%% jellyfin_playback 视频播放业务流程图
+%% 基于 packages/features/jellyfin_playback + Product/jellyfin_app/data/playback_adapter.dart
+%%
+%% 包含三大流程:
+%%   1. 视频播放主流程 (点击播放 -> 创建 Delegate -> 初始化 -> 播放)
+%%   2. 画质切换流程 (手动/自动 -> 重新获取流 -> 恢复播放)
+%%   3. 播放进度上报流程 (定时器 -> 计算进度 -> 上报 API)
+
+flowchart TD
+
+  %% ═══════════════════════════════════════════════════════════════
+  %% 流程一: 视频播放主流程
+  %% ═══════════════════════════════════════════════════════════════
+
+  subgraph main_flow["1. 视频播放主流程"]
+    direction TD
+
+    start(["用户点击播放按钮"])
+    route["VideoPlaybackRoutePage<br/>path 参数取 itemId"]
+
+    subgraph load_phase["加载阶段 (FutureBuilder)"]
+      direction TD
+      fetch_item["Gateway.getMediaItemDetail(itemId)<br/>加载 MediaItem"]
+      get_api["从 Gateway 获取 ApiClient"]
+      create_adapter["PlaybackAdapter(apiClient)<br/>创建适配器实例"]
+      create_delegate["adapter.createDelegate()<br/>封装 6 个回调为 PlaybackDelegate"]
+    end
+
+    subgraph init_phase["初始化播放器 (_initializePlayer)"]
+      direction TD
+      calc_resume{"playedPercentage > 0?"}
+      calc_yes["计算续播位置 ticks<br/>runTimeTicks * pct / 100"]
+      calc_no["startTimeTicks = null"]
+      get_url["playback.getPlaybackUrl()"]
+
+      subgraph api_call["调用 Jellyfin API"]
+        direction TD
+        build_profile["构建 DeviceProfile<br/>DirectPlay + Transcode"]
+        send_request["getPostedPlaybackInfo<br/>enableDirectPlay/Transcoding"]
+        parse_response["解析 playSessionId<br/>+ mediaSources"]
+      end
+
+      subgraph decide_play["播放方式决策"]
+        direction TD
+        check_direct{"supportsDirectPlay<br/>且无码率限制?"}
+        direct_play["DirectPlay 直链<br/>/Videos/{id}/stream.{ext}<br/>isTranscoded=false"]
+        check_transcode{"transcodingUrl 非空?"}
+        transcode["Transcode 转码<br/>使用 TranscodingUrl<br/>isTranscoded=true"]
+        fallback_direct["DirectPlay 限码率<br/>isTranscoded=false"]
+        no_source(["异常: 无法提供播放流"])
+      end
+
+      setup_ctrl["_setupVideoController<br/>VideoPlayerController.networkUrl"]
+      seek_pos{"有续播位置?"}
+      seek_yes["seekTo(resumePosition)"]
+      seek_no["跳过 seek"]
+      create_chewie["ChewieController<br/>autoPlay=true"]
+      start_session["startSession()<br/>记录 itemId, isPlaying=true"]
+      first_report["首次 _reportProgress()"]
+      start_timer["_startProgressReporting<br/>10 秒定时器"]
+      add_listener["添加进度监听器"]
+      playing(["进入播放状态"])
+    end
+
+    start --> route
+    route --> fetch_item
+    fetch_item --> get_api
+    get_api --> create_adapter
+    create_adapter --> create_delegate
+
+    create_delegate --> calc_resume
+    calc_resume -- 是 --> calc_yes
+    calc_resume -- 否 --> calc_no
+    calc_yes --> get_url
+    calc_no --> get_url
+
+    get_url --> build_profile
+    build_profile --> send_request
+    send_request --> parse_response
+
+    parse_response --> check_direct
+    check_direct -- 是 --> direct_play
+    check_direct -- 否 --> check_transcode
+    check_transcode -- 是 --> transcode
+    check_transcode -- 否 --> fallback_direct
+    fallback_direct --> setup_ctrl
+    direct_play --> setup_ctrl
+    transcode --> setup_ctrl
+    check_direct -- "否且无 Transcode" --> no_source
+
+    setup_ctrl --> seek_pos
+    seek_pos -- 是 --> seek_yes
+    seek_pos -- 否 --> seek_no
+    seek_yes --> create_chewie
+    seek_no --> create_chewie
+    create_chewie --> start_session
+    start_session --> first_report
+    first_report --> start_timer
+    start_timer --> add_listener
+    add_listener --> playing
+  end
+
+  %% ═══════════════════════════════════════════════════════════════
+  %% 流程二: 画质切换流程
+  %% ═══════════════════════════════════════════════════════════════
+
+  subgraph quality_flow["2. 画质切换流程"]
+    direction TD
+
+    subgraph manual_switch["手动切换"]
+      direction TD
+      click_badge["点击底部画质标签"]
+      show_selector["弹出画质选择面板<br/>自动/4K/1080P/720P/480P"]
+      select_q["用户选择新画质"]
+    end
+
+    subgraph auto_switch["自动切换 (auto 模式)"]
+      direction TD
+      progress_evt["_onVideoProgressChanged"]
+      check_auto{"当前画质 == auto?"}
+      buf_detect["检测 buffering 事件<br/>估算带宽采样"]
+      bw_calc["NetworkQualityMonitor<br/>滑动窗口 10次/3分钟"]
+      recommend["recommendQuality()<br/>安全系数 0.7"]
+      decide["AutoQualityDecider<br/>降级:1次确认 / 升级:3次确认"]
+      should_sw{"shouldSwitch != null?"}
+    end
+
+    switch_entry{"_isQualitySwitching?<br/>或新==当前画质?"}
+    switch_skip["跳过切换"]
+    switch_start["记录 currentPosition<br/>和 wasPlaying<br/>_isQualitySwitching=true"]
+
+    call_switch["playback.switchQuality()<br/>传入新 bitrate + ticks"]
+    switch_internal["_getPlaybackUrl()<br/>重新获取播放信息"]
+    decide_new["重新走 DirectPlay/Transcode 决策"]
+    stop_old_enc["停止旧转码任务<br/>_stopEncoding"]
+
+    release_old["释放旧控制器<br/>removeListener + dispose"]
+    setup_new["_setupVideoController(newInfo)<br/>seekTo(currentPosition)"]
+    restore_st{"之前在播放?"}
+    restore_play["继续播放"]
+    restore_pause["暂停"]
+    stop_old2["stopEncoding(newSessionId)"]
+    update_state["_currentQuality = 新画质<br/>_isQualitySwitching=false"]
+    update_mon["更新 NetworkMonitor<br/>.currentBitrate"]
+    quality_done(["画质切换完成"])
+
+    click_badge --> show_selector --> select_q --> switch_entry
+    progress_evt --> check_auto
+    check_auto -- 是 --> buf_detect --> bw_calc --> recommend --> decide --> should_sw
+    check_auto -- 否 --> switch_entry
+    should_sw -- 是 --> switch_entry
+    should_sw -- 否 --> switch_entry
+
+    switch_entry -- "正在切换或相同" --> switch_skip
+    switch_entry -- 可以切换 --> switch_start
+
+    switch_start --> call_switch
+    call_switch --> switch_internal
+    switch_internal --> decide_new
+    decide_new --> stop_old_enc
+    stop_old_enc --> release_old
+    release_old --> setup_new
+    setup_new --> restore_st
+    restore_st -- 是 --> restore_play
+    restore_st -- 否 --> restore_pause
+    restore_play --> stop_old2
+    restore_pause --> stop_old2
+    stop_old2 --> update_state
+    update_state --> update_mon
+    update_mon --> quality_done
+  end
+
+  %% ═══════════════════════════════════════════════════════════════
+  %% 流程三: 播放进度上报流程
+  %% ═══════════════════════════════════════════════════════════════
+
+  subgraph progress_flow["3. 播放进度上报流程"]
+    direction TD
+
+    timer_tick["Timer.periodic 每10秒触发"]
+    check_ids{"itemId 和 sessionId<br/>均非空?"}
+    skip_report["跳过本次上报"]
+
+    call_api["PlaystateApi<br/>.reportPlaybackProgress()"]
+    build_progress["PlaybackProgressInfo<br/>itemId + sessionId + isPaused"]
+
+    api_success["上报成功 (静默)"]
+    api_fail["上报失败 (静默忽略)"]
+
+    subgraph stop_flow["停止播放 (dispose/退出)"]
+      direction TD
+      stop_trigger["页面 dispose 或 stopSession"]
+      cancel_timer["取消定时器"]
+      final_report["最后一次 _reportProgress"]
+      check_trans{"playMethod<br/>== Transcode?"}
+      stop_encoding["stopEncodingProcess<br/>停止服务端转码"]
+      clear_state["清理状态<br/>isPlaying=false<br/>itemId=null"]
+    end
+
+    timer_tick --> check_ids
+    check_ids -- 否 --> skip_report
+    check_ids -- 是 --> call_api
+    call_api --> build_progress
+    build_progress --> api_success
+    build_progress --> api_fail
+
+    stop_trigger --> cancel_timer --> final_report
+    final_report --> check_trans
+    check_trans -- 是 --> stop_encoding --> clear_state
+    check_trans -- 否 --> clear_state
+  end
+
+  %% ═══════════════════════════════════════════════════════════════
+  %% 跨流程连接关系
+  %% ═══════════════════════════════════════════════════════════════
+
+  playing -.->|"播放中触发"| progress_evt
+  playing -.->|"播放中定时上报"| timer_tick
+  playing -.->|"用户操作"| click_badge
