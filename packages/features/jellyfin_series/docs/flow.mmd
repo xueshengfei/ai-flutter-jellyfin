@@ -1,0 +1,191 @@
+flowchart TD
+    %% =====================================================
+    %% 剧集浏览主流程
+    %% =====================================================
+
+    subgraph 主流程["剧集浏览主流程"]
+        direction TD
+
+        entry["用户从媒体详情页<br>点击「季列表」入口"]
+        route_seasons["Route Page<br>FutureBuilder 调用 SeasonsFetcher"]
+        gateway_seasons["Gateway.fetchSeasons<br>BaseItemDto -> SeasonListResult"]
+        seasons_page["SeasonsPage<br>季列表页（2列 GridView）"]
+
+        entry --> route_seasons
+        route_seasons --> gateway_seasons
+        gateway_seasons --> seasons_page
+    end
+
+    subgraph 季列表渲染["SeasonsPage — 季列表渲染"]
+        direction TD
+        seasons_loading["加载中<br>CircularProgressIndicator"]
+        seasons_error["加载失败<br>错误提示 + 重试按钮"]
+        seasons_empty["空数据<br>「该剧集暂无季信息」"]
+        seasons_grid["季卡片网格<br>GridView.builder<br>（2列，crossAxisCount=2）"]
+
+        seasons_page --> seasons_loading
+        seasons_page --> seasons_error
+        seasons_page --> seasons_empty
+        seasons_page --> seasons_grid
+    end
+
+    subgraph 季卡片["SeasonCard — 季卡片组件"]
+        direction TD
+        card_cover["封面图片区域<br>有图: JellyfinImage / Image.network<br>无图: 文件夹图标 + 季号文本"]
+        card_info["信息区域<br>季名称 + 集数"]
+
+        seasons_grid --> card_cover
+        seasons_grid --> card_info
+    end
+
+    subgraph 选季导航["点击季 -> 导航到集列表"]
+        direction TD
+        tap_season["用户点击 SeasonCard"]
+        nav_callback["onNavigateToEpisodes 回调<br>（由 Route Page 注入）"]
+        route_episodes["Route Page<br>FutureBuilder 调用 EpisodesFetcher"]
+        gateway_episodes["Gateway.fetchEpisodes<br>BaseItemDto -> EpisodeListResult"]
+        episodes_page["EpisodesPage<br>集列表页（ListView）"]
+
+        card_info --> tap_season
+        tap_season --> nav_callback
+        nav_callback --> route_episodes
+        route_episodes --> gateway_episodes
+        gateway_episodes --> episodes_page
+    end
+
+    subgraph 集列表渲染["EpisodesPage — 集列表渲染"]
+        direction TD
+        eps_loading["加载中<br>CircularProgressIndicator"]
+        eps_error["加载失败<br>错误提示 + 重试按钮"]
+        eps_empty["空数据<br>「该季暂无剧集」"]
+        eps_count["数量提示栏<br>「共有 N 集」"]
+        eps_list{"listBuilder<br>是否注入?"}
+
+        episodes_page --> eps_loading
+        episodes_page --> eps_error
+        episodes_page --> eps_empty
+        episodes_page --> eps_count
+        eps_count --> eps_list
+    end
+
+    subgraph 集列表构建["集列表构建方式"]
+        direction TD
+        custom_builder["自定义 listBuilder<br>由外部注入列表布局"]
+        default_list["默认 ListView<br>ListView.separated<br>+ EpisodeCard"]
+
+        eps_list -->|是| custom_builder
+        eps_list -->|否| default_list
+    end
+
+    %% =====================================================
+    %% 集详情弹窗流程
+    %% =====================================================
+
+    subgraph 集详情弹窗["EpisodeDetailSheet — 集详情弹窗流程"]
+        direction TD
+        tap_episode["用户点击 EpisodeCard<br>（onTap 回调）"]
+        show_sheet["showModalBottomSheet<br>DraggableScrollableSheet<br>初始 60% / 最小 40% / 最大 90%"]
+        sheet_content["EpisodeDetailSheet<br>详情弹窗内容"]
+        drag_handle["拖动指示器<br>顶部灰色横条"]
+        ep_title["标题区域<br>集名称 + 集号（S01E01）"]
+        ep_thumb["缩略图<br>有图时显示"]
+        ep_chips["信息标签<br>时长 / 评分 / 已播放状态"]
+        ep_overview["剧情简介<br>overview 文本"]
+
+        tap_episode --> show_sheet
+        show_sheet --> sheet_content
+        sheet_content --> drag_handle
+        drag_handle --> ep_title
+        ep_title --> ep_thumb
+        ep_thumb --> ep_chips
+        ep_chips --> ep_overview
+    end
+
+    %% =====================================================
+    %% 播放入口流程
+    %% =====================================================
+
+    subgraph 播放入口["播放入口（两种触发方式）"]
+        direction TD
+        play_from_card["EpisodeCard<br>右侧播放按钮<br>（onPlay 回调）"]
+        play_from_sheet["EpisodeDetailSheet<br>（可扩展播放按钮）"]
+        play_callback["onStartPlayback 回调<br>（由 Route Page 注入）"]
+        navigate_playback["导航到视频播放页<br>/playback/video/:itemId"]
+
+        play_from_card --> play_callback
+        play_from_sheet --> play_callback
+        play_callback --> navigate_playback
+    end
+
+    %% =====================================================
+    %% 跨流程连线
+    %% =====================================================
+    default_list --> tap_episode
+    default_list --> play_from_card
+    custom_builder --> tap_episode
+    custom_builder --> play_from_card
+
+    %% =====================================================
+    %% 数据模型说明
+    %% =====================================================
+
+    subgraph 数据模型["核心数据模型（jellyfin_models）"]
+        direction LR
+        model_media["MediaItem<br>剧集系列（series）<br>id / name / ..."]
+        model_season["Season<br>id / seriesId / name<br>indexNumber / episodeCount<br>primaryImageTag"]
+        model_episode["Episode<br>id / seriesId / seasonId / name<br>seasonNumber / episodeNumber<br>runTimeMinutes / communityRating<br>played / playedPercentage"]
+        model_season_result["SeasonListResult<br>seasons: List&lt;Season&gt;<br>totalCount"]
+        model_episode_result["EpisodeListResult<br>episodes: List&lt;Episode&gt;<br>totalCount / startIndex"]
+
+        model_media -->|传入 SeasonsPage| model_season_result
+        model_season -->|Season + Series 传入| model_episode_result
+        model_episode_result --> model_episode
+    end
+
+    %% =====================================================
+    %% 回调注入说明
+    %% =====================================================
+
+    subgraph 回调注入["回调注入架构（Route Page -> Feature Page）"]
+        direction LR
+        cb1["SeasonsFetcher<br>seriesId -> SeasonListResult"]
+        cb2["onNavigateToEpisodes<br>（context, series, season）-> void"]
+        cb3["EpisodesFetcher<br>seasonId + seriesId -> EpisodeListResult"]
+        cb4["onStartPlayback<br>（context, episode）-> void"]
+        cb5["listBuilder<br>自定义列表构建器（可选）"]
+        cb6["JellyfinImageProvider<br>图片加载接口（可选）"]
+
+        cb1 -->|"注入 SeasonsPage"| 注入目标1
+        cb2 -->|"注入 SeasonsPage"| 注入目标1
+        cb3 -->|"注入 EpisodesPage"| 注入目标2
+        cb4 -->|"注入 EpisodesPage"| 注入目标2
+        cb5 -->|"注入 EpisodesPage"| 注入目标2
+        cb6 -->|"注入 SeasonsPage + EpisodesPage"| 注入目标3
+    end
+
+    subgraph 注入目标1[" "]
+        direction LR
+    end
+    subgraph 注入目标2[" "]
+        direction LR
+    end
+    subgraph 注入目标3[" "]
+        direction LR
+    end
+
+    %% 样式定义
+    classDef page fill:#4A90D9,stroke:#2C5F8A,color:#fff,font-weight:bold
+    classDef widget fill:#67B7D1,stroke:#3A8BA3,color:#fff
+    classDef model fill:#F5A623,stroke:#C7841A,color:#fff
+    classDef callback fill:#7ED321,stroke:#5A9A18,color:#fff
+    classDef decision fill:#BD10E0,stroke:#8B0AB0,color:#fff
+    classDef action fill:#D0021B,stroke:#9B0014,color:#fff
+    classDef gateway fill:#50E3C2,stroke:#38B196,color:#fff
+
+    class seasons_page,episodes_page page
+    class card_cover,card_info,drag_handle,ep_title,ep_thumb,ep_chips,ep_overview widget
+    class model_media,model_season,model_episode,model_season_result,model_episode_result model
+    class cb1,cb2,cb3,cb4,cb5,cb6 callback
+    class eps_list decision
+    class navigate_playback action
+    class gateway_seasons,gateway_episodes gateway

@@ -1,0 +1,187 @@
+%% jellyfin_personal 模块业务流程图
+%% 生成日期: 2026-05-16
+
+flowchart TD
+
+%% ============================================================
+%% 一、个人中心主流程
+%% ============================================================
+subgraph 主流程["一、个人中心主流程（页面加载 → 渲染 → 交互）"]
+    direction TD
+
+    START((用户点击<br/>个人中心入口)) --> ROUTE_PAGE
+
+    subgraph 注入层["Route Page 注入层（Product App）"]
+        direction TD
+        ROUTE_PAGE["PersonalRoutePage<br/>──────────<br/>检查登录态<br/>创建 PersonalRepository<br/>选择 PersonalModuleConfig"]
+        ROUTE_PAGE --> CHECK_SESSION{Session<br/>是否存在?}
+        CHECK_SESSION -- 否 --> NO_SESSION["显示提示:<br/>登录态不存在"]
+        CHECK_SESSION -- 是 --> BUILD_PAGE["构建 PersonalPage<br/>注入: repository, config,<br/>imageProvider, actions"]
+    end
+
+    BUILD_PAGE --> PAGE_INIT
+
+    subgraph 页面初始化["PersonalPage 初始化"]
+        direction TD
+        PAGE_INIT["initState()"]
+        PAGE_INIT --> CREATE_CTRL["创建 PersonalController<br/>(repository + config)"]
+        PAGE_INIT --> LOAD_PROFILE["发起 getProfile()<br/>Future<UserProfile>"]
+        CREATE_CTRL --> LOAD_ALL["controller.loadAll()"]
+    end
+
+    LOAD_PROFILE --> RENDER_HEADER
+    LOAD_ALL --> RENDER_SECTIONS
+
+    subgraph 页面渲染["页面 UI 渲染"]
+        direction TD
+        RENDER_HEADER["PersonalHeader<br/>──────────<br/>头像 + 用户名 + 服务器地址<br/>退出登录按钮"]
+        RENDER_FILTER{config 同时包含<br/>视频和音乐?}
+        RENDER_FILTER -- 是 --> SHOW_TABS["显示过滤 Tab<br/>全部 | 视频 | 音乐"]
+        RENDER_FILTER -- 否 --> RENDER_SECTIONS
+        SHOW_TABS --> RENDER_SECTIONS
+
+        RENDER_SECTIONS["遍历 config.sections<br/>逐个渲染区块"]
+        RENDER_SECTIONS --> SECTION_CW["PersonalSectionView<br/>继续观看 / 继续收听"]
+        RENDER_SECTIONS --> SECTION_FAV["PersonalSectionView<br/>我的收藏"]
+        RENDER_SECTIONS --> SECTION_HIS["PersonalSectionView<br/>观看历史 / 收听历史"]
+    end
+
+    SECTION_CW --> USER_INTERACT
+    SECTION_FAV --> USER_INTERACT
+    SECTION_HIS --> USER_INTERACT
+end
+
+%% ============================================================
+%% 二、区块数据加载流程
+%% ============================================================
+subgraph 数据加载["二、区块数据加载流程"]
+    direction TD
+
+    LOAD_ALL_2["controller.loadAll()"] --> PARALLEL["Future.wait()<br/>并行加载所有 sections"]
+
+    PARALLEL --> REFRESH_CW["refreshSection(continueWatching)"]
+    PARALLEL --> REFRESH_FAV["refreshSection(favorites)"]
+    PARALLEL --> REFRESH_HIS["refreshSection(history)"]
+
+    subgraph 单区块加载["单区块加载（refreshSection）"]
+        direction TD
+        REFRESH_START["设置状态: loading"] --> CHECK_KINDS{filteredKinds<br/>是否为空?}
+        CHECK_KINDS -- 是 --> SET_EMPTY["设置状态: empty<br/>（过滤后无匹配类型）"]
+        CHECK_KINDS -- 否 --> BUILD_QUERY["构建 PersonalMediaQuery<br/>(mediaKinds + startIndex + limit)"]
+
+        BUILD_QUERY --> CALL_REPO
+
+        subgraph Repository层["PersonalRepository 协议调用"]
+            direction TD
+            CALL_REPO{根据 section 类型<br/>分发调用}
+            CALL_REPO -- continueWatching --> REPO_CW["repository.getContinueWatching(query)"]
+            CALL_REPO -- favorites --> REPO_FAV["repository.getFavorites(query)"]
+            CALL_REPO -- history --> REPO_HIS["repository.getHistory(query)"]
+        end
+
+        REPO_CW --> RESULT
+        REPO_FAV --> RESULT
+        REPO_HIS --> RESULT
+
+        RESULT["返回 MediaItemListResult"] --> CHECK_ITEMS{items<br/>是否为空?}
+        CHECK_ITEMS -- 是 --> STATE_EMPTY["PersonalSectionState<br/>status: empty"]
+        CHECK_ITEMS -- 否 --> STATE_LOADED["PersonalSectionState<br/>status: loaded<br/>items: List<MediaItem>"]
+
+        CALL_REPO --> CATCH_ERROR["catch 异常"]
+        CATCH_ERROR --> STATE_FAILURE["PersonalSectionState<br/>status: failure<br/>errorMessage: 错误信息"]
+    end
+end
+
+STATE_LOADED --> RENDER_CARD
+STATE_EMPTY --> RENDER_EMPTY_UI
+STATE_FAILURE --> RENDER_ERROR_UI
+
+subgraph 区块渲染["区块 UI 渲染"]
+    direction TD
+    RENDER_CARD["PersonalSectionView<br/>──────────<br/>横滚 ListView"]
+    RENDER_CARD --> MEDIA_CARD["PersonalMediaCard<br/>──────────<br/>封面图 + 标题 + 副标题<br/>进度条 + 收藏按钮 + 播放按钮"]
+    RENDER_EMPTY_UI["显示 '暂无内容'"]
+    RENDER_ERROR_UI["显示错误信息"]
+end
+
+MEDIA_CARD --> USER_INTERACT
+
+%% ============================================================
+%% 三、用户交互流程
+%% ============================================================
+subgraph 用户交互["三、用户交互流程"]
+    direction TD
+    USER_INTERACT((用户操作))
+
+    USER_INTERACT --> TAP_CARD["点击卡片主体"]
+    USER_INTERACT --> TAP_PLAY["点击播放按钮"]
+    USER_INTERACT --> TAP_FAV["点击收藏按钮"]
+    USER_INTERACT --> TAP_FILTER["切换过滤 Tab"]
+    USER_INTERACT --> PULL_REFRESH["下拉刷新"]
+    USER_INTERACT --> TAP_LOGOUT["点击退出登录"]
+
+    TAP_CARD --> ACTION_OPEN["actions.onOpenMedia(context, item)"]
+    ACTION_OPEN --> NAV_DETAIL["Route Page 导航<br/>──────────<br/>context.push('/media/items/:id')<br/>──────────<br/>跳转详情页"]
+
+    TAP_PLAY --> ACTION_PLAY{actions.onPlayMedia<br/>是否已注入?}
+    ACTION_PLAY -- 已注入 --> PLAY_MEDIA["actions.onPlayMedia(context, item)"]
+    PLAY_MEDIA --> NAV_PLAYBACK["Route Page 导航<br/>──────────<br/>context.push('/playback/video/:id')<br/>──────────<br/>跳转播放页"]
+    ACTION_PLAY -- 未注入 --> NO_ACTION["无操作（按钮不显示）"]
+
+    TAP_FAV --> TOGGLE_FAV["controller.toggleFavorite(itemId, isFavorite)"]
+    TOGGLE_FAV --> REPO_SET_FAV["repository.setFavorite(itemId, isFavorite)"]
+    REPO_SET_FAV --> REFRESH_FAV_SECTION["刷新收藏区块<br/>refreshSection(favorites)"]
+
+    TAP_FILTER --> SET_FILTER["controller.setTypeFilter(filter)"]
+    SET_FILTER --> UPDATE_KINDS["更新 filteredKinds"]
+    UPDATE_KINDS --> RELOAD_ALL["重新 loadAll()"]
+
+    PULL_REFRESH --> REFRESH_ALL["controller.loadAll()"]
+
+    TAP_LOGOUT --> ACTION_LOGOUT["actions.onLogout()"]
+    ACTION_LOGOUT --> CLEAR_SESSION["sessionController.clearSession()"]
+end
+
+%% ============================================================
+%% 四、配置与模型说明
+%% ============================================================
+subgraph 配置说明["四、PersonalModuleConfig 预设配置"]
+    direction TD
+    CONFIG_FULL["PersonalModuleConfig.full()<br/>──────────<br/>标题: 个人中心<br/>区块: 继续观看 + 收藏 + 历史<br/>媒体: 全部类型<br/>适用: jellyfin_app"]
+    CONFIG_MOVIE["PersonalModuleConfig.moviesOnly()<br/>──────────<br/>标题: 我的电影<br/>区块: 继续观看 + 收藏 + 历史<br/>媒体: movie<br/>适用: jellyfin_movie_app"]
+    CONFIG_MUSIC["PersonalModuleConfig.musicOnly()<br/>──────────<br/>标题: 我的音乐<br/>区块: 收藏 + 历史<br/>媒体: audio + album + artist<br/>适用: music_app（预留）"]
+end
+
+subgraph 媒体类型["PersonalMediaKind 枚举"]
+    direction LR
+    MK_MOVIE["movie (Movie)"]
+    MK_SERIES["series (Series)"]
+    MK_EPISODE["episode (Episode)"]
+    MK_AUDIO["audio (Audio)"]
+    MK_ALBUM["musicAlbum (MusicAlbum)"]
+    MK_ARTIST["musicArtist (MusicArtist)"]
+end
+
+subgraph 过滤映射["PersonalMediaTypeFilter 过滤逻辑"]
+    direction TD
+    FILTER_ALL["all → 保留全部 base kinds"]
+    FILTER_VIDEO["video → 只保留 movie / series / episode"]
+    FILTER_MUSIC["music → 只保留 audio / musicAlbum / musicArtist"]
+end
+
+%% ============================================================
+%% 样式定义
+%% ============================================================
+classDef process fill:#E3F2FD,stroke:#1565C0,stroke-width:1.5px,color:#0D47A1
+classDef decision fill:#FFF8E1,stroke:#F57F17,stroke-width:1.5px,color:#E65100
+classDef data fill:#E8F5E9,stroke:#2E7D32,stroke-width:1.5px,color:#1B5E20
+classDef error fill:#FFEBEE,stroke:#C62828,stroke-width:1.5px,color:#B71C1C
+classDef action fill:#F3E5F5,stroke:#6A1B9A,stroke-width:1.5px,color:#4A148C
+classDef config fill:#FFF3E0,stroke:#E65100,stroke-width:1.5px,color:#BF360C
+
+class START,NO_SESSION process
+class CHECK_SESSION,RENDER_FILTER,CHECK_KINDS,CHECK_ITEMS,ACTION_PLAY decision
+class BUILD_QUERY,RESULT,STATE_LOADED,STATE_EMPTY,MK_MOVIE,MK_SERIES,MK_EPISODE,MK_AUDIO,MK_ALBUM,MK_ARTIST data
+class STATE_FAILURE,CATCH_ERROR,RENDER_ERROR_UI error
+class TAP_CARD,TAP_PLAY,TAP_FAV,TAP_FILTER,PULL_REFRESH,TAP_LOGOUT,NAV_DETAIL,NAV_PLAYBACK,NO_ACTION action
+class CONFIG_FULL,CONFIG_MOVIE,CONFIG_MUSIC,FILTER_ALL,FILTER_VIDEO,FILTER_MUSIC config

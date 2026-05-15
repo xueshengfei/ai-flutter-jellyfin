@@ -1,0 +1,224 @@
+%% ═══════════════════════════════════════════════════════════════
+%% jellyfin_ai_recommendation 模块业务流程图
+%% ═══════════════════════════════════════════════════════════════
+
+flowchart TD
+
+%% ═══════════════════════════════════════════════════════════════
+%% 1. AI 对话主流程
+%% ═══════════════════════════════════════════════════════════════
+
+subgraph 主流程["AI 对话主流程"]
+  direction TD
+
+  START(([用户进入 AI 推荐页面]]) --> EMPTY{是否有历史消息?}
+  EMPTY -- 否 --> SHOW_EMPTY["显示空状态\n快捷标签: 推荐周杰伦/科幻电影..."]
+  EMPTY -- 是 --> SHOW_HISTORY["渲染历史消息列表\n用户/AI 气泡"]
+
+  SHOW_EMPTY --> INPUT["用户输入自然语言\n或点击快捷标签"]
+  SHOW_HISTORY --> INPUT
+
+  INPUT --> VALIDATE{输入是否为空?}
+  VALIDATE -- 是 --> INPUT
+  VALIDATE -- 否 --> PREPARE["准备阶段\n1. 取消上一次 SSE 订阅\n2. 停止当前 TTS\n3. 创建新的 TtsPlaybackService"]
+
+  PREPARE --> ADD_USER_MSG["添加用户消息气泡\nAiChatMessage(isUser: true)"]
+  ADD_USER_MSG --> ADD_AI_MSG["添加 AI 占位消息\nstatusText: '正在连接...'"]
+  ADD_AI_MSG --> SSE_CONNECT["建立 SSE 连接\nAiStreamService.askStream()"]
+end
+
+%% ═══════════════════════════════════════════════════════════════
+%% 2. SSE 通信流程
+%% ═══════════════════════════════════════════════════════════════
+
+subgraph SSE通信["SSE 通信流程"]
+  direction TD
+
+  SSE_CONNECT --> BUILD_URL["构造 GET URL\n/ask_stream?question=xxx\n&session_id=xxx（多轮对话）"]
+  BUILD_URL --> PLATFORM_SELECT{运行平台?}
+  PLATFORM_SELECT -- "原生/鸿蒙" --> DIO_STREAM["Dio GET\nResponseType.stream\n逐 chunk 接收 Uint8List"]
+  PLATFORM_SELECT -- "Web" --> XHR_STREAM["XMLHttpRequest\nreadyState >= 3\n渐进式读取 responseText"]
+  PLATFORM_SELECT -- "不支持" --> STUB_ERROR["抛出 UnsupportedError"]
+
+  DIO_STREAM --> CHUNK_LOOP["逐 chunk 循环\nutf8.decode → buffer"]
+  XHR_STREAM --> CHUNK_LOOP
+
+  CHUNK_LOOP --> LINE_PARSE["逐行解析\n分隔符: LF/CR"]
+  LINE_PARSE --> LINE_TYPE{当前行类型?}
+  LINE_TYPE -- "event:" --> SAVE_EVENT_NAME["记录 currentEventName\n如有未派发事件则先派发"]
+  LINE_TYPE -- "data:" --> APPEND_DATA["追加到 currentDataLines"]
+  LINE_TYPE -- "空行/其他" --> CHUNK_LOOP
+
+  SAVE_EVENT_NAME --> CHUNK_LOOP
+  APPEND_DATA --> CHUNK_LOOP
+
+  CHUNK_LOOP --> STREAM_END{流是否结束?}
+  STREAM_END -- 否 --> CHUNK_LOOP
+  STREAM_END -- 是 --> EMIT_LAST["派发最后一个事件（如有）"]
+end
+
+%% ═══════════════════════════════════════════════════════════════
+%% 3. 事件解析与派发
+%% ═══════════════════════════════════════════════════════════════
+
+subgraph 事件派发["事件解析与派发"]
+  direction TD
+
+  EMIT_LAST --> JSON_DECODE["JSON 解析 dataLines"]
+  JSON_DECODE --> PARSE_TYPE["SseEventType.fromName(eventName)\n映射: thinking/tool/token/card/session/done/error"]
+  PARSE_TYPE --> BUILD_EVENT["构造 SseEvent(type, data)\n写入 StreamController"]
+  BUILD_EVENT --> EVENT_DISPATCH
+
+  SSE_CONNECT --> EVENT_DISPATCH{"收到 SseEvent\nevent.type?"}
+
+  EVENT_DISPATCH -- "session" --> HANDLE_SESSION["SseSessionEvent.fromJson\n自动保存 sessionId\n→ 多轮对话自动传递"]
+  HANDLE_SESSION --> WAIT_NEXT["等待下一个事件"]
+
+  EVENT_DISPATCH -- "thinking" --> HANDLE_THINKING["SseThinkingEvent.fromJson\nnode == 'reason'?\n→ '正在生成推荐理由...'\n→ 'AI 正在思考...'\n更新 statusText"]
+  HANDLE_THINKING --> RENDER_STATUS_A["渲染状态提示小标签\n带转圈动画"]
+  RENDER_STATUS_A --> WAIT_NEXT
+
+  EVENT_DISPATCH -- "tool" --> HANDLE_TOOL["SseToolEvent.fromJson\ntool: 'search_media_json'\nstatus == 'calling'?\n→ '正在搜索...'\n→ '搜索完成'\n更新 statusText"]
+  HANDLE_TOOL --> RENDER_STATUS_B["渲染状态提示小标签"]
+  RENDER_STATUS_B --> WAIT_NEXT
+
+  EVENT_DISPATCH -- "token" --> HANDLE_TOKEN["SseTokenEvent.fromJson\n拼接 content 到 AI 消息\n清除 statusText"]
+  HANDLE_TOKEN --> RENDER_MARKDOWN["实时渲染 Markdown\n打字机效果: content + '▍'\n去除代码块后用 MarkdownBody"]
+  HANDLE_TOKEN --> FEED_TTS["同步喂入 TTS\n_ttsService.feedToken(token)"]
+  RENDER_MARKDOWN --> SCROLL_BOTTOM["自动滚动到底部"]
+  FEED_TTS --> SCROLL_BOTTOM
+  SCROLL_BOTTOM --> WAIT_NEXT
+
+  EVENT_DISPATCH -- "card" --> HANDLE_CARD["AiCard.fromJson\n{id, reason, type}\n追加到 msg.cards"]
+  HANDLE_CARD --> FETCH_DETAIL["并发获取详情\nfetchMediaItemDetail(card.id)\n结果缓存到 _mediaItemCache"]
+  FETCH_DETAIL --> RENDER_CARD_LOADING["渲染卡片（加载中状态）"]
+  RENDER_CARD_LOADING --> DETAIL_READY{详情获取成功?}
+  DETAIL_READY -- 是 --> RENDER_CARD_FULL["渲染完整卡片\n封面 + 标题 + 年份 + 评分 + 推荐理由"]
+  DETAIL_READY -- 否 --> RENDER_CARD_PLACEHOLDER["渲染占位卡片\n类型图标"]
+  RENDER_CARD_FULL --> WAIT_NEXT
+  RENDER_CARD_PLACEHOLDER --> WAIT_NEXT
+
+  EVENT_DISPATCH -- "done" --> HANDLE_DONE["SseDoneEvent.fromJson\n文本兜底: 若流式无内容则用 answer\n卡片兜底: 若流式无 card 则用 cards\n清除 statusText, _isLoading=false"]
+  HANDLE_DONE --> FLUSH_TTS["_ttsService.flushRemaining()\n刷入剩余 buffer 分段"]
+  FLUSH_TTS --> SHOW_FINAL["最终渲染\n完整 Markdown + 全部推荐卡片"]
+
+  EVENT_DISPATCH -- "error" --> HANDLE_ERROR["读取 error message\n更新 AI 消息内容\n_isLoading=false"]
+  HANDLE_ERROR --> SHOW_ERROR["显示错误信息\n'出错了: xxx'"]
+end
+
+%% ═══════════════════════════════════════════════════════════════
+%% 4. TTS 语音播报流程
+%% ═══════════════════════════════════════════════════════════════
+
+subgraph TTS流程["TTS 语音播报流程"]
+  direction TD
+
+  TTS_START>"TTS 输入来源"]
+
+  TTS_START -- "流式: token 事件" --> FEED_TOKEN_2["feedToken(token)\n写入 StringBuffer"]
+  TTS_START -- "手动: 点击播放按钮" --> PLAY_FULL["playFullText(text)\n一次性全文分句"]
+
+  FEED_TOKEN_2 --> CHECK_BOUNDARY{遇到句末标点?\n。？！；…\\n}
+  CHECK_BOUNDARY -- 否 --> WAIT_TOKEN["等待下一个 token"]
+  CHECK_BOUNDARY -- 是 --> FLUSH_BUFFER["flushBuffer()\n1. 取出 buffer 全文\n2. _splitSentences() 分句\n3. 每句 stripMarkdown()"]
+
+  PLAY_FULL --> SPLIT_ALL["全文 _splitSentences()\n每句 stripMarkdown()"]
+
+  FLUSH_BUFFER --> CREATE_SEG["创建 TtsSegment\nindex / text / state=pending"]
+  SPLIT_ALL --> CREATE_SEG
+
+  CREATE_SEG --> SYNTH_CONCURRENT["并发 TTS 合成\n_synthesizeSegment(index)"]
+  SYNTH_CONCURRENT --> CALL_TTS["RainfallTTS.generate(text,\nvoice, speed, format='wav')"]
+  CALL_TTS --> TTS_RESULT{合成结果?}
+  TTS_RESULT -- "成功: audioUrl 非空" --> SEG_READY["segment.state = ready\n保存 audioUrl"]
+  TTS_RESULT -- "失败" --> SEG_ERROR["segment.state = error\n记录 errorMessage"]
+
+  SEG_READY --> TRY_PLAY
+  SEG_ERROR --> SKIP_SEG["跳过此段, playCursor++"]
+  SKIP_SEG --> TRY_PLAY
+
+  TRY_PLAY{"_tryStartPlayback()\n当前是否正在播放?"}
+  TRY_PLAY -- "是（playing/paused）" --> WAIT_PLAY["等待当前段播放完成"]
+  TRY_PLAY -- "否" --> FIND_READY["从 playCursor 开始\n查找 state=ready 的段"]
+  FIND_READY --> HAS_READY{找到 ready 段?}
+  HAS_READY -- 是 --> PLAY_SEG["_playSegment(index)\n1. AudioPlayer.setUrl(audioUrl)\n2. AudioPlayer.play()"]
+  HAS_READY -- 否 --> ALL_DONE{全部段处理完?}
+  ALL_DONE -- "否（有 pending/synthesizing）" --> WAIT_PLAY
+  ALL_DONE -- "是" --> CHECK_ALL_ERROR{全部段都失败?}
+  CHECK_ALL_ERROR -- 是 --> TTS_STATE_ERROR["state = error"]
+  CHECK_ALL_ERROR -- 否 --> TTS_STATE_DONE["state = completed"]
+
+  PLAY_SEG --> LISTEN_PLAYER["监听 AudioPlayer\nprocessingStateStream"]
+  LISTEN_PLAYER --> SEG_COMPLETED["段播放完成\nProcessingState.completed"]
+  SEG_COMPLETED --> MARK_PLAYED["segment.state = played\nplayCursor++"]
+  MARK_PLAYED --> FIND_READY
+end
+
+%% ═══════════════════════════════════════════════════════════════
+%% 5. 卡片点击跳转流程
+%% ═══════════════════════════════════════════════════════════════
+
+subgraph 卡片跳转["卡片点击与路由跳转"]
+  direction TD
+
+  CARD_CLICK["用户点击推荐卡片"] --> HAS_CACHE{_mediaItemCache\n中是否有详情?}
+  HAS_CACHE -- 是 --> NAVIGATE
+  HAS_CACHE -- 否 --> FETCH_LIVE["fetchMediaItemDetail(card.id)"]
+  FETCH_LIVE --> FETCH_OK{获取成功?}
+  FETCH_OK -- 是 --> CACHE_ITEM["缓存 MediaItem"] --> NAVIGATE
+  FETCH_OK -- 否 --> SHOW_SNACK["SnackBar: 加载详情失败"]
+
+  NAVIGATE{"根据 AiCardType\n决定跳转目标"}
+  NAVIGATE -- "movie / series / episode\nvideo / season / musicvideo" --> GO_MEDIA["onNavigateToMediaItem\n→ 通用媒体详情页"]
+  NAVIGATE -- "audio" --> GO_PLAY["onPlaySong\n→ 播放歌曲"]
+  NAVIGATE -- "musicalbum" --> GO_ALBUM["onNavigateToAlbum\n→ 专辑详情页"]
+  NAVIGATE -- "musicartist" --> GO_ARTIST["onNavigateToArtist\n→ 歌手详情页"]
+end
+
+%% ═══════════════════════════════════════════════════════════════
+%% 6. TTS 设置流程
+%% ═══════════════════════════════════════════════════════════════
+
+subgraph TTS设置["TTS 设置弹窗"]
+  direction TD
+
+  TTS_SETTINGS_CLICK["点击 AppBar 语音设置图标"] --> SHOW_DIALOG["showTtsSettingsDialog()"]
+  SHOW_DIALOG --> LOAD_VOICES["RainfallTTS.listVoices()\n加载音色列表"]
+  LOAD_VOICES --> SETTINGS_UI["显示设置项\n- TTS 服务地址\n- 音色下拉选择\n- 语速滑块 0.5x ~ 2.0x\n- 测试连接按钮"]
+
+  SETTINGS_UI --> TEST_CONN["测试连接\nRainfallTTS.isServerAlive()"]
+  TEST_CONN --> TEST_RESULT{连接结果}
+  TEST_RESULT -- 成功 --> SHOW_SUCCESS["显示 '连接成功'"]
+  TEST_RESULT -- 失败 --> SHOW_FAIL["显示 '连接失败: xxx'"]
+
+  SETTINGS_UI --> SAVE_SETTINGS["点击确定\n返回新 TtsSettings"]
+  SAVE_SETTINGS --> APPLY_SETTINGS["更新 _ttsSettings\n_ttsService.updateSettings()"]
+end
+
+%% ═══════════════════════════════════════════════════════════════
+%% 跨流程连接线
+%% ═══════════════════════════════════════════════════════════════
+
+WAIT_NEXT --> EVENT_DISPATCH
+SHOW_FINAL --> CARD_CLICK
+SHOW_ERROR --> INPUT
+
+%% ═══════════════════════════════════════════════════════════════
+%% 样式定义
+%% ═══════════════════════════════════════════════════════════════
+
+classDef userAction fill:#E3F2FD,stroke:#1565C0,color:#000
+classDef sseLayer fill:#FFF3E0,stroke:#E65100,color:#000
+classDef eventHandle fill:#E8F5E9,stroke:#2E7D32,color:#000
+classDef ttsLayer fill:#F3E5F5,stroke:#6A1B9A,color:#000
+classDef decision fill:#FFF9C4,stroke:#F57F17,color:#000
+classDef error fill:#FFEBEE,stroke:#C62828,color:#000
+classDef uiRender fill:#E0F7FA,stroke:#00695C,color:#000
+
+class START,INPUT,ADD_USER_MSG,CARD_CLICK userAction
+class SSE_CONNECT,BUILD_URL,DIO_STREAM,XHR_STREAM,CHUNK_LOOP,LINE_PARSE sseLayer
+class EVENT_DISPATCH,HANDLE_SESSION,HANDLE_THINKING,HANDLE_TOOL,HANDLE_TOKEN,HANDLE_CARD,HANDLE_DONE,HANDLE_ERROR eventHandle
+class FEED_TOKEN_2,PLAY_FULL,SYNTH_CONCURRENT,CALL_TTS,PLAY_SEG ttsLayer
+class VALIDATE,PLATFORM_SELECT,LINE_TYPE,STREAM_END,CHECK_BOUNDARY,TTS_RESULT,HAS_READY,ALL_DONE,CHECK_ALL_ERROR,DETAIL_READY,HAS_CACHE,FETCH_OK,NAVIGATE,TTS_START,EMPTY decision
+class SHOW_ERROR,STUB_ERROR,SEG_ERROR,TTS_STATE_ERROR,SHOW_SNACK,SHOW_FAIL error
+class RENDER_MARKDOWN,RENDER_STATUS_A,RENDER_STATUS_B,RENDER_CARD_FULL,RENDER_CARD_LOADING,RENDER_CARD_PLACEHOLDER,SHOW_FINAL,SETTINGS_UI,SHOW_SUCCESS uiRender

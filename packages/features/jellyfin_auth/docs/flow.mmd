@@ -1,0 +1,177 @@
+flowchart TD
+    %% ═══════════════════════════════════════════════════════════
+    %%  登录主流程
+    %% ═══════════════════════════════════════════════════════════
+
+    subgraph 登录主流程
+        direction TD
+        A([用户打开登录页]) --> B[显示 LoginPage 界面]
+
+        B --> C{是否注入了\nServerDiscoveryService?}
+
+        C -->|是| D[自动触发局域网服务器扫描]
+        C -->|否| E[仅显示手动输入表单]
+
+        D --> F[显示已发现服务器列表]
+        F --> G
+
+        E --> G[用户填写服务器地址 / 用户名 / 密码]
+
+        G --> H{服务器地址或用户名\n是否为空?}
+
+        H -->|是| I[显示错误提示:\n请输入服务器地址和用户名]
+        I --> G
+
+        H -->|否| J[设置 isLoading = true\n隐藏错误信息]
+
+        J --> K[调用 onLogin 回调\n传入 serverUrl / username / password]
+
+        K --> L[Gateway 调用 jellyfin_api\n向服务器发起认证请求]
+        L --> M{认证是否成功?}
+
+        M -->|成功| N[返回 AppSession\n包含 serverUrl / accessToken / userId / username]
+        N --> O[sessionController.setSession\n保存登录态]
+        O --> P[GoRouter redirect 检测到已登录\n自动跳转至 /libraries 首页]
+        P --> Q([登录成功 — 进入媒体库首页])
+
+        M -->|失败: 返回错误信息| R[显示错误信息\nerror = 返回的错误文本]
+        R --> S[isLoading = false]
+        S --> G
+
+        M -->|失败: 抛出异常| T[显示异常信息\nerror = '登录失败: $e']
+        T --> U[isLoading = false]
+        U --> G
+    end
+
+    %% ═══════════════════════════════════════════════════════════
+    %%  局域网服务器发现流程
+    %% ═══════════════════════════════════════════════════════════
+
+    subgraph 局域网服务器发现流程
+        direction TD
+
+        S1([用户点击扫描按钮\n或页面初始化自动触发]) --> S2[设置 _isDiscovering = true\n清空已发现列表]
+
+        S2 --> S3[创建 RawDatagramSocket\n绑定 IPv4 任意端口]
+
+        S3 --> S4[启用广播模式\nbroadcastEnabled = true]
+        S4 --> S5["向 255.255.255.255:7359\n发送 'who is JellyfinServer?'"]
+
+        S5 --> S6[等待 UDP 响应\n默认超时 3 秒]
+
+        S6 --> S7{是否收到\nDatagram 数据?}
+
+        S7 -->|是| S8[UTF-8 解码响应数据]
+        S8 --> S9{JSON 解析\n是否成功?}
+
+        S9 -->|失败| S10[忽略该响应\n继续等待下一个]
+        S10 --> S7
+
+        S9 -->|成功| S11[构造 DiscoveredServer.fromJson\n提取 Id / Name / Address / EndpointAddress]
+        S11 --> S12{Id 和 Address\n是否非空?}
+
+        S12 -->|是| S13[按 Id 去重\n存入 discovered Map]
+        S13 --> S7
+
+        S12 -->|否| S10
+
+        S7 -->|否: 超时或 Socket 关闭| S14[关闭 DatagramSocket]
+
+        S14 --> S15[返回已发现服务器列表\nList&lt;DiscoveredServer&gt;]
+        S15 --> S16{发现的服务器列表\n是否为空?}
+
+        S16 -->|是| S17[显示提示:\n未发现局域网服务器，请手动输入]
+        S17 --> S18[用户手动输入服务器地址]
+
+        S16 -->|否| S19[显示已发现服务器卡片列表\n每张卡片显示: 服务器名 / 地址 / 版本]
+        S19 --> S20{用户是否点击\n某个服务器?}
+
+        S20 -->|否| S21[等待用户操作\n也可手动输入地址]
+
+        S20 -->|是| S22[将服务器地址填入服务器地址输入框]
+        S22 --> S23[设置 _verifyingAddress = 当前地址\n显示验证中状态]
+
+        S23 --> S24["调用 verifyServer(address)\nGET /System/Info/Public\n无需认证"]
+
+        S24 --> S25{HTTP 响应\n状态码是否为 200?}
+
+        S25 -->|是| S26[解析 JSON 获取详细信息:\nId / ServerName / Version / LocalAddress / StartupWizardCompleted]
+        S26 --> S27[构造 DiscoveredServer.fromPublicInfo\n合并 UDP 发现结果与 PublicInfo 验证结果]
+        S27 --> S28[更新列表中对应服务器条目\n补充 version 等详情字段]
+        S28 --> S29[_verifyingAddress = null\n验证完成]
+
+        S25 -->|否 / 网络异常| S30[验证失败\n保留原始 UDP 发现数据]
+        S30 --> S29
+
+        S29 --> S31[用户补充用户名和密码]
+        S31 --> S32[点击登录按钮]
+        S32 --> S33[进入登录主流程]
+    end
+
+    %% ═══════════════════════════════════════════════════════════
+    %%  手动地址连接流程 (connectToAddress)
+    %% ═══════════════════════════════════════════════════════════
+
+    subgraph 手动地址连接流程
+        direction TD
+
+        M1([用户手动输入服务器地址]) --> M2[去除末尾斜杠]
+        M2 --> M3{地址是否包含\n协议前缀?}
+
+        M3 -->|已有 http:// 或 https://| M4[直接调用 verifyServer\nGET /System/Info/Public]
+        M4 --> M5{验证是否成功?}
+
+        M5 -->|成功| M6[返回 DiscoveredServer\n包含版本等详情]
+        M6 --> M7[地址填入输入框\n用户继续输入用户名和密码]
+
+        M5 -->|失败| M8[返回 null\n服务器不可达]
+
+        M3 -->|无协议前缀| M9[先尝试 https:// + 地址]
+        M9 --> M10{验证是否成功?}
+
+        M10 -->|成功| M6
+
+        M10 -->|失败| M11[再尝试 http:// + 地址]
+        M11 --> M12{验证是否成功?}
+
+        M12 -->|成功| M6
+        M12 -->|失败| M8
+    end
+
+    %% ═══════════════════════════════════════════════════════════
+    %%  路由守卫与登录态管理
+    %% ═══════════════════════════════════════════════════════════
+
+    subgraph 路由守卫与登录态管理
+        direction TD
+
+        R1([用户访问任意路由]) --> R2[GoRouter redirect 执行]
+        R2 --> R3{sessionController.isLoggedIn?}
+
+        R3 -->|未登录 且 非登录页| R4[重定向到 /login]
+        R4 --> R5([显示登录页])
+
+        R3 -->|已登录 且 在登录页| R6[重定向到 /libraries]
+        R6 --> R7([显示媒体库首页])
+
+        R3 -->|已登录 且 非登录页| R8[正常显示目标页面]
+
+        R9([用户点击登出]) --> R10[sessionController.clearSession]
+        R10 --> R11[清除 AppSession]
+        R11 --> R12[GoRouter redirect 检测到未登录]
+        R12 --> R4
+    end
+
+    %% ═══════════════════════════════════════════════════════════
+    %%  关键数据模型
+    %% ═══════════════════════════════════════════════════════════
+
+    subgraph 关键数据模型
+        direction LR
+
+        DM1["DiscoveredServer\n─────────────\nid: String (服务器唯一ID)\nname: String (服务器名称)\naddress: String (服务器地址)\nendpointAddress: String? (端点地址)\nversion: String? (服务器版本)\nlocalAddress: String? (局域网地址)\nstartupWizardCompleted: bool?"]
+
+        DM2["AppSession\n─────────────\nserverUrl: String\naccessToken: String\nuserId: String\nusername: String\nisValid: bool (全部非空)"]
+
+        DM3["LoginPage 参数\n─────────────\nonLogin: 回调 (认证注入)\ndefaultServerUrl: 默认服务器\ndefaultUsername: 默认用户名\ndefaultPassword: 默认密码\ndiscoveryService: 可选发现服务"]
+    end
