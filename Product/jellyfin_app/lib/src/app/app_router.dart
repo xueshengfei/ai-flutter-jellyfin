@@ -21,8 +21,8 @@ import '../ui/jellyfin_app_image_provider.dart';
 
 /// 从 Jellyfin 服务器地址推导同 IP 不同端口的服务地址
 ///
-/// 例: deriveServiceUrl('http://192.168.1.100:8096', 8000)
-///   → 'http://192.168.1.100:8000'
+/// 例: deriveServiceUrl('http://192.168.1.100:8096', 5005)
+///   → 'http://192.168.1.100:5005'
 String deriveServiceUrl(String serverUrl, int port) {
   final uri = Uri.parse(serverUrl);
   return '${uri.scheme}://${uri.host}:$port';
@@ -379,7 +379,8 @@ GoRouter createAppRouter({
           }
           return AiRecommendRoutePage(
             gateway: effectiveGateway,
-            aiServiceUrl: deriveServiceUrl(serverUrl, 8000),
+            aiServiceUrl: deriveServiceUrl(serverUrl, 5005),
+            ttsServiceUrl: deriveServiceUrl(serverUrl, 7861),
             imageProvider: JellyfinAppImageProvider(
               serverUrl: serverUrl,
               accessToken: session?.accessToken ?? '',
