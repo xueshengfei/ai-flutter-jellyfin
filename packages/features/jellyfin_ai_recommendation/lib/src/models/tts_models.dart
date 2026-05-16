@@ -3,28 +3,20 @@ import 'package:equatable/equatable.dart';
 /// TTS 设置
 class TtsSettings extends Equatable {
   final String voiceName;
-  final double speed;
-  final String ttsBaseUrl;
 
   const TtsSettings({
     this.voiceName = 'demo_boy.wav',
-    this.speed = 1.0,
-    this.ttsBaseUrl = 'http://127.0.0.1:7861',
   });
 
   TtsSettings copyWith({
     String? voiceName,
-    double? speed,
-    String? ttsBaseUrl,
   }) =>
       TtsSettings(
         voiceName: voiceName ?? this.voiceName,
-        speed: speed ?? this.speed,
-        ttsBaseUrl: ttsBaseUrl ?? this.ttsBaseUrl,
       );
 
   @override
-  List<Object?> get props => [voiceName, speed, ttsBaseUrl];
+  List<Object?> get props => [voiceName];
 }
 
 /// 单个分段的状态
