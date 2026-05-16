@@ -22,6 +22,9 @@ class TtsPlaybackService extends ChangeNotifier {
   final Set<int> _synthesizing = {};
   StreamSubscription? _playerSub;
 
+  /// 最大并发合成数（避免后端过载排队）
+  static const _maxConcurrent = 2;
+
   TtsPlaybackService({TtsSettings settings = const TtsSettings()})
       : _settings = settings,
         _ttsClient = RainfallTTS(baseUrl: settings.ttsBaseUrl) {
@@ -71,9 +74,7 @@ class TtsPlaybackService extends ChangeNotifier {
     if (_segments.isEmpty) return Future.value();
     _state = TtsPlaybackState.preparing;
     notifyListeners();
-    for (final seg in _segments) {
-      _synthesizeSegment(seg.index);
-    }
+    _scheduleSynthesis();
     _tryStartPlayback();
     return Future.value();
   }
@@ -89,9 +90,7 @@ class TtsPlaybackService extends ChangeNotifier {
       _resetSegmentsState();
       _state = TtsPlaybackState.preparing;
       notifyListeners();
-      for (final seg in _segments) {
-        _synthesizeSegment(seg.index);
-      }
+      _scheduleSynthesis();
       _tryStartPlayback();
     }
   }
@@ -134,6 +133,12 @@ class TtsPlaybackService extends ChangeNotifier {
 
   static final _sentenceEnd = RegExp(r'[。？！；…\n]');
 
+  /// 逗号/顿号也作为分句点（缩短单句长度，降低 TTS 延迟）
+  static final _clauseEnd = RegExp(r'[，,、：:]');
+
+  /// 单句最大字符数（超过会在逗号处拆分，降低 TTS 合成延迟）
+  static const _maxSentenceLen = 40;
+
   bool _endsWithSentenceBoundary(String text) {
     if (text.isEmpty) return false;
     return _sentenceEnd.hasMatch(text[text.length - 1]);
@@ -145,15 +150,35 @@ class TtsPlaybackService extends ChangeNotifier {
     for (var i = 0; i < text.length; i++) {
       if (_sentenceEnd.hasMatch(text[i])) {
         final s = text.substring(start, i + 1).trim();
-        if (s.isNotEmpty) result.add(s);
+        if (s.isNotEmpty) result.addAll(_splitLongSentence(s));
         start = i + 1;
       }
     }
     if (start < text.length) {
       final r = text.substring(start).trim();
-      if (r.isNotEmpty) result.add(r);
+      if (r.isNotEmpty) result.addAll(_splitLongSentence(r));
     }
     return result;
+  }
+
+  /// 如果单句太长，在逗号处再拆分（短句 TTS 合成更快）
+  List<String> _splitLongSentence(String sentence) {
+    if (sentence.length <= _maxSentenceLen) return [sentence];
+    final result = <String>[];
+    var start = 0;
+    for (var i = 0; i < sentence.length; i++) {
+      if (_clauseEnd.hasMatch(sentence[i])) {
+        final s = sentence.substring(start, i + 1).trim();
+        if (s.isNotEmpty) result.add(s);
+        start = i + 1;
+      }
+    }
+    if (start < sentence.length) {
+      final r = sentence.substring(start).trim();
+      if (r.isNotEmpty) result.add(r);
+    }
+    // 如果拆分后仍然有超过长度的，直接返回原句
+    return result.isEmpty ? [sentence] : result;
   }
 
   void _flushBuffer() {
@@ -164,9 +189,20 @@ class TtsPlaybackService extends ChangeNotifier {
       final clean = _stripMarkdown(part);
       if (clean.trim().isEmpty) continue;
       _segments.add(TtsSegment(index: _segments.length, text: clean.trim()));
-      _synthesizeSegment(_segments.length - 1);
     }
+    // 启动合成（受并发数限制）
+    _scheduleSynthesis();
     _tryStartPlayback();
+  }
+
+  /// 调度合成任务，控制并发数不超过 _maxConcurrent
+  void _scheduleSynthesis() {
+    for (var i = 0; i < _segments.length; i++) {
+      if (_synthesizing.length >= _maxConcurrent) break;
+      if (_segments[i].state == TtsSegmentState.pending) {
+        _synthesizeSegment(i);
+      }
+    }
   }
 
   // ─────────────────────────────────────────
@@ -175,16 +211,36 @@ class TtsPlaybackService extends ChangeNotifier {
 
   static String _stripMarkdown(String text) {
     var r = text;
+    // 代码块
     r = r.replaceAll(RegExp(r'```\w*\n[\s\S]*?\n```'), '');
     r = r.replaceAll(RegExp(r'```\w*'), '');
     r = r.replaceAll(RegExp(r'`([^`]+)`'), r'$1');
+    // 加粗/斜体
     r = r.replaceAll(RegExp(r'\*\*(.+?)\*\*'), r'$1');
     r = r.replaceAll(RegExp(r'\*(.+?)\*'), r'$1');
+    r = r.replaceAll(RegExp(r'__(.+?)__'), r'$1');
+    r = r.replaceAll(RegExp(r'_([^_]+)_'), r'$1');
+    // 标题
     r = r.replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '');
+    // 链接/图片
     r = r.replaceAll(RegExp(r'\[([^\]]+)\]\([^)]+\)'), r'$1');
     r = r.replaceAll(RegExp(r'!\[([^\]]*)\]\([^)]+\)'), r'$1');
+    // 列表
     r = r.replaceAll(RegExp(r'^[\-\*\+]\s+', multiLine: true), '');
     r = r.replaceAll(RegExp(r'^\d+\.\s+', multiLine: true), '');
+    // 表格分隔线
+    r = r.replaceAll(RegExp(r'^\|?[\s\-:]+\|[\s\-:|]+\|?$', multiLine: true), '');
+    r = r.replaceAll(RegExp(r'\|'), ' ');
+    // 引用符号 >
+    r = r.replaceAll(RegExp(r'^>\s*', multiLine: true), '');
+    // 水平分割线
+    r = r.replaceAll(RegExp(r'^[\-\*\_]{3,}\s*$', multiLine: true), '');
+    // HTML 标签
+    r = r.replaceAll(RegExp(r'<[^>]+>'), '');
+    // 残留的 Markdown 特殊符号（不在 CJK 文本中间的）
+    r = r.replaceAll(RegExp(r'[#*~`<>]'), '');
+    // 合并多余空白
+    r = r.replaceAll(RegExp(r'\s+'), ' ');
     return r.trim();
   }
 
@@ -225,6 +281,7 @@ class TtsPlaybackService extends ChangeNotifier {
           state: TtsSegmentState.error, errorMessage: e.toString());
     } finally {
       _synthesizing.remove(index);
+      _scheduleSynthesis(); // 完成后调度下一段
       _tryStartPlayback();
     }
   }
