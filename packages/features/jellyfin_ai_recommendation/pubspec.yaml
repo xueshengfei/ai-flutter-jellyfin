@@ -20,6 +20,7 @@ dependencies:
     path: ../../shared/jellyfin_models
   jellyfin_ui_kit:
     path: ../../shared/jellyfin_ui_kit
+  shared_preferences: ^2.2.0
   rainfall_tts_sdk:
     path: ../../vendor/rainfall_tts_sdk
 
