@@ -6,6 +6,7 @@ import 'package:jellyfin_ai_recommendation/src/models/ai_recommendation_models.d
 import 'package:jellyfin_ai_recommendation/src/models/tts_models.dart';
 import 'package:jellyfin_ai_recommendation/src/services/ai_recommendation_service.dart';
 import 'package:jellyfin_ai_recommendation/src/services/tts_playback_service.dart';
+import 'package:jellyfin_ai_recommendation/src/services/tts_settings_storage.dart';
 import 'package:jellyfin_ai_recommendation/src/widgets/tts_control_button.dart';
 import 'package:jellyfin_ai_recommendation/src/widgets/tts_settings_dialog.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
@@ -108,6 +109,17 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
           ? widget.ttsServiceUrl
           : const TtsSettings().ttsBaseUrl,
     );
+    _loadPersistedTtsSettings();
+  }
+
+  /// 从 SharedPreferences 加载持久化的音色和语速
+  Future<void> _loadPersistedTtsSettings() async {
+    final saved = await TtsSettingsStorage.load(
+      ttsBaseUrl: _ttsSettings.ttsBaseUrl,
+    );
+    if (saved != null && mounted) {
+      setState(() => _ttsSettings = saved);
+    }
   }
 
   @override
@@ -897,6 +909,7 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     if (result != null) {
       setState(() => _ttsSettings = result);
       _ttsService?.updateSettings(result);
+      TtsSettingsStorage.save(result);
     }
   }
 

@@ -13,6 +13,7 @@ export 'src/models/tts_models.dart';
 // 服务
 export 'src/services/ai_recommendation_service.dart';
 export 'src/services/tts_playback_service.dart';
+export 'src/services/tts_settings_storage.dart';
 
 // 页面
 export 'src/pages/ai_recommend_page.dart';
