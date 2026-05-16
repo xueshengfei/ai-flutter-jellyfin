@@ -38,9 +38,6 @@ class AiRecommendPage extends StatefulWidget {
   /// AI 服务地址
   final String aiServiceUrl;
 
-  /// TTS 服务地址（从外部注入，如 Jellyfin 同 IP:7861）
-  final String ttsServiceUrl;
-
   /// 图片加载适配器
   final JellyfinImageProvider imageProvider;
 
@@ -62,7 +59,6 @@ class AiRecommendPage extends StatefulWidget {
   const AiRecommendPage({
     super.key,
     required this.aiServiceUrl,
-    this.ttsServiceUrl = '',
     required this.imageProvider,
     required this.fetchMediaItemDetail,
     this.onNavigateToMediaItem,
@@ -103,20 +99,13 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     super.initState();
     _streamService = AiStreamService(aiServiceUrl: widget.aiServiceUrl);
     _aiServiceUrl = _streamService.currentBaseUrl;
-    // 用注入的 TTS 地址初始化，而非默认 localhost
-    _ttsSettings = TtsSettings(
-      ttsBaseUrl: widget.ttsServiceUrl.isNotEmpty
-          ? widget.ttsServiceUrl
-          : const TtsSettings().ttsBaseUrl,
-    );
+    _ttsSettings = const TtsSettings();
     _loadPersistedTtsSettings();
   }
 
-  /// 从 SharedPreferences 加载持久化的音色和语速
+  /// 从 SharedPreferences 加载持久化的音色
   Future<void> _loadPersistedTtsSettings() async {
-    final saved = await TtsSettingsStorage.load(
-      ttsBaseUrl: _ttsSettings.ttsBaseUrl,
-    );
+    final saved = await TtsSettingsStorage.load();
     if (saved != null && mounted) {
       setState(() => _ttsSettings = saved);
     }

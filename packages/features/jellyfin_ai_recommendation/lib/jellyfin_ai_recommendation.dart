@@ -14,6 +14,7 @@ export 'src/models/tts_models.dart';
 export 'src/services/ai_recommendation_service.dart';
 export 'src/services/tts_playback_service.dart';
 export 'src/services/tts_settings_storage.dart';
+export 'src/services/tts_voice_loader.dart';
 
 // 页面
 export 'src/pages/ai_recommend_page.dart';

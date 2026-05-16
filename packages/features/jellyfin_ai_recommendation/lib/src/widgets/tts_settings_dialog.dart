@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rainfall_tts_sdk/rainfall_tts_sdk.dart';
+import 'package:rainfall_tts_cloud_sdk/rainfall_tts_cloud_sdk.dart';
 
 import '../models/tts_models.dart';
 
@@ -23,55 +23,18 @@ class _TtsSettingsDialog extends StatefulWidget {
 }
 
 class _TtsSettingsDialogState extends State<_TtsSettingsDialog> {
-  late TextEditingController _urlController;
-  late double _speed;
-  String _selectedVoice = '';
-  List<VoiceInfo> _voices = [];
-  bool _loadingVoices = false;
+  late String _selectedVoice;
+  final List<VoiceInfo> _voices = RainfallCloudTTS.voices;
   bool _testing = false;
   String? _testResult;
 
   @override
   void initState() {
     super.initState();
-    _urlController = TextEditingController(text: widget.current.ttsBaseUrl);
-    _speed = widget.current.speed;
     _selectedVoice = widget.current.voiceName;
-    _loadVoices();
-  }
-
-  @override
-  void dispose() {
-    _urlController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadVoices() async {
-    setState(() => _loadingVoices = true);
-    try {
-      final client = RainfallTTS(baseUrl: _urlController.text.trim());
-      try {
-        final voices = await client.listVoices();
-        if (mounted) {
-          setState(() {
-            _voices = voices;
-            _loadingVoices = false;
-            if (voices.isNotEmpty &&
-                !voices.any((v) => v.name == _selectedVoice)) {
-              _selectedVoice = voices.first.name;
-            }
-          });
-        }
-      } finally {
-        client.close();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loadingVoices = false;
-          _testResult = '加载音色失败: $e';
-        });
-      }
+    // 确保默认选中的音色在列表中
+    if (!_voices.any((v) => v.name == _selectedVoice)) {
+      _selectedVoice = _voices.first.name;
     }
   }
 
@@ -81,13 +44,13 @@ class _TtsSettingsDialogState extends State<_TtsSettingsDialog> {
       _testResult = null;
     });
     try {
-      final client = RainfallTTS(baseUrl: _urlController.text.trim());
+      final client = RainfallCloudTTS();
       try {
         final alive = await client.isServerAlive();
         if (mounted) {
           setState(() {
             _testing = false;
-            _testResult = alive ? '连接成功' : '服务未响应';
+            _testResult = alive ? '云端连接成功' : '云端服务未响应';
           });
         }
       } finally {
@@ -113,20 +76,10 @@ class _TtsSettingsDialogState extends State<_TtsSettingsDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: _urlController,
-              decoration: const InputDecoration(
-                labelText: 'TTS 服务地址',
-                hintText: 'http://localhost:7861',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 4),
+            // 云端状态
             Row(
               children: [
-                Text('雨落 AI 语音 Gradio 服务',
+                Text('雨落 AI 语音（云端）',
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
@@ -136,7 +89,7 @@ class _TtsSettingsDialogState extends State<_TtsSettingsDialog> {
                   onPressed: _testing ? null : _testConnection,
                   icon: _testing
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.wifi_find, size: 16),
+                      : const Icon(Icons.cloud_done, size: 16),
                   label: Text(_testing ? '测试中...' : '测试连接'),
                 ),
               ],
@@ -145,37 +98,25 @@ class _TtsSettingsDialogState extends State<_TtsSettingsDialog> {
               Text(_testResult!,
                   style: TextStyle(
                       fontSize: 12,
-                      color: _testResult == '连接成功' ? Colors.green : Colors.red)),
+                      color: _testResult == '云端连接成功' ? Colors.green : Colors.red)),
               const SizedBox(height: 8),
             ],
             const SizedBox(height: 12),
+            // 音色选择
             Text('音色', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 4),
-            _loadingVoices
-                ? const Row(children: [
-                    SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    SizedBox(width: 8),
-                    Text('加载音色列表...'),
-                  ])
-                : DropdownButtonFormField<String>(
-                    value: _voices.any((v) => v.name == _selectedVoice) ? _selectedVoice : null,
-                    decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-                    items: _voices
-                        .map((v) => DropdownMenuItem(value: v.name, child: Text(v.name, overflow: TextOverflow.ellipsis)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedVoice = val);
-                    },
-                  ),
-            const SizedBox(height: 16),
-            Text('语速: ${_speed.toStringAsFixed(1)}x', style: Theme.of(context).textTheme.titleSmall),
-            Slider(
-              value: _speed,
-              min: 0.5,
-              max: 2.0,
-              divisions: 15,
-              label: '${_speed.toStringAsFixed(1)}x',
-              onChanged: (val) => setState(() => _speed = val),
+            DropdownButtonFormField<String>(
+              value: _selectedVoice,
+              decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+              items: _voices
+                  .map((v) => DropdownMenuItem(
+                      value: v.name,
+                      child: Text(v.name,
+                          overflow: TextOverflow.ellipsis, maxLines: 1)))
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedVoice = val);
+              },
             ),
           ],
         ),
@@ -189,8 +130,6 @@ class _TtsSettingsDialogState extends State<_TtsSettingsDialog> {
           onPressed: () {
             Navigator.pop(context, TtsSettings(
               voiceName: _selectedVoice,
-              speed: _speed,
-              ttsBaseUrl: _urlController.text.trim(),
             ));
           },
           child: const Text('确定'),

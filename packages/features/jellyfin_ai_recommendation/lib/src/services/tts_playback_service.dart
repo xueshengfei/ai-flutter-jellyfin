@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:rainfall_tts_sdk/rainfall_tts_sdk.dart';
+import 'package:rainfall_tts_cloud_sdk/rainfall_tts_cloud_sdk.dart';
 
 import '../models/tts_models.dart';
+import 'tts_voice_loader.dart';
 
 /// TTS 语音播报服务
 ///
@@ -12,7 +13,7 @@ import '../models/tts_models.dart';
 class TtsPlaybackService extends ChangeNotifier {
   TtsSettings _settings;
   late final AudioPlayer _player;
-  RainfallTTS _ttsClient;
+  RainfallCloudTTS _ttsClient;
 
   final StringBuffer _buffer = StringBuffer();
   final List<TtsSegment> _segments = [];
@@ -27,7 +28,7 @@ class TtsPlaybackService extends ChangeNotifier {
 
   TtsPlaybackService({TtsSettings settings = const TtsSettings()})
       : _settings = settings,
-        _ttsClient = RainfallTTS(baseUrl: settings.ttsBaseUrl) {
+        _ttsClient = RainfallCloudTTS() {
     _player = AudioPlayer();
     _listenPlayerState();
   }
@@ -38,7 +39,7 @@ class TtsPlaybackService extends ChangeNotifier {
   void updateSettings(TtsSettings newSettings) {
     _settings = newSettings;
     _ttsClient.close();
-    _ttsClient = RainfallTTS(baseUrl: newSettings.ttsBaseUrl);
+    _ttsClient = RainfallCloudTTS();
   }
 
   // ─────────────────────────────────────────
@@ -258,23 +259,20 @@ class TtsPlaybackService extends ChangeNotifier {
     _updateSegment(index, state: TtsSegmentState.synthesizing);
 
     try {
-      final client = RainfallTTS(baseUrl: _settings.ttsBaseUrl);
-      try {
-        final result = await client.generate(
-          seg.text,
-          voice: _settings.voiceName,
-          speed: _settings.speed,
-          outputFormat: 'wav',
-        );
-        if (result.audioUrl.isNotEmpty) {
-          _updateSegment(index,
-              state: TtsSegmentState.ready, audioUrl: result.audioUrl);
-        } else {
-          _updateSegment(index,
-              state: TtsSegmentState.error, errorMessage: '音频 URL 为空');
-        }
-      } finally {
-        client.close();
+      // 从 assets 加载音色字节
+      final voiceBytes = await TtsVoiceLoader.load(_settings.voiceName);
+      final result = await _ttsClient.generateWithVoiceBytes(
+        voiceBytes: voiceBytes,
+        voiceName: _settings.voiceName,
+        text: seg.text,
+        outputFormat: 'wav',
+      );
+      if (result.audioUrl.isNotEmpty) {
+        _updateSegment(index,
+            state: TtsSegmentState.ready, audioUrl: result.audioUrl);
+      } else {
+        _updateSegment(index,
+            state: TtsSegmentState.error, errorMessage: '音频 URL 为空');
       }
     } catch (e) {
       _updateSegment(index,

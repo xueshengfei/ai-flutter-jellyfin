@@ -380,7 +380,6 @@ GoRouter createAppRouter({
           return AiRecommendRoutePage(
             gateway: effectiveGateway,
             aiServiceUrl: deriveServiceUrl(serverUrl, 5005),
-            ttsServiceUrl: deriveServiceUrl(serverUrl, 7861),
             imageProvider: JellyfinAppImageProvider(
               serverUrl: serverUrl,
               accessToken: session?.accessToken ?? '',

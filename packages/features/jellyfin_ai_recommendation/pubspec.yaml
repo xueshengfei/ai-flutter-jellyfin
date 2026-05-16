@@ -21,11 +21,16 @@ dependencies:
   jellyfin_ui_kit:
     path: ../../shared/jellyfin_ui_kit
   shared_preferences: ^2.2.0
-  rainfall_tts_sdk:
-    path: ../../vendor/rainfall_tts_sdk
+  path_provider: ^2.1.0
+  rainfall_tts_cloud_sdk:
+    path: ../../vendor/rainfall_tts_cloud_sdk
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
   test: ^1.24.0
+
+flutter:
+  assets:
+    - assets/prompt_audio/

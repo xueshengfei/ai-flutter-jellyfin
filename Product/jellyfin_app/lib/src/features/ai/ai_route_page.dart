@@ -8,14 +8,12 @@ import '../../data/jellyfin_gateway.dart';
 class AiRecommendRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String aiServiceUrl;
-  final String ttsServiceUrl;
   final JellyfinImageProvider imageProvider;
 
   const AiRecommendRoutePage({
     super.key,
     required this.gateway,
     required this.aiServiceUrl,
-    required this.ttsServiceUrl,
     required this.imageProvider,
   });
 
@@ -23,7 +21,6 @@ class AiRecommendRoutePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return AiRecommendPage(
       aiServiceUrl: aiServiceUrl,
-      ttsServiceUrl: ttsServiceUrl,
       imageProvider: imageProvider,
       fetchMediaItemDetail: gateway.getMediaItemDetail,
     );
