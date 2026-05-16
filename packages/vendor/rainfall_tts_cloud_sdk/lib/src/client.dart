@@ -284,6 +284,8 @@ final class RainfallCloudTTS {
     } else {
       voicePath = await uploadBytes(voiceBytes, voiceName);
       _voiceCache[voiceName] = voicePath;
+      // ignore: avoid_print
+      print('[CloudTTS] 上传音色 $voiceName → $voicePath');
     }
 
     final params = <dynamic>[
@@ -297,6 +299,8 @@ final class RainfallCloudTTS {
     ];
 
     final payload = await _callGradio('rainfall_gen_single', params);
+    // ignore: avoid_print
+    print('[CloudTTS] raw payload type=${payload.runtimeType}: ${payload.toString().length > 500 ? payload.toString().substring(0, 500) : payload}');
     return _parseTTSResult(payload);
   }
 
