@@ -186,11 +186,14 @@ class TtsPlaybackService extends ChangeNotifier {
     final text = _buffer.toString().trim();
     _buffer.clear();
     if (text.isEmpty) return;
-    for (final part in _splitSentences(text)) {
+    final parts = _splitSentences(text);
+    print('[TTS] flushBuffer: ${parts.length} 句, 原文 ${text.length} 字');
+    for (final part in parts) {
       final clean = _stripMarkdown(part);
       if (clean.trim().isEmpty) continue;
       _segments.add(TtsSegment(index: _segments.length, text: clean.trim()));
     }
+    print('[TTS] 总段数: ${_segments.length}, 待合成: ${_segments.where((s) => s.state == TtsSegmentState.pending).length}');
     // 启动合成（受并发数限制）
     _scheduleSynthesis();
     _tryStartPlayback();
@@ -259,22 +262,33 @@ class TtsPlaybackService extends ChangeNotifier {
     _updateSegment(index, state: TtsSegmentState.synthesizing);
 
     try {
+      print('[TTS] 合成 #${seg.index}: "${seg.text.length > 30 ? '${seg.text.substring(0, 30)}...' : seg.text}" (${seg.text.length}字)');
       // 从 assets 加载音色字节
       final voiceBytes = await TtsVoiceLoader.load(_settings.voiceName);
-      final result = await _ttsClient.generateWithVoiceBytes(
-        voiceBytes: voiceBytes,
-        voiceName: _settings.voiceName,
-        text: seg.text,
-        outputFormat: 'wav',
-      );
-      if (result.audioUrl.isNotEmpty) {
-        _updateSegment(index,
-            state: TtsSegmentState.ready, audioUrl: result.audioUrl);
-      } else {
-        _updateSegment(index,
-            state: TtsSegmentState.error, errorMessage: '音频 URL 为空');
+      print('[TTS] 音色 ${_settings.voiceName} 已加载 (${voiceBytes.length} bytes)');
+      // 每段合成用独立客户端，避免并发共享 http.Client 问题
+      final client = RainfallCloudTTS();
+      try {
+        final result = await client.generateWithVoiceBytes(
+          voiceBytes: voiceBytes,
+          voiceName: _settings.voiceName,
+          text: seg.text,
+          outputFormat: 'wav',
+        );
+        print('[TTS] 合成完成 #${seg.index}: audioUrl=${result.audioUrl}');
+        if (result.audioUrl.isNotEmpty) {
+          _updateSegment(index,
+              state: TtsSegmentState.ready, audioUrl: result.audioUrl);
+        } else {
+          print('[TTS] 合成 #${seg.index} audioUrl 为空');
+          _updateSegment(index,
+              state: TtsSegmentState.error, errorMessage: '音频 URL 为空');
+        }
+      } finally {
+        client.close();
       }
-    } catch (e) {
+    } catch (e, st) {
+      print('[TTS] 合成 #${seg.index} 失败: $e\n$st');
       _updateSegment(index,
           state: TtsSegmentState.error, errorMessage: e.toString());
     } finally {
@@ -332,6 +346,7 @@ class TtsPlaybackService extends ChangeNotifier {
   Future<void> _playSegment(int index) async {
     final seg = _segments[index];
     if (seg.audioUrl.isEmpty) {
+      print('[TTS] 播放 #$index 跳过: audioUrl 为空');
       _playCursor++;
       _playNextReady();
       return;
@@ -340,9 +355,11 @@ class TtsPlaybackService extends ChangeNotifier {
       _updateSegment(index, state: TtsSegmentState.playing);
       _state = TtsPlaybackState.playing;
       notifyListeners();
+      print('[TTS] 播放 #$index: ${seg.audioUrl}');
       await _player.setUrl(seg.audioUrl);
       await _player.play();
     } catch (e) {
+      print('[TTS] 播放 #$index 失败: $e');
       _updateSegment(index,
           state: TtsSegmentState.error, errorMessage: '播放失败: $e');
       _playCursor++;
