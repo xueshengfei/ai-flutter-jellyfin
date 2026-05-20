@@ -13,7 +13,7 @@ dependencies:
 
   # Jellyfin API SDK (接口层) - 本地路径依赖
   jellyfin_dart:
-    path: packages/jellyfin_dart_3.8
+    path: packages/vendor/jellyfin_dart_3.8
 
   # HTTP客户端
   dio: ^5.9.0
@@ -25,18 +25,23 @@ dependencies:
   json_annotation: ^4.9.0
   equatable: ^2.0.7
 
-  # 视频播放
-  video_player: ^2.8.1
-  chewie: ^1.7.5
+  # 视频播放 - 鸿蒙适配
+  video_player:
+    path: packages/ohos/video_player/video_player
+  chewie:
+    path: packages/ohos/fluttertpc_chewie
 
-  # 音频播放
-  just_audio: ^0.9.42
+  # 音频播放 - 鸿蒙适配
+  just_audio:
+    path: packages/ohos/fluttertpc_just_audio/just_audio
 
-  # 本地存储（视图模式偏好等）
-  shared_preferences: ^2.2.2
+  # 本地存储 - 鸿蒙适配
+  shared_preferences:
+    path: packages/ohos/shared_preferences/shared_preferences
 
-  # 路径获取
-  path_provider: ^2.1.5
+  # 路径获取 - 鸿蒙适配
+  path_provider:
+    path: packages/ohos/path_provider/path_provider
 
   # 动画
   flutter_animate: ^4.5.2
@@ -49,7 +54,16 @@ dependencies:
 
   # RVC 语音转换
   rvc_flutter:
-    path: packages/rvc_flutter
+    path: packages/features/rvc_flutter
+
+# 鸿蒙适配：强制子依赖也使用本地 ohos 路径
+dependency_overrides:
+  video_player:
+    path: packages/ohos/video_player/video_player
+  path_provider:
+    path: packages/ohos/path_provider/path_provider
+  shared_preferences:
+    path: packages/ohos/shared_preferences/shared_preferences
 
 dev_dependencies:
   flutter_test:

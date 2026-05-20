@@ -51,12 +51,93 @@ flutter build har --debug
 
 ## 签名相关
 
+### Q: DevEco Studio 签名界面一直转圈
+
+**症状**：DevEco Studio 中 `File → Project Structure → Signing Configs` 界面持续加载/转圈，无法完成签名配置。
+
+**解决**：不要在 DevEco Studio UI 里签名，直接通过命令行构建 release HAP，会自动触发签名流程：
+
+```bash
+fvm flutter build hap --release
+```
+
+命令行构建会自动处理签名，无需在 DevEco Studio 中手动配置。
+
 ### Q: 签名失败 / 无法自动签名
 
 1. 确保使用**实名认证**的华为开发者账号
 2. DevEco Studio: `File > Project Structure > Signing Configs`
 3. 勾选 `Support HarmonyOS & Automatically generate signature`
 4. 登录账号后等待完成
+5. 如果 UI 一直转圈，参见上一条用命令行构建
+
+### Q: `Cannot find module 'flutter-hvigor-plugin'`
+
+**症状**：`flutter build hap` 报错 hvigor 找不到 `flutter-hvigor-plugin` 模块。
+
+**原因**：ohos 目录下 `node_modules/flutter-hvigor-plugin/` 缺少完整文件（`package.json`、`index.ts` 等），或 Flutter SDK 的 `packages/flutter_tools/hvigor/` 目录不完整。
+
+**解决**：从已成功构建的分支（如 harmony）提取完整插件文件到 `ohos/node_modules/flutter-hvigor-plugin/`：
+
+```bash
+# 插件文件应包含:
+#   package.json
+#   index.ts
+#   tsconfig.json
+#   src/plugin/flutter-hvigor-plugin.ts
+#   src/util/file-util.ts
+#   src/util/parameter-util.ts
+#   src/util/properties-util.ts
+#   src/util/string-util.ts
+git checkout harmony -- <ohos_dir>/node_modules/flutter-hvigor-plugin/
+```
+
+### Q: `Parse ohos module.json5 error: Can not found module.json5`
+
+**症状**：构建时报某个 `_ohos` 插件找不到 `module.json5`。
+
+**原因**：ohos 适配插件的目录结构是旧版，缺少新版 Flutter OH SDK 要求的 `ohos/src/main/module.json5`。
+
+**解决**：从 harmony 分支补全插件的 ohos 原生代码：
+
+```bash
+# 以 path_provider_ohos 为例
+git checkout harmony -- packages/ohos/path_provider/path_provider_ohos/ohos/
+```
+
+同理对 `shared_preferences_ohos`、`video_player_ohos` 等插件操作。
+
+### Q: `Invalid main file 'Index.ets'` 或插件缺少入口文件
+
+**症状**：构建时报 `Invalid main file 'Index.ets' defined in oh-package.json5`。
+
+**原因**：插件从 harmony 分支 checkout 了 `oh-package.json5` 声明了 `Index.ets` 入口，但实际的 `Index.ets` 文件缺失。
+
+**解决**：从 harmony 分支补全缺失文件：
+
+```bash
+git checkout harmony -- packages/ohos/video_player/video_player_ohos/ohos/Index.ets \
+  packages/ohos/video_player/video_player_ohos/ohos/oh-package.json5
+```
+
+### Q: `bundleName does not match the bundleName in the generated SigningConfigs`
+
+**症状**：`SignHap` 阶段报错 bundleName 与签名证书不匹配。
+
+**原因**：签名证书是为旧项目（如 `com.example.jellyfin_service_example`）生成的，新项目的 `app.json5` 中 bundleName 不同。
+
+**解决**：修改 `ohos/AppScope/app.json5` 中的 `bundleName` 使其与签名证书一致：
+
+```json5
+{
+  "app": {
+    "bundleName": "com.example.jellyfin_service_example",  // 必须与签名证书一致
+    ...
+  }
+}
+```
+
+或从 harmony 分支复制 `build-profile.json5` 签名配置时，确保 bundleName 匹配。
 
 ---
 

@@ -10,7 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  video_player: ^2.8.1
+  # 鸿蒙适配
+  video_player:
+    path: ../../ohos/video_player/video_player
 
 dev_dependencies:
   flutter_test:

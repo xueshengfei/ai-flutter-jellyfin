@@ -13,15 +13,20 @@ dependencies:
   equatable: ^2.0.5
   flutter_markdown: ^0.7.0
   dio: ^5.4.0
-  just_audio: ^0.9.42
+  # 鸿蒙适配
+  just_audio:
+    path: ../../ohos/fluttertpc_just_audio/just_audio
   jellyfin_core:
     path: ../../foundation/jellyfin_core
   jellyfin_models:
     path: ../../shared/jellyfin_models
   jellyfin_ui_kit:
     path: ../../shared/jellyfin_ui_kit
-  shared_preferences: ^2.2.0
-  path_provider: ^2.1.0
+  # 鸿蒙适配
+  shared_preferences:
+    path: ../../ohos/shared_preferences/shared_preferences
+  path_provider:
+    path: ../../ohos/path_provider/path_provider
   rainfall_tts_cloud_sdk:
     path: ../../vendor/rainfall_tts_cloud_sdk
 

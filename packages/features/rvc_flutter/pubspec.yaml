@@ -12,9 +12,12 @@ dependencies:
     sdk: flutter
   rvc_sdk:
     path: ../../vendor/rvc_sdk
-  just_audio: ^0.9.42
+  # 鸿蒙适配
+  just_audio:
+    path: ../../ohos/fluttertpc_just_audio/just_audio
   file_picker: ^8.0.0
-  path_provider: ^2.1.5
+  path_provider:
+    path: ../../ohos/path_provider/path_provider
 
 dev_dependencies:
   flutter_test:
