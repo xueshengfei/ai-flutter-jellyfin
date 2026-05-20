@@ -13,8 +13,11 @@ dependencies:
   equatable: ^2.0.5
   jellyfin_models:
     path: ../../shared/jellyfin_models
-  video_player: ^2.8.1
-  chewie: ^1.7.5
+  # 鸿蒙适配
+  video_player:
+    path: ../../ohos/video_player/video_player
+  chewie:
+    path: ../../ohos/fluttertpc_chewie
 
 dev_dependencies:
   flutter_test:

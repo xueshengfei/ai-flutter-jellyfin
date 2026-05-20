@@ -13,7 +13,9 @@ dependencies:
   equatable: ^2.0.5
   shimmer: ^3.0.0
   cached_network_image: ^3.4.0
-  shared_preferences: ^2.2.2
+  # 鸿蒙适配
+  shared_preferences:
+    path: ../../ohos/shared_preferences/shared_preferences
   jellyfin_models:
     path: ../jellyfin_models
 

@@ -34,7 +34,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.0
   go_router: ^17.2.3
-  shared_preferences: ^2.2.2
+  # 鸿蒙适配
+  shared_preferences:
+    path: ../../packages/ohos/shared_preferences/shared_preferences
   jellyfin_core:
     path: ../../packages/foundation/jellyfin_core
   jellyfin_api:
@@ -63,7 +65,9 @@ dependencies:
     path: ../../packages/features/jellyfin_personal
   rvc_flutter:
     path: ../../packages/features/rvc_flutter
-  just_audio: ^0.9.46
+  # 鸿蒙适配
+  just_audio:
+    path: ../../packages/ohos/fluttertpc_just_audio/just_audio
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +79,15 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+
+# 鸿蒙适配：强制子依赖也使用本地 ohos 路径
+dependency_overrides:
+  video_player:
+    path: ../../packages/ohos/video_player/video_player
+  path_provider:
+    path: ../../packages/ohos/path_provider/path_provider
+  shared_preferences:
+    path: ../../packages/ohos/shared_preferences/shared_preferences
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
