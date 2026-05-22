@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_playback/src/models/video_quality_models.dart';
 import 'package:jellyfin_playback/src/models/playback_models.dart';
+import 'package:jellyfin_playback/src/models/watch_assist_models.dart';
+import 'package:jellyfin_playback/src/widgets/watch_assist_button.dart';
+import 'package:jellyfin_playback/src/widgets/watch_assist_sheet.dart';
 
 /// 视频播放页面（解耦版）
 ///
@@ -17,10 +19,14 @@ class VideoPlayerPage extends StatefulWidget {
   /// 播放委托（封装所有 PlaybackService 操作）
   final PlaybackDelegate playback;
 
+  /// AI 观影解读请求回调。未注入时不显示 AI 解读入口。
+  final WatchAssistFetcher? fetchWatchAssist;
+
   const VideoPlayerPage({
     super.key,
     required this.item,
     required this.playback,
+    this.fetchWatchAssist,
   });
 
   @override
@@ -135,8 +141,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       await _videoController!.seekTo(seekPosition);
     } else if (resumeTicks != null && resumeTicks > 0) {
       final resumeSeconds = resumeTicks / 10000000;
-      await _videoController!
-          .seekTo(Duration(seconds: resumeSeconds.round()));
+      await _videoController!.seekTo(Duration(seconds: resumeSeconds.round()));
     }
 
     if (_currentSpeed != 1.0) {
@@ -184,7 +189,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
       _currentPlaybackInfo = newPlaybackInfo;
 
-      await _setupVideoController(newPlaybackInfo, seekPosition: currentPosition);
+      await _setupVideoController(newPlaybackInfo,
+          seekPosition: currentPosition);
       _videoController!.addListener(_onVideoProgressChanged);
 
       if (!wasPlaying) {
@@ -237,8 +243,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       _bufferingStartTime = null;
 
       if (bufferDuration.inMilliseconds > 100) {
-        final currentBitrate =
-            _currentPlaybackInfo?.actualBitrate ?? 5000000;
+        final currentBitrate = _currentPlaybackInfo?.actualBitrate ?? 5000000;
         final estimatedBytes = (currentBitrate * 2 / 8).round();
 
         _networkMonitor.recordFromBuffering(
@@ -338,6 +343,23 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     );
   }
 
+  void _showWatchAssistSheet() {
+    final fetcher = widget.fetchWatchAssist;
+    if (fetcher == null) return;
+
+    final positionSeconds = _videoController?.value.position.inSeconds ?? 0;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => WatchAssistSheet(
+        itemId: widget.item.id,
+        initialPositionSeconds: positionSeconds,
+        fetchWatchAssist: fetcher,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -416,12 +438,19 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
             ),
           ),
 
-          // 底部画质按钮
+          // 底部业务控制按钮
           if (!_isLoading && _errorMessage == null)
             Positioned(
               bottom: 0,
               right: 96,
-              child: _buildQualityBadge(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.fetchWatchAssist != null)
+                    WatchAssistButton(onPressed: _showWatchAssistSheet),
+                  _buildQualityBadge(),
+                ],
+              ),
             ),
         ],
       ),

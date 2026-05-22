@@ -15,3 +15,4 @@ library;
 
 export 'src/models/video_quality_models.dart';
 export 'src/models/playback_models.dart';
+export 'src/models/watch_assist_models.dart';

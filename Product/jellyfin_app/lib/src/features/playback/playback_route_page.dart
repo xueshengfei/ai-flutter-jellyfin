@@ -12,6 +12,7 @@ import 'package:jellyfin_playback/jellyfin_playback_pages.dart';
 
 import '../../data/jellyfin_gateway.dart';
 import '../../data/playback_adapter.dart';
+import '../../data/watch_assist_client.dart';
 
 /// 视频播放路由页
 ///
@@ -20,11 +21,13 @@ import '../../data/playback_adapter.dart';
 class VideoPlaybackRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
+  final String? aiServiceUrl;
 
   const VideoPlaybackRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
+    this.aiServiceUrl,
   });
 
   @override
@@ -35,9 +38,7 @@ class VideoPlaybackRoutePage extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.black,
-            body: Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+            body: Center(child: CircularProgressIndicator(color: Colors.white)),
           );
         }
 
@@ -95,10 +96,15 @@ class VideoPlaybackRoutePage extends StatelessWidget {
 
         final adapter = PlaybackAdapter(apiClient);
         final delegate = adapter.createDelegate();
+        final watchAssistClient =
+            aiServiceUrl != null && aiServiceUrl!.isNotEmpty
+            ? WatchAssistClient(aiServiceUrl: aiServiceUrl!)
+            : null;
 
         return VideoPlayerPage(
           item: item,
           playback: delegate,
+          fetchWatchAssist: watchAssistClient?.fetchWatchAssist,
         );
       },
     );
