@@ -313,9 +313,13 @@ GoRouter createAppRouter({
         path: '/playback/video/:itemId',
         builder: (context, state) {
           final itemId = state.pathParameters['itemId']!;
+          final serverUrl = sessionController.currentSession?.serverUrl;
           return VideoPlaybackRoutePage(
             gateway: effectiveGateway,
             itemId: itemId,
+            aiServiceUrl: serverUrl != null && serverUrl.isNotEmpty
+                ? deriveServiceUrl(serverUrl, 5005)
+                : null,
           );
         },
       ),
@@ -380,6 +384,7 @@ GoRouter createAppRouter({
           return AiRecommendRoutePage(
             gateway: effectiveGateway,
             aiServiceUrl: deriveServiceUrl(serverUrl, 5005),
+            audioPlaybackPort: effectiveAudioPort,
             imageProvider: JellyfinAppImageProvider(
               serverUrl: serverUrl,
               accessToken: session?.accessToken ?? '',
