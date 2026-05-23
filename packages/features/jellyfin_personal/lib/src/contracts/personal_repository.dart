@@ -1,6 +1,7 @@
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 
 import '../models/personal_media_query.dart';
+import '../models/personal_stats.dart';
 
 /// 个人模块数据仓库协议
 ///
@@ -35,4 +36,7 @@ abstract interface class PersonalRepository {
     required String itemId,
     required bool isPlayed,
   });
+
+  /// 获取统计数据
+  Future<PersonalStats> getStats(PersonalMediaQuery query);
 }

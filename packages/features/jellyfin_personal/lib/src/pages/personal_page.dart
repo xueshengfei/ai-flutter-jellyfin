@@ -99,6 +99,8 @@ class _PersonalPageState extends State<PersonalPage> {
                         onLogout: widget.config.showLogoutAction
                             ? widget.actions.onLogout
                             : null,
+                        onOpenSettings: widget.actions.onOpenSettings,
+                        onOpenStats: widget.actions.onOpenStats,
                       );
                     },
                   ),

@@ -13,6 +13,8 @@ import '../features/home/media_libraries_page.dart';
 import '../features/media/media_route_pages.dart';
 import '../features/music/music_route_pages.dart';
 import '../features/personal/personal_route_page.dart';
+import '../features/personal/personal_settings_route_page.dart';
+import '../features/personal/personal_stats_route_page.dart';
 import '../features/playback/playback_route_page.dart';
 import '../features/rvc/rvc_route_page.dart';
 import '../session/app_session.dart';
@@ -367,6 +369,34 @@ GoRouter createAppRouter({
             return const Scaffold(body: Center(child: Text('个人模块未配置')));
           }
           return PersonalRoutePage(
+            repository: repository,
+            sessionController: sessionController,
+          );
+        },
+      ),
+      // 个人设置
+      GoRoute(
+        path: '/personal/settings',
+        builder: (context, state) {
+          final repository = personalRepository;
+          if (repository == null) {
+            return const Scaffold(body: Center(child: Text('个人模块未配置')));
+          }
+          return PersonalSettingsRoutePage(
+            repository: repository,
+            sessionController: sessionController,
+          );
+        },
+      ),
+      // 个人统计
+      GoRoute(
+        path: '/personal/stats',
+        builder: (context, state) {
+          final repository = personalRepository;
+          if (repository == null) {
+            return const Scaffold(body: Center(child: Text('个人模块未配置')));
+          }
+          return PersonalStatsRoutePage(
             repository: repository,
             sessionController: sessionController,
           );

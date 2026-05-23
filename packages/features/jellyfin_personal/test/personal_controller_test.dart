@@ -125,6 +125,15 @@ final class _FakePersonalRepository implements PersonalRepository {
     required String itemId,
     required bool isPlayed,
   }) async {}
+
+  @override
+  Future<PersonalStats> getStats(PersonalMediaQuery query) async {
+    return const PersonalStats(
+      totalWatched: 5,
+      totalFavorites: 3,
+      continueWatchingCount: 2,
+    );
+  }
 }
 
 const _item = models.MediaItem(

@@ -5,8 +5,16 @@ import 'package:jellyfin_models/jellyfin_models.dart' as models;
 final class PersonalHeader extends StatelessWidget {
   final models.UserProfile profile;
   final VoidCallback? onLogout;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenStats;
 
-  const PersonalHeader({super.key, required this.profile, this.onLogout});
+  const PersonalHeader({
+    super.key,
+    required this.profile,
+    this.onLogout,
+    this.onOpenSettings,
+    this.onOpenStats,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +48,10 @@ final class PersonalHeader extends StatelessWidget {
                   children: [
                     Text(
                       profile.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -59,6 +68,18 @@ final class PersonalHeader extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onOpenSettings != null)
+                IconButton(
+                  tooltip: '设置',
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: onOpenSettings,
+                ),
+              if (onOpenStats != null)
+                IconButton(
+                  tooltip: '统计',
+                  icon: const Icon(Icons.bar_chart_outlined),
+                  onPressed: onOpenStats,
+                ),
               if (onLogout != null)
                 IconButton(
                   tooltip: '退出登录',
