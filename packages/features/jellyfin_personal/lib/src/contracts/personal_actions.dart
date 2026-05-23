@@ -23,10 +23,14 @@ final class PersonalActions {
   /// 打开设置
   final VoidCallback? onOpenSettings;
 
+  /// 打开统计
+  final VoidCallback? onOpenStats;
+
   const PersonalActions({
     required this.onOpenMedia,
     this.onPlayMedia,
     this.onLogout,
     this.onOpenSettings,
+    this.onOpenStats,
   });
 }

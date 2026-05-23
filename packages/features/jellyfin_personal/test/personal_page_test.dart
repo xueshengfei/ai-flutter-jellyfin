@@ -105,6 +105,11 @@ final class _FakeRepository implements PersonalRepository {
     required String itemId,
     required bool isPlayed,
   }) async {}
+
+  @override
+  Future<PersonalStats> getStats(PersonalMediaQuery query) async {
+    return const PersonalStats();
+  }
 }
 
 final class _FakeImageProvider implements JellyfinImageProvider {

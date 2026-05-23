@@ -42,6 +42,8 @@ final class PersonalRoutePage extends StatelessWidget {
         onLogout: () {
           sessionController.clearSession();
         },
+        onOpenSettings: () => context.push('/personal/settings'),
+        onOpenStats: () => context.push('/personal/stats'),
       ),
     );
   }

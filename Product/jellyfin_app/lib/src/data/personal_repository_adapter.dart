@@ -126,6 +126,77 @@ final class JellyfinPersonalRepositoryAdapter
     }
   }
 
+  @override
+  Future<personal.PersonalStats> getStats(
+    personal.PersonalMediaQuery query,
+  ) async {
+    _requireClient();
+    final client = _client!;
+
+    // 并行获取每种类型的观看数和收藏数
+    final breakdownFutures = query.mediaKinds.map((kind) async {
+      final kinds = _mapKinds([kind]);
+      final results = await Future.wait([
+        // 观看数
+        client.jellyfinClient.getItemsApi().getItems(
+              userId: client.config.userId,
+              limit: 1,
+              recursive: true,
+              includeItemTypes: kinds,
+              isPlayed: true,
+              enableUserData: false,
+              enableImages: false,
+            ),
+        // 收藏数
+        client.jellyfinClient.getItemsApi().getItems(
+              userId: client.config.userId,
+              limit: 1,
+              recursive: true,
+              includeItemTypes: kinds,
+              isFavorite: true,
+              enableUserData: false,
+              enableImages: false,
+            ),
+      ]);
+      return personal.MediaTypeCount(
+        kind: kind,
+        watchedCount: results[0].data?.totalRecordCount ?? 0,
+        favoriteCount: results[1].data?.totalRecordCount ?? 0,
+      );
+    });
+
+    // 继续观看数
+    final resumeFuture = client.jellyfinClient.getItemsApi().getResumeItems(
+          userId: client.config.userId,
+          limit: 1,
+          includeItemTypes: _mapKinds(query.mediaKinds),
+          enableUserData: false,
+          enableImages: false,
+        );
+
+    final results = await Future.wait([
+      ...breakdownFutures,
+      resumeFuture,
+    ]);
+
+    final breakdown = results
+        .sublist(0, query.mediaKinds.length)
+        .cast<personal.MediaTypeCount>();
+    final resumeResult = results.last as dynamic;
+    final continueWatchingCount =
+        (resumeResult as jellyfin_dart.BaseItemDtoQueryResult?)
+                ?.totalRecordCount ??
+            0;
+
+    return personal.PersonalStats(
+      totalWatched: breakdown.fold<int>(0, (sum, b) => sum + b.watchedCount),
+      totalFavorites:
+          breakdown.fold<int>(0, (sum, b) => sum + b.favoriteCount),
+      continueWatchingCount: continueWatchingCount,
+      breakdown: breakdown,
+    );
+  }
+
   Future<models.MediaItemListResult> _getItems({
     required personal.PersonalMediaQuery query,
     bool? isFavorite,
