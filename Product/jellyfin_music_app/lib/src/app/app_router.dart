@@ -93,6 +93,7 @@ GoRouter createAppRouter({
             imageProvider: session != null
                 ? JellyfinMusicImageProvider.fromSession(session)
                 : null,
+            onOpenPersonal: () => context.push('/personal'),
           );
         },
       ),

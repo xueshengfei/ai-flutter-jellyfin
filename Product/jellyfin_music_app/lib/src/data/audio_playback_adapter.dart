@@ -2,10 +2,13 @@ import 'dart:async';
 import 'package:just_audio/just_audio.dart';
 import 'package:jellyfin_music/jellyfin_music.dart' as music;
 
+import 'audio_cache_manager.dart';
+
 /// 基于 just_audio 的音频播放适配器
 ///
 /// 实现 [AudioPlaybackPort] 接口，单例模式。
 /// 生命周期与 App 一致，退出播放页后音乐继续。
+/// 支持 LRU 音频缓存，播放过的歌曲自动缓存到本地。
 class AudioPlaybackAdapter extends music.AudioPlaybackPort {
   AudioPlaybackAdapter._() {
     _setupListeners();
@@ -14,6 +17,7 @@ class AudioPlaybackAdapter extends music.AudioPlaybackPort {
   static final AudioPlaybackAdapter instance = AudioPlaybackAdapter._();
 
   final AudioPlayer _player = AudioPlayer();
+  final AudioCacheManager _cacheManager = AudioCacheManager();
 
   List<music.AudioTrack> _playlist = [];
   int _currentIndex = 0;
@@ -251,7 +255,17 @@ class AudioPlaybackAdapter extends music.AudioPlaybackPort {
 
     try {
       final track = currentTrack!;
-      await _player.setUrl(track.streamUrl);
+
+      // 优先使用缓存
+      final cachedFile = await _cacheManager.getCacheFile(track.id);
+      if (cachedFile != null) {
+        await _player.setFilePath(cachedFile.path);
+      } else {
+        await _player.setUrl(track.streamUrl);
+        // 后台缓存，不阻塞播放
+        _cacheManager.cacheInBackground(track.id, track.streamUrl);
+      }
+
       _isLoading = false;
       notifyListeners();
       unawaited(_player.play());
