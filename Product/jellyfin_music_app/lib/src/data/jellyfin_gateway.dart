@@ -1,0 +1,84 @@
+import 'package:jellyfin_models/jellyfin_models.dart' as models;
+import 'package:jellyfin_music/jellyfin_music.dart' as music;
+
+import '../session/app_session.dart';
+
+/// 音乐 App 数据访问网关协议
+///
+/// 只包含音乐业务所需的最小接口集
+abstract class JellyfinGateway {
+  /// 登录认证
+  Future<AppSession> login({
+    required String serverUrl,
+    required String username,
+    required String password,
+  });
+
+  /// 管理员注册新用户
+  Future<void> register({
+    required String serverUrl,
+    required String adminUsername,
+    required String adminPassword,
+    required String username,
+    required String password,
+  });
+
+  /// 登出
+  Future<void> logout();
+
+  /// 获取媒体库列表
+  Future<List<models.MediaLibrary>> getMediaLibraries();
+
+  /// 获取专辑列表
+  Future<music.MusicAlbumListResult> fetchAlbums({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+    String? sortBy,
+  });
+
+  /// 获取艺术家列表
+  Future<music.MusicArtistListResult> fetchArtists({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  });
+
+  /// 获取歌曲列表
+  Future<music.MusicSongListResult> fetchSongs({
+    required String parentId,
+    int? startIndex,
+    int? limit,
+  });
+
+  /// 获取专辑详情
+  Future<music.MusicAlbum> getAlbumDetail(String albumId);
+
+  /// 获取专辑歌曲列表
+  Future<music.MusicSongListResult> getAlbumSongs(String albumId);
+
+  /// 获取艺术家详情
+  Future<music.MusicArtist> getArtistDetail(String artistId);
+
+  /// 获取艺术家专辑列表
+  Future<music.MusicAlbumListResult> getArtistAlbums(String artistId);
+
+  /// 搜索音乐（艺术家+专辑+歌曲）
+  Future<music.MusicSearchResult> searchMusic({
+    required String searchTerm,
+    String? parentId,
+    int? limit,
+  });
+
+  /// 获取歌词
+  Future<music.LyricsData?> getLyrics(String itemId);
+
+  /// 搜索远程歌词
+  Future<List<music.RemoteLyricsInfo>> searchRemoteLyrics(String itemId);
+
+  /// 下载远程歌词
+  Future<music.LyricsData> downloadRemoteLyrics({
+    required String itemId,
+    required String lyricId,
+  });
+}
