@@ -49,6 +49,7 @@ class MusicLibraryRoutePage extends StatelessWidget {
   final String libraryId;
   final String libraryName;
   final JellyfinImageProvider? imageProvider;
+  final VoidCallback? onOpenPersonal;
 
   const MusicLibraryRoutePage({
     super.key,
@@ -57,6 +58,7 @@ class MusicLibraryRoutePage extends StatelessWidget {
     required this.libraryId,
     required this.libraryName,
     this.imageProvider,
+    this.onOpenPersonal,
   });
 
   @override
@@ -97,6 +99,7 @@ class MusicLibraryRoutePage extends StatelessWidget {
       onSearch: () => context.push(
         '/libraries/$libraryId/music/search?name=${Uri.encodeComponent(libraryName)}',
       ),
+      onOpenPersonal: onOpenPersonal,
       imageProvider: imageProvider,
     );
 

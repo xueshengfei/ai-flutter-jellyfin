@@ -21,6 +21,7 @@ class MusicLibraryPage extends StatefulWidget {
   final OnOpenArtist? onOpenArtist;
   final OnPlayTracks? onPlayTracks;
   final VoidCallback? onSearch;
+  final VoidCallback? onOpenPersonal;
 
   /// 图片加载器（注入 JellyfinAppImageProvider 以加载认证封面）
   final JellyfinImageProvider? imageProvider;
@@ -36,6 +37,7 @@ class MusicLibraryPage extends StatefulWidget {
     this.onOpenArtist,
     this.onPlayTracks,
     this.onSearch,
+    this.onOpenPersonal,
     this.imageProvider,
   });
 
@@ -70,6 +72,12 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
               icon: const Icon(Icons.search),
               onPressed: widget.onSearch,
               tooltip: '搜索',
+            ),
+          if (widget.onOpenPersonal != null)
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: widget.onOpenPersonal,
+              tooltip: '个人中心',
             ),
         ],
         bottom: TabBar(
