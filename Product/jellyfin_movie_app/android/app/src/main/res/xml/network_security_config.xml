@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 允许明文 HTTP（局域网 Jellyfin 服务为 http://） -->
-<network-security-config>
-    <base-config cleartextTrafficPermitted="true">
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </base-config>
-</network-security-config>
