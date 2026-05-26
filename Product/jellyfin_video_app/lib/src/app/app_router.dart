@@ -295,6 +295,13 @@ class _StubGateway implements JellyfinGateway {
       [];
 
   @override
+  Future<List<models.MediaItem>> getSuggestions({
+    int? limit,
+    List<String>? includeItemTypes,
+  }) async =>
+      [];
+
+  @override
   Future<movies.MovieFilterResult> fetchMovies(movies.MovieFilter filter) {
     throw UnimplementedError('No gateway configured');
   }

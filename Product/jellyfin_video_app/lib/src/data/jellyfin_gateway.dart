@@ -60,4 +60,10 @@ abstract class JellyfinGateway {
     String parentId, {
     int limit,
   });
+
+  /// 获取推荐内容（Jellyfin 智能推荐，支持 movie/series）
+  Future<List<models.MediaItem>> getSuggestions({
+    int? limit,
+    List<String>? includeItemTypes,
+  });
 }

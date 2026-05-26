@@ -298,6 +298,33 @@ class LegacyJellyfinGateway implements JellyfinGateway {
     return items.map((dto) => mapMediaItem(dto, config.serverUrl)).toList();
   }
 
+  @override
+  Future<List<models.MediaItem>> getSuggestions({
+    int? limit,
+    List<String>? includeItemTypes,
+  }) async {
+    _requireClient();
+    final config = _apiClient!.config;
+
+    // 默认推荐 movie + series
+    const defaultTypes = [
+      jellyfin_dart.BaseItemKind.movie,
+      jellyfin_dart.BaseItemKind.series,
+    ];
+
+    final response = await _apiClient!.jellyfinClient
+        .getSuggestionsApi()
+        .getSuggestions(
+          userId: config.userId,
+          limit: limit ?? 10,
+          type: defaultTypes,
+          enableTotalRecordCount: false,
+        );
+
+    final items = response.data?.items ?? [];
+    return items.map((dto) => mapMediaItem(dto, config.serverUrl)).toList();
+  }
+
   void _requireClient() {
     if (_apiClient == null) {
       throw StateError('未登录，请先调用 login()');
