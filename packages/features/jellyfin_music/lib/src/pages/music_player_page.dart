@@ -79,7 +79,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         NetworkImage(imageUrl),
         maximumColorCount: 10,
       );
-      final color = palette.dominantColor?.color ??
+      final color =
+          palette.dominantColor?.color ??
           palette.vibrantColor?.color ??
           palette.mutedColor?.color;
       if (color != null && mounted) {
@@ -106,7 +107,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     try {
       final data = await fetcher(track.id);
       if (mounted) {
-        setState(() { _lyricsData = data; _lyricsLoading = false; });
+        setState(() {
+          _lyricsData = data;
+          _lyricsLoading = false;
+        });
         _startPositionTracking();
       }
     } catch (e) {
@@ -128,7 +132,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     final positionTicks = position.inMicroseconds * 10;
     int newIndex = -1;
     for (int i = lines.length - 1; i >= 0; i--) {
-      if (lines[i].startTicks != null && lines[i].startTicks! <= positionTicks) {
+      if (lines[i].startTicks != null &&
+          lines[i].startTicks! <= positionTicks) {
         newIndex = i;
         break;
       }
@@ -156,7 +161,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   void _onUserScroll() {
     _isUserScrolling = true;
     _scrollResumeTimer?.cancel();
-    _scrollResumeTimer = Timer(const Duration(seconds: 3), () => _isUserScrolling = false);
+    _scrollResumeTimer = Timer(
+      const Duration(seconds: 3),
+      () => _isUserScrolling = false,
+    );
   }
 
   Future<void> _onLineTap(int index) async {
@@ -235,8 +243,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       const fixedHeight = 200.0;
-                      final maxVinyl =
-                          (constraints.maxHeight - fixedHeight).clamp(120.0, 240.0);
+                      final maxVinyl = (constraints.maxHeight - fixedHeight)
+                          .clamp(120.0, 240.0);
                       return isWide
                           ? _buildWideLayout(port, track, maxVinyl)
                           : _buildNarrowLayout(port, track, maxVinyl);
@@ -271,13 +279,17 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         if (port.error != null)
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Text(port.error!,
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center),
+            child: Text(
+              port.error!,
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
           ),
         const SizedBox(height: 2),
-        Text('${port.currentIndex + 1} / ${port.playlistLength}',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+        Text(
+          '${port.currentIndex + 1} / ${port.playlistLength}',
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+        ),
       ],
     );
   }
@@ -328,13 +340,17 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         if (port.error != null)
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Text(port.error!,
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center),
+            child: Text(
+              port.error!,
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
           ),
         const SizedBox(height: 2),
-        Text('${port.currentIndex + 1} / ${port.playlistLength}',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+        Text(
+          '${port.currentIndex + 1} / ${port.playlistLength}',
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+        ),
       ],
     );
   }
@@ -344,32 +360,45 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   Widget _buildWebLyricsContent(double width, double height) {
     if (_lyricsLoading) {
       return SizedBox(
-        width: width, height: height,
+        width: width,
+        height: height,
         child: const Center(child: CircularProgressIndicator()),
       );
     }
     final lines = _lyricsData?.lines;
     if (lines == null || lines.isEmpty) {
       return SizedBox(
-        width: width, height: height,
+        width: width,
+        height: height,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lyrics_outlined, size: 48, color: Colors.grey.shade400),
+              Icon(
+                Icons.lyrics_outlined,
+                size: 48,
+                color: Colors.grey.shade400,
+              ),
               const SizedBox(height: 12),
-              Text('暂无歌词', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+              Text(
+                '暂无歌词',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+              ),
             ],
           ),
         ),
       );
     }
     return SizedBox(
-      width: width, height: height,
+      width: width,
+      height: height,
       child: Padding(
         padding: const EdgeInsets.only(left: 32),
         child: NotificationListener<ScrollNotification>(
-          onNotification: (n) { if (n is UserScrollNotification) _onUserScroll(); return false; },
+          onNotification: (n) {
+            if (n is UserScrollNotification) _onUserScroll();
+            return false;
+          },
           child: LayoutBuilder(
             builder: (context, constraints) {
               final vPadding = constraints.maxHeight / 2;
@@ -381,7 +410,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                 itemBuilder: (context, index) {
                   final line = lines[index];
                   final isCurrent = index == _currentLineIndex;
-                  final isPast = _currentLineIndex >= 0 && index < _currentLineIndex;
+                  final isPast =
+                      _currentLineIndex >= 0 && index < _currentLineIndex;
                   return GestureDetector(
                     onTap: () => _onLineTap(index),
                     behavior: HitTestBehavior.translucent,
@@ -390,15 +420,22 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                         duration: const Duration(milliseconds: 300),
                         style: TextStyle(
                           fontSize: isCurrent ? 17 : 13,
-                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isCurrent
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           color: isCurrent
                               ? Theme.of(context).colorScheme.primary
                               : isPast
-                                  ? Colors.grey.shade400
-                                  : Colors.grey.shade600,
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
                           height: 1.4,
                         ),
-                        child: Text(line.text ?? '', textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          line.text ?? '',
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   );
@@ -426,7 +463,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
             color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
-          )
+          ),
         ],
         gradient: coverUrl != null
             ? null
@@ -464,10 +501,11 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   }
 
   Widget _placeholder() => Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: const Center(
-            child: Icon(Icons.music_note, size: 80, color: Colors.white54)),
-      );
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: const Center(
+      child: Icon(Icons.music_note, size: 80, color: Colors.white54),
+    ),
+  );
 
   // ─── 歌曲信息：歌名 · 歌手 [词] ───
 
@@ -477,31 +515,33 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       mainAxisSize: MainAxisSize.min,
       children: [
         Flexible(
-          child: Text(track.name,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
+          child: Text(
+            track.name,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         if (track.artistText != null) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Text('·',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+            child: Text(
+              '·',
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            ),
           ),
           Flexible(
-            child: Text(track.artistText ?? '',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              track.artistText ?? '',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
         const SizedBox(width: 6),
         // 歌词小标签
-        _LyricsChip(
-          isActive: _showWebLyrics,
-          onTap: _onLyricsTap,
-        ),
+        _LyricsChip(isActive: _showWebLyrics, onTap: _onLyricsTap),
       ],
     );
   }
@@ -511,118 +551,162 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   Widget _buildProgressBar(AudioPlaybackPort port) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(children: [
-        Slider(
-          value: port.duration.inMilliseconds > 0
-              ? (port.position.inMilliseconds / port.duration.inMilliseconds)
-                  .clamp(0, 1)
-              : 0,
-          onChanged: (v) => port.seek(Duration(
-              milliseconds: (port.duration.inMilliseconds * v).round())),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(_fmt(port.position),
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-            Text(_fmt(port.duration),
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-          ],
-        ),
-      ]),
+      child: Column(
+        children: [
+          Slider(
+            value: port.duration.inMilliseconds > 0
+                ? (port.position.inMilliseconds / port.duration.inMilliseconds)
+                      .clamp(0, 1)
+                : 0,
+            onChanged: (v) => port.seek(
+              Duration(
+                milliseconds: (port.duration.inMilliseconds * v).round(),
+              ),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _fmt(port.position),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              ),
+              Text(
+                _fmt(port.duration),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   // ─── 控制栏: [PlayMode] [Prev] [Play/Pause] [Next] [收藏] [RVC] ───
 
   Widget _buildControls(AudioPlaybackPort port, AudioTrack track) {
-    return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-      // 播放模式
-      IconButton(
-        onPressed: () => port.cyclePlayMode(),
-        icon: Icon(
-          switch (port.playMode) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // 播放模式
+        IconButton(
+          onPressed: () => port.cyclePlayMode(),
+          icon: Icon(switch (port.playMode) {
             PlayMode.sequential => Icons.trending_flat,
             PlayMode.shuffle => Icons.shuffle,
             PlayMode.repeatOne => Icons.repeat_one,
+          }, size: 28),
+          color: port.playMode != PlayMode.sequential
+              ? Theme.of(context).colorScheme.primary
+              : null,
+          tooltip: switch (port.playMode) {
+            PlayMode.sequential => '顺序播放',
+            PlayMode.shuffle => '随机播放',
+            PlayMode.repeatOne => '单曲循环',
           },
-          size: 28,
         ),
-        color: port.playMode != PlayMode.sequential
-            ? Theme.of(context).colorScheme.primary
-            : null,
-        tooltip: switch (port.playMode) {
-          PlayMode.sequential => '顺序播放',
-          PlayMode.shuffle => '随机播放',
-          PlayMode.repeatOne => '单曲循环',
-        },
-      ),
-      const SizedBox(width: 8),
-      // Previous
-      IconButton(
-        onPressed: () => port.playPrevious(),
-        icon: const Icon(Icons.skip_previous, size: 40),
-      ),
-      const SizedBox(width: 12),
-      // Play/Pause
-      port.isLoading
-          ? const SizedBox(
-              width: 56, height: 56, child: CircularProgressIndicator())
-          : IconButton.filled(
-              onPressed: () =>
-                  port.isPlaying ? port.pause() : port.resume(),
-              icon: Icon(port.isPlaying ? Icons.pause : Icons.play_arrow,
-                  size: 40),
-              style: IconButton.styleFrom(minimumSize: const Size(64, 64)),
-            ),
-      const SizedBox(width: 12),
-      // Next
-      IconButton(
-        onPressed: () => port.playNext(),
-        icon: const Icon(Icons.skip_next, size: 40),
-      ),
-      const SizedBox(width: 8),
-      // 收藏按钮
-      SizedBox(
-        width: 48, height: 48,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () => port.updateTrackFavorite(track.id, !(track.isFavorite == true)),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                track.isFavorite == true ? Icons.favorite : Icons.favorite_border,
-                size: 22,
-                color: track.isFavorite == true ? Colors.red.shade400 : null,
+        const SizedBox(width: 8),
+        // Previous
+        IconButton(
+          onPressed: () => port.playPrevious(),
+          icon: const Icon(Icons.skip_previous, size: 40),
+        ),
+        const SizedBox(width: 12),
+        // Play/Pause
+        port.isLoading
+            ? const SizedBox(
+                width: 56,
+                height: 56,
+                child: CircularProgressIndicator(),
+              )
+            : IconButton.filled(
+                onPressed: () => port.isPlaying ? port.pause() : port.resume(),
+                icon: Icon(
+                  port.isPlaying ? Icons.pause : Icons.play_arrow,
+                  size: 40,
+                ),
+                style: IconButton.styleFrom(minimumSize: const Size(64, 64)),
               ),
-              Text('藏', style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            ],
-          ),
+        const SizedBox(width: 12),
+        // Next
+        IconButton(
+          onPressed: () => port.playNext(),
+          icon: const Icon(Icons.skip_next, size: 40),
         ),
-      ),
-      const SizedBox(width: 4),
-      // RVC 语音转换
-      if (widget.onOpenRvc != null)
+        const SizedBox(width: 8),
+        // 收藏按钮
         SizedBox(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           child: InkWell(
             borderRadius: BorderRadius.circular(24),
-            onTap: widget.onOpenRvc,
+            onTap: () =>
+                port.updateTrackFavorite(track.id, !(track.isFavorite == true)),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.auto_fix_high, size: 22, color: Theme.of(context).colorScheme.primary),
-                Text('RVC', style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                Icon(
+                  track.isFavorite == true
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                  size: 22,
+                  color: track.isFavorite == true ? Colors.red.shade400 : null,
+                ),
+                Text(
+                  '藏',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
         ),
-    ]);
+        const SizedBox(width: 4),
+        // RVC
+        if (widget.onOpenRvc != null) _RvcButton(onTap: widget.onOpenRvc!),
+      ],
+    );
   }
 
   String _fmt(Duration d) =>
       '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+}
+
+// RVC
+
+class _RvcButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RvcButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.auto_fix_high, size: 22, color: cs.primary),
+            const SizedBox(height: 2),
+            Text(
+              'RVC',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ─── 歌词小标签按钮（放在歌手行右侧） ───
@@ -647,12 +731,23 @@ class _LyricsChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lyrics_outlined, size: 14,
-              color: isActive ? Theme.of(context).colorScheme.primary : Colors.grey.shade500),
+            Icon(
+              Icons.lyrics_outlined,
+              size: 14,
+              color: isActive
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey.shade500,
+            ),
             const SizedBox(width: 3),
-            Text('词',
-              style: TextStyle(fontSize: 11,
-                color: isActive ? Theme.of(context).colorScheme.primary : Colors.grey.shade500)),
+            Text(
+              '词',
+              style: TextStyle(
+                fontSize: 11,
+                color: isActive
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey.shade500,
+              ),
+            ),
           ],
         ),
       ),

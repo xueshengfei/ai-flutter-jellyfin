@@ -34,5 +34,16 @@ coverage/
 # Logs
 *.log
 
+# Local thesis deliverables and source-document scratch copies
+docs/thesis_versions/
+docs/thesis_source_extracted.txt
+docs/thesis_source_opening_report.docx
+docs/thesis_template_extracted.txt
+docs/xupt_thesis_template.docx
+scripts/generate_thesis_versions.py
+scripts/generate_xupt_template_thesis.py
+scripts/generate_thesis_diagrams.py
+scripts/build_diagram_pack_docx.py
+
 # FVM Version Cache
 .fvm/
