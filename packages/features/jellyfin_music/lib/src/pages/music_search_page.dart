@@ -85,7 +85,12 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _isSearching = false; _hasSearched = true; });
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+          _hasSearched = true;
+        });
+      }
     }
   }
 
@@ -141,8 +146,10 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
           children: [
             Icon(Icons.search, size: 64, color: Colors.grey.shade300),
             const SizedBox(height: 16),
-            Text('输入关键词搜索音乐',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade500)),
+            Text(
+              '输入关键词搜索音乐',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
+            ),
           ],
         ),
       );
@@ -157,8 +164,10 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
           children: [
             Icon(Icons.music_off, size: 64, color: Colors.grey.shade300),
             const SizedBox(height: 16),
-            Text('未找到相关结果',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade500)),
+            Text(
+              '未找到相关结果',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
+            ),
           ],
         ),
       );
@@ -181,8 +190,7 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                 final artist = _artists[index];
                 return _ArtistChip(
                   artist: artist,
-                  onTap: () =>
-                      widget.onOpenArtist?.call(context, artist),
+                  onTap: () => widget.onOpenArtist?.call(context, artist),
                 );
               },
             ),
@@ -204,8 +212,7 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                 final album = _albums[index];
                 return _AlbumChip(
                   album: album,
-                  onTap: () =>
-                      widget.onOpenAlbum?.call(context, album),
+                  onTap: () => widget.onOpenAlbum?.call(context, album),
                 );
               },
             ),
@@ -220,15 +227,21 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
             final song = _songs[index];
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
                 child: song.trackNumber != null
-                    ? Text('${song.trackNumber}',
-                        style: const TextStyle(fontSize: 12))
+                    ? Text(
+                        '${song.trackNumber}',
+                        style: const TextStyle(fontSize: 12),
+                      )
                     : const Icon(Icons.music_note, size: 20),
               ),
-              title: Text(song.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              title: Text(
+                song.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               subtitle: Text(
                 '${song.artistText}${song.albumName != null ? ' · ${song.albumName}' : ''}',
                 maxLines: 1,
@@ -236,28 +249,36 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
               trailing: song.durationText.isNotEmpty
-                  ? Text(song.durationText,
+                  ? Text(
+                      song.durationText,
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade500))
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    )
                   : null,
               onTap: () {
                 if (widget.onPlayTracks == null) return;
                 final tracks = _songs
-                    .map((s) => AudioTrack(
-                          id: s.id,
-                          name: s.name,
-                          streamUrl: s.getStreamUrl(),
-                          coverUrl: s.getAlbumCoverUrl(
-                              fillWidth: 480, fillHeight: 480),
-                          artistText: s.artistText,
-                          duration: s.runTimeSeconds != null
-                              ? Duration(seconds: s.runTimeSeconds!)
-                              : null,
-                          albumName: s.albumName,
-                          trackNumber: s.trackNumber,
-                          isFavorite: s.isFavorite,
-                          path: s.path,
-                        ))
+                    .map(
+                      (s) => AudioTrack(
+                        id: s.id,
+                        name: s.name,
+                        streamUrl: s.getStreamUrl(),
+                        coverUrl: s.getAlbumCoverUrl(
+                          fillWidth: 480,
+                          fillHeight: 480,
+                        ),
+                        artistText: s.artistText,
+                        duration: s.runTimeSeconds != null
+                            ? Duration(seconds: s.runTimeSeconds!)
+                            : null,
+                        albumName: s.albumName,
+                        trackNumber: s.trackNumber,
+                        isFavorite: s.isFavorite,
+                        path: s.path,
+                      ),
+                    )
                     .toList();
                 widget.onPlayTracks!.call(context, tracks, index);
               },
@@ -308,10 +329,11 @@ class _ArtistChip extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 36,
-              backgroundColor:
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
-              backgroundImage: artist.hasImage &&
-                      artist.getPrimaryImageUrl() != null
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
+              backgroundImage:
+                  artist.hasImage && artist.getPrimaryImageUrl() != null
                   ? NetworkImage(artist.getPrimaryImageUrl()!)
                   : null,
               child: !artist.hasImage
@@ -352,13 +374,18 @@ class _AlbumChip extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: AspectRatio(
                 aspectRatio: 1,
-                child: album.hasCoverImage &&
+                child:
+                    album.hasCoverImage &&
                         album.getCoverImageUrl(
-                            fillWidth: 200, fillHeight: 200) !=
+                              fillWidth: 200,
+                              fillHeight: 200,
+                            ) !=
                             null
                     ? Image.network(
                         album.getCoverImageUrl(
-                            fillWidth: 200, fillHeight: 200)!,
+                          fillWidth: 200,
+                          fillHeight: 200,
+                        )!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _placeholder(context),
                       )
@@ -385,8 +412,9 @@ class _AlbumChip extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context) => Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: const Center(
-            child: Icon(Icons.album, size: 36, color: Colors.white54)),
-      );
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: const Center(
+      child: Icon(Icons.album, size: 36, color: Colors.white54),
+    ),
+  );
 }
