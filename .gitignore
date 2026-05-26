@@ -28,6 +28,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Test directories
+**/test/
+
 # Coverage
 coverage/
 
