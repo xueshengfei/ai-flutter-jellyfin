@@ -14,7 +14,8 @@ Jellyfin_Service/
 │
 ├── Product/                      # 产品 App（入口）
 │   ├── jellyfin_app/             # 全功能 App（电影+音乐+AI+个人）
-│   └── jellyfin_movie_app/       # 电影专用 App
+│   ├── jellyfin_video_app/       # 视频专用 App（腾讯视频风格，电影+剧集）
+│   └── jellyfin_music_app/       # 音乐专用 App
 │
 ├── packages/
 │   ├── foundation/               # 基础层（无 Flutter 依赖）
@@ -53,7 +54,7 @@ Jellyfin_Service/
 ## 依赖图
 
 ```
-Product App (jellyfin_app / jellyfin_movie_app)
+Product App (jellyfin_app / jellyfin_video_app / jellyfin_music_app)
   │
   ├── jellyfin_core         ← 配置、异常、导航协议
   ├── jellyfin_api          ← HTTP 客户端、鉴权
@@ -155,7 +156,7 @@ cd packages/features/jellyfin_movies && flutter test
 cd Product/jellyfin_app && flutter analyze
 ```
 
-测试规模：jellyfin_app 15 个测试，jellyfin_movie_app 8 个测试，各 feature 包独立测试。
+测试规模：jellyfin_app 15 个测试，jellyfin_video_app 8 个测试，jellyfin_music_app 8 个测试，各 feature 包独立测试。
 
 ## 开发偏好
 
