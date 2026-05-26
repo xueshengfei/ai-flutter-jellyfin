@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
@@ -63,7 +65,7 @@ class _RecommendTabState extends State<RecommendTab> {
 
 // ─── Banner 轮播区 ───
 
-class _BannerSection extends StatelessWidget {
+class _BannerSection extends StatefulWidget {
   final JellyfinGateway gateway;
   final JellyfinVideoImageProvider imageProvider;
   final List<models.MediaLibrary> libraries;
@@ -75,26 +77,67 @@ class _BannerSection extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (libraries.isEmpty) return const SizedBox.shrink();
+  State<_BannerSection> createState() => _BannerSectionState();
+}
 
+class _BannerSectionState extends State<_BannerSection> {
+  PageController? _pageController;
+  Timer? _autoPlayTimer;
+  int _currentPage = 0;
+  List<models.MediaItem> _items = const [];
+
+  @override
+  void dispose() {
+    _autoPlayTimer?.cancel();
+    _pageController?.dispose();
+    super.dispose();
+  }
+
+  void _startAutoPlay(int itemCount) {
+    _autoPlayTimer?.cancel();
+    if (itemCount <= 1) return;
+    _autoPlayTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) return;
+      final next = (_currentPage + 1) % itemCount;
+      _pageController?.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<List<models.MediaItem>>(
-      future: _loadBannerItems(),
+      future: widget.gateway.getSuggestions(limit: 8),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
 
         final items = snapshot.data!;
+
+        // 首次拿到数据时初始化 controller 和定时器
+        if (_items != items) {
+          _items = items;
+          _pageController?.dispose();
+          _currentPage = 0;
+          _pageController = PageController();
+          _startAutoPlay(items.length);
+        }
+
         return SizedBox(
           height: 200,
           child: PageView.builder(
+            controller: _pageController,
             itemCount: items.length,
+            onPageChanged: (index) => _currentPage = index,
             itemBuilder: (context, index) {
               final item = items[index];
               return _BannerCard(
                 item: item,
-                imageProvider: imageProvider,
+                imageProvider: widget.imageProvider,
                 onTap: () => context.push('/media/items/${item.id}'),
               );
             },
@@ -102,19 +145,6 @@ class _BannerSection extends StatelessWidget {
         );
       },
     );
-  }
-
-  Future<List<models.MediaItem>> _loadBannerItems() async {
-    final allItems = <models.MediaItem>[];
-    for (final lib in libraries.take(3)) {
-      try {
-        final items = await gateway.getLatestMediaItems(lib.id, limit: 3);
-        allItems.addAll(items);
-      } catch (_) {
-        // 单个库失败不影响整体
-      }
-    }
-    return allItems.take(6).toList();
   }
 }
 
