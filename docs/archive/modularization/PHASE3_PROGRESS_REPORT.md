@@ -1,4 +1,9 @@
-# 第三阶段进展报告
+﻿# 第三阶段进展报告
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 > 对应策略：`PHASE2_STRATEGY_REPORT.md`（Leader 评审反馈）
 > 更新日期：2026-05-12

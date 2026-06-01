@@ -1,4 +1,9 @@
-# go_router 统一路由协议设计
+﻿# go_router 统一路由协议设计
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 ## 背景
 

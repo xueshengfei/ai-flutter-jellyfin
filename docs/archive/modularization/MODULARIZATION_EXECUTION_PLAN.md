@@ -1,4 +1,9 @@
-# Jellyfin 客户端模块化执行计划
+﻿# Jellyfin 客户端模块化执行计划
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 > 本文档细化 `MODULARIZATION_DESIGN.md` 的落地顺序，重点说明任务依赖、可并行范围、每个阶段的产出和验收方式。
 

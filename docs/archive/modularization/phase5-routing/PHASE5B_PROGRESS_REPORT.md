@@ -1,4 +1,9 @@
-# Phase 5B 进展报告：核心业务路由迁移
+﻿# Phase 5B 进展报告：核心业务路由迁移
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 > 阶段目标：将 4 个核心详情/列表路由注册到 go_router，FeaturePageFactory 注入 AppNavigator，逐步替代旧 Navigator.push。
 

@@ -1,5 +1,9 @@
 # Jellyfin App 开发工作记录
 
+> **状态：已完成 / 已归档**
+>
+> 本文是阶段性工作记录，保留用于追溯。文中的“五层架构”“业务编排层”等旧说法已经被当前四层架构替代；当前规范以根目录 `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` 为准。
+
 > 本文档记录新产品 App（`Product/jellyfin_app`）从零到当前的全部开发阶段。
 > 旧路线（Phase 1-5B）归档在 `docs/archive/modularization/`，此处不涉及。
 

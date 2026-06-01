@@ -1,4 +1,9 @@
-# Phase 5 进展报告：go_router 统一路由协议
+﻿# Phase 5 进展报告：go_router 统一路由协议
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 > 阶段目标：用 go_router 建立统一路由主干，业务模块通过路由意图导航，不再直接 import 其他模块页面。
 

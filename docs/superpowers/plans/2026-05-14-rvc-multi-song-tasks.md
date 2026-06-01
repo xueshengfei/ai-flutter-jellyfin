@@ -1,5 +1,9 @@
 # RVC Multi Song Tasks Implementation Plan
 
+> **Status: completed / archived**
+>
+> This plan is kept for implementation traceability. The RVC multi-song task flow has been folded into the current codebase; use the current source files and root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` for new work.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let each song keep its own in-memory RVC conversion state during the current app run, while the RVC page defaults to the song path passed from the music playback page.

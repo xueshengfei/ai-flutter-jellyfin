@@ -1,5 +1,9 @@
 # Jellyfin UI Kit 引用与迁移方案
 
+> **状态：已完成 / 已归档**
+>
+> 本方案用于追溯 `jellyfin_ui_kit` 迁移和采用过程。当前开发请以根目录 `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` 的四层架构和现有代码为准，不要把本文中的阶段计划当作未完成任务。
+
 > 目标：把旧 `lib/` 中已经验证过的通用视觉能力沉淀到 `packages/shared/jellyfin_ui_kit`，再由 `Product/jellyfin_app` 统一装配给上层业务模块，使新 App 逐步达到旧 `lib` 的媒体库、列表、详情、人物、继续观看等业务体验。
 
 ## 1. 当前判断

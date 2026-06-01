@@ -1,4 +1,9 @@
-# Jellyfin 客户端业务组件化模块设计方案
+﻿# Jellyfin 客户端业务组件化模块设计方案
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 > 目标：把当前 `jellyfin_service` 从“SDK + 页面 + 播放 + 调试 + AI + RVC 聚合包”拆成可独立开发、独立测试、独立版本分级的业务组件体系。
 

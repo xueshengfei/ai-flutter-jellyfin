@@ -1,5 +1,9 @@
 # 音乐模块拆分评估与重构建议
 
+> **状态：已完成 / 已归档**
+>
+> 本文是音乐模块拆分阶段的历史策略材料。当前音乐模块开发请以现有 `Product/*`、`packages/features/jellyfin_music` 和根目录 `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` 的四层架构为准。
+
 本文档面向后续执行模块化改造的开发人员，基于当前旧根包 `lib`、新 `Product/jellyfin_app`、已拆出的 `packages/features/jellyfin_music`、`packages/features/rvc_flutter`、`packages/features/jellyfin_ai_recommendation` 的代码现状，评估音乐模块应该如何继续拆分。
 
 结论先行：

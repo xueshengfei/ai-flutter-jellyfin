@@ -1,5 +1,9 @@
 # RVC 语音转换模块 实现计划
 
+> **状态：已完成 / 已归档**
+>
+> 本计划用于追溯 RVC 模块初始实现。当前 RVC 代码已经位于 `packages/features/rvc_flutter`，后续开发请以现有代码和根目录 `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` 的四层架构为准。
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 在音乐页面添加 RVC 语音转换入口，作为独立 package `rvc_flutter` 实现 UI 层，复用已有的 `rvc_sdk` 做推理通信。

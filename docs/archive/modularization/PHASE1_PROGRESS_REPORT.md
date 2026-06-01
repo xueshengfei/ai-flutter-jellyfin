@@ -1,4 +1,9 @@
-# 第一阶段模块化进展报告
+﻿# 第一阶段模块化进展报告
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 > 执行日期：2026-05-11
 > 对应计划：`MODULARIZATION_EXECUTION_PLAN.md` Task 1 ~ Task 7

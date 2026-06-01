@@ -1,4 +1,9 @@
-# Phase 2 模块化改造评估与下一步建议
+﻿# Phase 2 模块化改造评估与下一步建议
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 > 对应进展报告：`PHASE2_PROGRESS_REPORT.md`
 > 评估日期：2026-05-12

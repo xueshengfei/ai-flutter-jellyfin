@@ -18,11 +18,11 @@ Jellyfin_Service/
 │   └── jellyfin_music_app/       # 音乐专用 App
 │
 ├── packages/
-│   ├── foundation/               # 基础层（无 Flutter 依赖）
-│   │   ├── jellyfin_core/        # 配置、异常基类、模块协议
-│   │   └── jellyfin_api/         # Dio HTTP 客户端、鉴权、jellyfin_dart 适配
+│   ├── foundation/               # 基础组件/基础工具包
+│   │   ├── jellyfin_core/        # 基础组件层：配置、异常基类、模块协议
+│   │   └── jellyfin_api/         # 基础工具层：Dio HTTP 客户端、鉴权、jellyfin_dart 适配
 │   │
-│   ├── shared/                   # 共享层
+│   ├── shared/                   # 基础组件层
 │   │   ├── jellyfin_models/      # 跨模块共用纯 Dart 模型
 │   │   ├── jellyfin_ui_kit/      # 跨业务复用 UI 组件库
 │   │   └── jellyfin_testing/     # 测试 fixtures、fake navigator
@@ -38,12 +38,12 @@ Jellyfin_Service/
 │   │   ├── jellyfin_ai_recommendation/ # AI 推荐/SSE/TTS
 │   │   └── rvc_flutter/          # RVC 语音转换任务中心
 │   │
-│   ├── vendor/                   # 第三方包（含定制修改）
+│   ├── vendor/                   # 基础工具层：第三方包（含定制修改）
 │   │   ├── jellyfin_dart_3.8/    # Jellyfin Dart SDK（OpenAPI 生成）
 │   │   ├── rvc_sdk/              # RVC SDK
 │   │   └── rainfall_tts_sdk/     # TTS SDK
 │   │
-│   └── plugins/                  # 自定义插件
+│   └── plugins/                  # 基础组件层：自定义组件插件
 │       └── video_gesture_controls/ # 视频手势控制
 │
 ├── docs/                         # 文档
@@ -51,32 +51,29 @@ Jellyfin_Service/
 └── test/                         # 旧根包测试
 ```
 
-## 依赖图
+## 四层架构与依赖图
 
 ```
-Product App (jellyfin_app / jellyfin_video_app / jellyfin_music_app)
-  │
-  ├── jellyfin_core         ← 配置、异常、导航协议
-  ├── jellyfin_api          ← HTTP 客户端、鉴权
-  │     └── jellyfin_core
-  │     └── jellyfin_dart (vendor)
-  ├── jellyfin_models       ← 共享模型（纯 Dart，无 Flutter）
-  ├── jellyfin_ui_kit       ← UI 组件库
-  │
-  └── features/*
-        ├── jellyfin_auth
-        ├── jellyfin_movies
-        ├── jellyfin_series
-        ├── jellyfin_media
-        ├── jellyfin_music
-        ├── jellyfin_playback
-        ├── jellyfin_personal
-        ├── jellyfin_ai_recommendation
-        └── rvc_flutter
-
-各 feature 包只依赖: jellyfin_models + jellyfin_ui_kit（+ 各自所需第三方库）
-feature 包之间 **禁止互相 import**，通过回调/协议解耦
+产品层 Product
+  Product/jellyfin_app / jellyfin_video_app / jellyfin_music_app
+    ↓
+业务层 Business
+  packages/features/*
+    ↓
+基础组件层 Base Components
+  packages/shared/*
+  packages/foundation/jellyfin_core
+  video_player / video_player_ohos / chewie / just_audio / 手势组件
+    ↓
+基础工具层 Base Tools
+  packages/foundation/jellyfin_api
+  packages/vendor/*
+  path_provider / shared_preferences / Dio / 文件、缓存、字符串、日志工具
 ```
+
+分层标准：业务层放用户可感知的业务能力；基础组件层放可被业务直接组合的模型、协议、UI、播放器/音频等组件能力；基础工具层放文件、存储、网络、SDK/API、字符串、键值对、日志等底层工具能力。
+
+各 feature 包之间 **禁止互相 import**，通过回调/协议解耦。feature 包不直接创建 `JellyfinClient`，由产品层 Gateway/Repository/Port 注入数据和能力。
 
 ## 新 App 架构（jellyfin_app）
 

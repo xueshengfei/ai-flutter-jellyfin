@@ -1,4 +1,9 @@
-# Phase 5B 进度评估与下一阶段策略报告
+﻿# Phase 5B 进度评估与下一阶段策略报告
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 评估对象：`PHASE5B_PROGRESS_REPORT.md` 及当前代码  
 评估时间：2026-05-12  

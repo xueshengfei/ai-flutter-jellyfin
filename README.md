@@ -245,21 +245,33 @@ for (final lib in libraries.libraries) {
 
 ---
 
-## SDK 内部分层
+## 四层架构
 
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ 产品层 Product                                                │
+│ Product/*：具体 App、入口、路由、登录态、全局对象生命周期          │
+├──────────────────────────────────────────────────────────────┤
+│ 业务层 Business                                                │
+│ packages/features/*：登录、电影、剧集、音乐、播放、AI、个人中心、RVC │
+├──────────────────────────────────────────────────────────────┤
+│ 基础组件层 Base Components                                     │
+│ packages/shared/*、jellyfin_core、播放器/音频/手势/通用 UI 组件    │
+├──────────────────────────────────────────────────────────────┤
+│ 基础工具层 Base Tools                                          │
+│ jellyfin_api、vendor SDK、path_provider、shared_preferences、      │
+│ Dio/http、文件/缓存/字符串/键值对/日志等底层工具                   │
+└──────────────────────────────────────────────────────────────┘
 ```
-┌─────────────────────────────────────┐
-│   Flutter 业务应用                    │
-├─────────────────────────────────────┤
-│   jellyfin_service  ← 本项目         │
-│   业务 SDK：业务逻辑、自有模型、UI 组件  │
-├─────────────────────────────────────┤
-│   jellyfin_dart                      │
-│   接口 SDK：1:1 API 映射、DTO 模型     │
-├─────────────────────────────────────┤
-│   Dio / HTTP                         │
-└─────────────────────────────────────┘
-```
+
+分层标准：
+
+- **产品层**：只放具体产品 App 的启动、路由、会话、模块装配和 Gateway/Adapter 注入。
+- **业务层**：放用户可感知的业务功能模块。
+- **基础组件层**：放业务可直接组合的模型、协议、UI、播放器、音频、手势等组件能力；`video_player`、`video_player_ohos`、`chewie`、`just_audio` 都属于这一层。
+- **基础工具层**：放底层技术工具和接口适配；`path_provider`、`shared_preferences`、Dio、文件工具、字符串工具、键值对工具、Jellyfin/RVC/TTS SDK 都属于这一层。
+
+当前有效分层规范详见 [`JELLYFIN_APP_ARCHITECTURE_LAYERS.md`](JELLYFIN_APP_ARCHITECTURE_LAYERS.md)。
 
 ---
 
@@ -284,25 +296,23 @@ for (final lib in libraries.libraries) {
 │   ├── 视频功能演示视频.mp4
 │   └── 音乐功能演示视频.mp4
 ├── images/                            # 界面截图
-├── lib/
-│   ├── jellyfin_service.dart          # 主导出文件
-│   └── src/
-│       ├── jellyfin_client.dart        # 主客户端（统一 API 入口）
-│       ├── services/                   # 服务层
-│       ├── models/                     # 业务模型
-│       ├── exceptions/                 # 异常体系
-│       └── ui/
-│           ├── services/               # 播放、视图模式
-│           ├── widgets/                # 通用组件
-│           └── pages/                  # 页面
+├── Product/                            # 产品层：具体 App 入口
+│   ├── jellyfin_app/
+│   ├── jellyfin_video_app/
+│   └── jellyfin_music_app/
+├── lib/                                # 旧单体实现，冻结维护，仅作参考
 ├── scripts/                           # 验证脚本
 │   ├── verify_imports.sh
 │   ├── verify_integration.sh
 │   ├── verify_media_library.sh
 │   └── verify_setup.sh
 └── packages/
-    ├── jellyfin_dart_3.8/             # 接口 SDK（Dart 3.8 兼容版）
-    └── ohos/                          # 鸿蒙适配插件
+    ├── features/                       # 业务层
+    ├── shared/                         # 基础组件层：模型、UI Kit、测试组件
+    ├── foundation/                     # jellyfin_core 属基础组件层；jellyfin_api 属基础工具层
+    ├── plugins/                        # 基础组件层：自定义组件插件
+    ├── ohos/                           # Flutter 生态组件/工具的鸿蒙适配包
+    └── vendor/                         # 基础工具层：接口 SDK 和第三方 SDK
 ```
 
 ---

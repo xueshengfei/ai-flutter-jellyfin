@@ -1,5 +1,9 @@
 # Jellyfin App 自顶向下重构实施计划
 
+> **状态：已完成 / 已归档**
+>
+> 本计划用于追溯新产品 App 自顶向下重构的执行过程。主要阶段已落地，当前开发请以根目录 `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` 的四层架构为准，不要把本文中的旧分层或待办当作当前任务。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 新建 `apps/jellyfin_app`，从 App 壳层开始重构，逐步接入登录注册、媒体库、音乐、电影/详情、剧集、AI 推荐、播放等 feature 模块，不再继续在旧根包 `lib/` 内做业务拆分。
@@ -1074,4 +1078,3 @@ feature 包被新 App 自顶向下接入；
 ```
 
 就算方向正确。
-

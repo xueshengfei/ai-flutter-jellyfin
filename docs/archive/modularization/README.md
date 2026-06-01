@@ -1,12 +1,11 @@
 # Modularization Archive
 
-This directory keeps historical modularization documents for review and traceability.
-They are no longer the active execution entry point.
+> **Status: archived / obsolete**
+>
+> This directory keeps historical modularization documents for review and traceability. They are no longer the active execution entry point.
 
-Current routing work should use the root-level Phase 5 files:
-
-- `PHASE5_ROUTING_DESIGN.md`
-- `PHASE5_ROUTING_EXECUTION_PLAN.md`
+Current architecture work should use the root-level `JELLYFIN_APP_ARCHITECTURE_LAYERS.md`.
+If any archived document mentions old `foundation/shared` layers, five-layer architecture, or App business orchestration layers, treat that wording as historical context only.
 
 Archived files:
 

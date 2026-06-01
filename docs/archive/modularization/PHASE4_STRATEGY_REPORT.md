@@ -1,4 +1,9 @@
-# Phase 4 模块化改造评估与下一阶段策略
+﻿# Phase 4 模块化改造评估与下一阶段策略
+
+> **Status: archived / obsolete**
+>
+> This document is historical. It may contain old layering names, old plans, or completed tasks. Use the root `JELLYFIN_APP_ARCHITECTURE_LAYERS.md` as the current architecture source of truth.
+
 
 ## 结论
 
