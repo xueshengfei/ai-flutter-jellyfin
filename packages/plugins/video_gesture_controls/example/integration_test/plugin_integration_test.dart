@@ -1,11 +1,6 @@
-// This is a basic Flutter integration test.
+// 视频手势控制集成测试
 //
-// Since integration tests run in a full Flutter application, they can interact
-// with the host side of a plugin implementation, unlike Dart unit tests.
-//
-// For more information about Flutter integration tests, please see
-// https://flutter.dev/to/integration-testing
-
+// 验证核心组件可以正常导入和使用
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -15,11 +10,16 @@ import 'package:video_gesture_controls/video_gesture_controls.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('getPlatformVersion test', (WidgetTester tester) async {
-    final VideoGestureControls plugin = VideoGestureControls();
-    final String? version = await plugin.getPlatformVersion();
-    // The version string depends on the host platform running the test, so
-    // just assert that some non-empty string is returned.
-    expect(version?.isNotEmpty, true);
+  testWidgets('核心组件导入测试', (WidgetTester tester) async {
+    // 验证核心类型可正常实例化
+    final config = VideoGestureConfig();
+    expect(config.gestureThreshold, 12.0);
+
+    final callbacks = VideoGestureCallbacks();
+    expect(callbacks.onSeek, isNull);
+
+    final controller = GestureOverlayController(config: config);
+    expect(controller.mode, GestureMode.idle);
+    controller.dispose();
   });
 }
