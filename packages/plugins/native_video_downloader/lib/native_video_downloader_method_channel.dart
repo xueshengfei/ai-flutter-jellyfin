@@ -5,10 +5,11 @@ import 'native_video_downloader_platform_interface.dart';
 
 /// An implementation of [NativeVideoDownloaderPlatform] that uses method channels.
 class MethodChannelNativeVideoDownloader extends NativeVideoDownloaderPlatform {
-  /// The method channel used to interact with the native platform.
+  /// The method channel used to send commands from Flutter to native Android.
   @visibleForTesting
   final methodChannel = const MethodChannel('native_video_downloader');
 
+  /// The event channel used to receive progress events from native Android.
   @visibleForTesting
   final eventChannel = const EventChannel('native_video_downloader/events');
 
@@ -33,5 +34,13 @@ class MethodChannelNativeVideoDownloader extends NativeVideoDownloaderPlatform {
       'url': url,
     });
     return result;
+  }
+
+  @override
+  Future<bool> deleteDownload(String taskId) async {
+    final result = await methodChannel.invokeMethod<bool>('deleteDownload', {
+      'taskId': taskId,
+    });
+    return result ?? false;
   }
 }

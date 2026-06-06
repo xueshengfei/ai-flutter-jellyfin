@@ -30,6 +30,12 @@ class _DownloadsPageState extends State<DownloadsPage> {
   static const _testVideoUrl =
       'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_5MB.mp4';
 
+  /// 是否处于多选管理模式。
+  bool _selectionMode = false;
+
+  /// 当前选中的任务 id 集合。
+  final Set<String> _selectedTaskIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +43,38 @@ class _DownloadsPageState extends State<DownloadsPage> {
     // 页面创建后先订阅原生下载事件。
     // 注意：这里只是“开始听进度”，不会自动开始下载。
     widget.controller.startListening();
+  }
+
+  void _toggleSelectionMode() {
+    setState(() {
+      _selectionMode = !_selectionMode;
+
+      // 退出管理模式时清空已选项，避免下次进入时还残留旧选择。
+      if (!_selectionMode) {
+        _selectedTaskIds.clear();
+      }
+    });
+  }
+
+  void _toggleTaskSelected(String taskId, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedTaskIds.add(taskId);
+      } else {
+        _selectedTaskIds.remove(taskId);
+      }
+    });
+  }
+
+  Future<void> _deleteSelectedTasks() async {
+    final taskIds = Set<String>.from(_selectedTaskIds);
+    await widget.controller.deleteTasks(taskIds);
+    if (!mounted) return;
+
+    setState(() {
+      _selectionMode = false;
+      _selectedTaskIds.clear();
+    });
   }
 
   @override
@@ -55,29 +93,89 @@ class _DownloadsPageState extends State<DownloadsPage> {
         final completed = tasks.where((task) => task.isCompleted).toList();
 
         return Scaffold(
-          appBar: AppBar(title: const Text('下载管理')),
+          appBar: AppBar(
+            title: Text(_selectionMode ? '选择视频' : '下载管理'),
+            actions: [
+              IconButton(
+                tooltip: _selectionMode ? '退出管理' : '管理',
+                icon: Icon(
+                  _selectionMode ? Icons.close : Icons.settings_outlined,
+                ),
+                onPressed: _toggleSelectionMode,
+              ),
+            ],
+          ),
+          bottomNavigationBar: _selectionMode
+              ? SafeArea(
+                  child: BottomAppBar(
+                    child: Row(
+                      children: [
+                        Text('已选 ${_selectedTaskIds.length} 个'),
+                        const Spacer(),
+                        TextButton.icon(
+                          // 这一版先删除页面里的任务；后面会接到原生插件删除文件和 Room 记录。
+                          onPressed: _selectedTaskIds.isEmpty
+                              ? null
+                              : _deleteSelectedTasks,
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('删除'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : null,
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              FilledButton(
-                // 用户点击按钮后，Flutter 通过 MethodChannel 通知 Android 开始下载。
-                // Android 下载过程中会通过 EventChannel 不断把进度、速度、状态推回来。
-                onPressed: () => widget.controller.startDownload(_testVideoUrl),
-                child: const Text('开始下载测试视频'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    textStyle: const TextStyle(fontSize: 12),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.download_outlined, size: 16),
+                  // 用户点击按钮后，Flutter 通过 MethodChannel 通知 Android 开始下载。
+                  // Android 下载过程中会通过 EventChannel 不断把进度、速度、状态推回来。
+                  onPressed: () =>
+                      widget.controller.startDownload(_testVideoUrl),
+                  label: const Text('测试下载'),
+                ),
               ),
               const SizedBox(height: 24),
               const Text('下载中'),
               const SizedBox(height: 8),
 
               // collection-for：把每一个下载任务转换成一行 Widget。
-              for (final task in downloading) DownloadTaskTile(task: task),
+              for (final task in downloading)
+                DownloadTaskTile(
+                  task: task,
+                  selectionMode: _selectionMode,
+                  selected: _selectedTaskIds.contains(task.id),
+                  onSelectedChanged: (selected) {
+                    _toggleTaskSelected(task.id, selected);
+                  },
+                ),
 
               // 横线分隔“下载中”和“已缓存”两个区域。
               const Divider(height: 32),
 
               const Text('已缓存'),
               const SizedBox(height: 8),
-              for (final task in completed) DownloadTaskTile(task: task),
+              for (final task in completed)
+                DownloadTaskTile(
+                  task: task,
+                  selectionMode: _selectionMode,
+                  selected: _selectedTaskIds.contains(task.id),
+                  onSelectedChanged: (selected) {
+                    _toggleTaskSelected(task.id, selected);
+                  },
+                ),
             ],
           ),
         );

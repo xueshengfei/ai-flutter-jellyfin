@@ -77,6 +77,19 @@ class NativeVideoDownloaderPlugin :
                 result.success("$taskId|$url")
             }
 
+            "deleteDownload" -> {
+                val taskId = call.argument<String>("taskId")
+                if (taskId.isNullOrBlank()) {
+                    result.error("missing_task_id", "deleteDownload requires a non-empty taskId", null)
+                    return
+                }
+
+                // 这里先只把 Flutter 发来的删除信号交给原生管理器。
+                // 后面接 Room 和文件管理时，再在 NativeDownloadManager 里删除数据库记录和本地视频文件。
+                val accepted = downloadManager.deleteDownload(taskId)
+                result.success(accepted)
+            }
+
             else -> {
                 result.notImplemented()
             }

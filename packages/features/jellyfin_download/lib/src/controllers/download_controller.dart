@@ -80,6 +80,25 @@ class DownloadController extends ChangeNotifier {
     );
   }
 
+  /// 删除页面中的任务。
+  ///
+  /// 这一版会先通过 MethodChannel 把删除信号发给 Android 原生插件。
+  /// 原生插件当前只接收信号；后面接 Room 和文件删除时，会在原生侧补真正删除逻辑。
+  Future<void> deleteTasks(Set<String> taskIds) async {
+    if (taskIds.isEmpty) return;
+
+    final acceptedTaskIds = <String>{};
+    for (final taskId in taskIds) {
+      final accepted = await _downloader.deleteDownload(taskId);
+      if (accepted) {
+        acceptedTaskIds.add(taskId);
+      }
+    }
+
+    _tasks.removeWhere((task) => acceptedTaskIds.contains(task.id));
+    notifyListeners();
+  }
+
   /// 把原生 EventChannel 事件转换成页面模型。
   DownloadTaskViewModel? _taskFromNativeEvent(Map<Object?, Object?> event) {
     final taskId = event['taskId']?.toString();

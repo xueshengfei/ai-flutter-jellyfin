@@ -32,6 +32,13 @@ abstract class NativeVideoDownloaderPlatform extends PlatformInterface {
     throw UnimplementedError('startDownload() has not been implemented.');
   }
 
+  /// 删除一个下载任务。
+  ///
+  /// 平台实现现在只需要先接住这个接口；真正删除文件和数据库记录后面补。
+  Future<bool> deleteDownload(String taskId) {
+    throw UnimplementedError('deleteDownload() has not been implemented.');
+  }
+
   Stream<Map<Object?, Object?>> watchDownloadEvents() {
     throw UnimplementedError('watchDownloadEvents() has not been implemented.');
   }

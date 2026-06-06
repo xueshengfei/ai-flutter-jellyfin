@@ -1,5 +1,6 @@
 package com.jellyfin.native_video_downloader
 
+import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -37,6 +38,21 @@ class NativeDownloadManager {
         }.start()
 
         return taskId
+    }
+
+    /**
+     * 接收 Flutter 发来的删除下载任务信号。
+     *
+     * 当前阶段只证明 MethodChannel 已经打通到 Android 原生层。
+     * 后面接 Room 时，这里会继续做：
+     * - 查询数据库里的下载记录。
+     * - 删除本地视频文件。
+     * - 删除或更新 Room 里的任务状态。
+     * - 如果任务还在下载中，再取消对应 OkHttp Call。
+     */
+    fun deleteDownload(taskId: String): Boolean {
+        Log.d(TAG, "deleteDownload requested: $taskId")
+        return true
     }
 
     private fun downloadOnBackgroundThread(
@@ -158,6 +174,7 @@ class NativeDownloadManager {
     }
 
     private companion object {
+        const val TAG = "NativeDownloadManager"
         const val DEFAULT_BUFFER_SIZE = 8 * 1024
         const val REPORT_INTERVAL_MS = 500L
     }
