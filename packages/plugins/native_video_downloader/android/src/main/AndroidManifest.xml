@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.jellyfin.native_video_downloader">
+</manifest>
