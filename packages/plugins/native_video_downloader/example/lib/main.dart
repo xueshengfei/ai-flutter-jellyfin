@@ -18,6 +18,9 @@ class NativeVideoDownloaderExampleApp extends StatefulWidget {
 
 class _NativeVideoDownloaderExampleAppState
     extends State<NativeVideoDownloaderExampleApp> {
+  static const String _testVideoUrl =
+      'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_5MB.mp4';
+
   final NativeVideoDownloader _plugin = NativeVideoDownloader();
 
   StreamSubscription<Map<Object?, Object?>>? _eventSubscription;
@@ -84,7 +87,8 @@ class _NativeVideoDownloaderExampleAppState
     });
 
     try {
-      final taskId = await _plugin.startDownload() ?? 'No task id returned';
+      final taskId =
+          await _plugin.startDownload(_testVideoUrl) ?? 'No task id returned';
       if (!mounted) return;
 
       setState(() {
@@ -121,6 +125,8 @@ class _NativeVideoDownloaderExampleAppState
               Text('Task: $_taskId'),
               const SizedBox(height: 16),
               Text('Progress: $_progressText'),
+              const SizedBox(height: 16),
+              const Text('Test URL: $_testVideoUrl'),
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _isStarting ? null : _startDownload,

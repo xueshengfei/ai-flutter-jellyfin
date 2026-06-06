@@ -5,8 +5,8 @@ class NativeVideoDownloader {
     return NativeVideoDownloaderPlatform.instance.getPlatformVersion();
   }
 
-  Future<String?> startDownload() {
-    return NativeVideoDownloaderPlatform.instance.startDownload();
+  Future<String?> startDownload(String url) {
+    return NativeVideoDownloaderPlatform.instance.startDownload(url);
   }
 
   Stream<Map<Object?, Object?>> watchDownloadEvents() {

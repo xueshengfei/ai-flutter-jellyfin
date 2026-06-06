@@ -28,7 +28,7 @@ abstract class NativeVideoDownloaderPlatform extends PlatformInterface {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
 
-  Future<String?> startDownload() {
+  Future<String?> startDownload(String url) {
     throw UnimplementedError('startDownload() has not been implemented.');
   }
 

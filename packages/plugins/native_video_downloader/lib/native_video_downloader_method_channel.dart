@@ -28,8 +28,10 @@ class MethodChannelNativeVideoDownloader extends NativeVideoDownloaderPlatform {
   }
 
   @override
-  Future<String?> startDownload() async {
-    final result = await methodChannel.invokeMethod<String>('startDownload');
+  Future<String?> startDownload(String url) async {
+    final result = await methodChannel.invokeMethod<String>('startDownload', {
+      'url': url,
+    });
     return result;
   }
 }
