@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import '../controllers/download_controller.dart';
 import '../widgets/download_task_tile.dart';
 
-/// 下载管理页。
+/// 下载管理页面。
 ///
-/// 页面只负责监听 controller，然后把任务分成“下载中”和“已缓存”两块展示。
+/// 这一层只负责“页面怎么展示”和“用户点按钮后调用哪个业务方法”。
+/// 真正的下载逻辑、速度计算、文件写入，都在 Android 原生插件里完成。
 class DownloadsPage extends StatefulWidget {
   const DownloadsPage({super.key, required this.controller});
 
   /// 下载页面的状态控制器。
   ///
-  /// 现在它只产生模拟进度；后面会改成监听原生插件返回的任务流。
+  /// controller 连接 Flutter UI 和 native_video_downloader 插件：
+  /// - 页面调用 controller.startListening() 订阅原生进度。
+  /// - 页面调用 controller.startDownload(url) 发起原生下载。
+  /// - controller 收到原生 EventChannel 事件后通知页面刷新。
   final DownloadController controller;
 
   @override
@@ -19,13 +23,20 @@ class DownloadsPage extends StatefulWidget {
 }
 
 class _DownloadsPageState extends State<DownloadsPage> {
+  /// 临时测试用 MP4 直链。
+  ///
+  /// 这个地址有稳定的 Content-Length，适合先验证“Flutter 按钮 -> MethodChannel
+  /// -> Android OkHttp 下载 -> EventChannel 进度回传 -> Flutter UI 刷新”这条链路。
+  static const _testVideoUrl =
+      'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_5MB.mp4';
+
   @override
   void initState() {
     super.initState();
 
-    // 页面第一次创建时启动模拟进度。
-    // 这一步只是练习 UI 刷新，暂时不接 Android 原生下载。
-    widget.controller.startMockProgress();
+    // 页面创建后先订阅原生下载事件。
+    // 注意：这里只是“开始听进度”，不会自动开始下载。
+    widget.controller.startListening();
   }
 
   @override
@@ -48,10 +59,17 @@ class _DownloadsPageState extends State<DownloadsPage> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              FilledButton(
+                // 用户点击按钮后，Flutter 通过 MethodChannel 通知 Android 开始下载。
+                // Android 下载过程中会通过 EventChannel 不断把进度、速度、状态推回来。
+                onPressed: () => widget.controller.startDownload(_testVideoUrl),
+                child: const Text('开始下载测试视频'),
+              ),
+              const SizedBox(height: 24),
               const Text('下载中'),
               const SizedBox(height: 8),
 
-              // collection-for: 把每一个下载任务转换成一行 Widget。
+              // collection-for：把每一个下载任务转换成一行 Widget。
               for (final task in downloading) DownloadTaskTile(task: task),
 
               // 横线分隔“下载中”和“已缓存”两个区域。

@@ -24,7 +24,7 @@ class DownloadTaskTile extends StatelessWidget {
           LinearProgressIndicator(value: task.progress),
           const SizedBox(height: 6),
           // 这里先直接展示已经格式化好的大小和速度文本。
-          Text('${task.sizeText}  ${task.speedText}'),
+          if (!task.isCompleted) Text('${task.sizeText}  ${task.speedText}'),
         ],
       ),
     );
