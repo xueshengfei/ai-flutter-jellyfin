@@ -1,7 +1,7 @@
-/// 媒体路由页面
+/// ??????
 ///
-/// 每个路由对应一个 Widget，负责从 path parameter 取参数 →
-/// FutureBuilder 加载数据 → 传给 feature 页面 → navigate 回调走路由。
+/// ???????? Widget???? path parameter ??? ?
+/// FutureBuilder ???? ? ?? feature ?? ? navigate ??????
 library;
 
 import 'package:flutter/material.dart';
@@ -15,7 +15,7 @@ import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import '../../data/jellyfin_gateway.dart';
 import '../../ui/jellyfin_app_image_provider.dart';
 
-// ──────────────────────────── 剧集列表页 ────────────────────────────
+// ???????????????????????????? ????? ????????????????????????????
 
 class SeriesListRoutePage extends StatefulWidget {
   final JellyfinGateway gateway;
@@ -77,7 +77,7 @@ class _SeriesListRoutePageState extends State<SeriesListRoutePage> {
   }
 }
 
-// ──────────────────────────── 电影筛选页 ────────────────────────────
+// ???????????????????????????? ????? ????????????????????????????
 
 class MoviesRoutePage extends StatefulWidget {
   final JellyfinGateway gateway;
@@ -142,18 +142,21 @@ class _MoviesRoutePageState extends State<MoviesRoutePage> {
   }
 }
 
-// ──────────────────────────── 电影详情页 ────────────────────────────
+// ???????????????????????????? ????? ????????????????????????????
 
 class MovieDetailRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final JellyfinAppImageProvider? imageProvider;
+  final void Function(BuildContext context, models.MediaItem movie)?
+      onStartDownload;
 
   const MovieDetailRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
     this.imageProvider,
+    this.onStartDownload,
   });
 
   @override
@@ -168,7 +171,7 @@ class MovieDetailRoutePage extends StatelessWidget {
         }
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('错误')),
+            appBar: AppBar(title: const Text('??')),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -177,7 +180,7 @@ class MovieDetailRoutePage extends StatelessWidget {
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => context.pop(),
-                    child: const Text('返回'),
+                    child: const Text('??'),
                   ),
                 ],
               ),
@@ -193,24 +196,28 @@ class MovieDetailRoutePage extends StatelessWidget {
           onStartPlayback: (context, item) {
             context.push('/playback/video/${item.id}');
           },
+          onStartDownload: onStartDownload,
         );
       },
     );
   }
 }
 
-// ──────────────────────────── 通用媒体详情页 ────────────────────────────
+// ???????????????????????????? ??????? ????????????????????????????
 
 class MediaDetailRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final JellyfinAppImageProvider? imageProvider;
+  final void Function(BuildContext context, models.MediaItem item)?
+      onStartDownload;
 
   const MediaDetailRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
     this.imageProvider,
+    this.onStartDownload,
   });
 
   @override
@@ -225,7 +232,7 @@ class MediaDetailRoutePage extends StatelessWidget {
         }
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('错误')),
+            appBar: AppBar(title: const Text('??')),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -234,7 +241,7 @@ class MediaDetailRoutePage extends StatelessWidget {
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => context.pop(),
-                    child: const Text('返回'),
+                    child: const Text('??'),
                   ),
                 ],
               ),
@@ -258,13 +265,14 @@ class MediaDetailRoutePage extends StatelessWidget {
           onStartPlayback: (context, item) {
             context.push('/playback/video/${item.id}');
           },
+          onStartDownload: onStartDownload,
         );
       },
     );
   }
 }
 
-// ──────────────────────────── 剧集季列表页 ────────────────────────────
+// ???????????????????????????? ?????? ????????????????????????????
 
 class SeriesSeasonsRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
@@ -276,6 +284,7 @@ class SeriesSeasonsRoutePage extends StatelessWidget {
     required this.gateway,
     required this.seriesId,
     this.imageProvider,
+    this.onStartDownload,
   });
 
   @override
@@ -290,7 +299,7 @@ class SeriesSeasonsRoutePage extends StatelessWidget {
         }
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('错误')),
+            appBar: AppBar(title: const Text('??')),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -299,7 +308,7 @@ class SeriesSeasonsRoutePage extends StatelessWidget {
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => context.pop(),
-                    child: const Text('返回'),
+                    child: const Text('??'),
                   ),
                 ],
               ),
@@ -323,7 +332,7 @@ class SeriesSeasonsRoutePage extends StatelessWidget {
   }
 }
 
-// ──────────────────────────── 剧集集列表页 ────────────────────────────
+// ???????????????????????????? ?????? ????????????????????????????
 
 class SeriesEpisodesRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
@@ -351,7 +360,7 @@ class SeriesEpisodesRoutePage extends StatelessWidget {
         }
         if (seasonsSnapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('错误')),
+            appBar: AppBar(title: const Text('??')),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -360,7 +369,7 @@ class SeriesEpisodesRoutePage extends StatelessWidget {
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => context.pop(),
-                    child: const Text('返回'),
+                    child: const Text('??'),
                   ),
                 ],
               ),
@@ -368,7 +377,7 @@ class SeriesEpisodesRoutePage extends StatelessWidget {
           );
         }
 
-        // 先取 series 信息
+        // ?? series ??
         return FutureBuilder<models.MediaItem>(
           future: gateway.getMediaItemDetail(seriesId),
           builder: (context, seriesSnapshot) {
@@ -385,7 +394,7 @@ class SeriesEpisodesRoutePage extends StatelessWidget {
               serverUrl: '',
             );
 
-            // 找到当前 season
+            // ???? season
             final seasons = seasonsSnapshot.data?.seasons ?? [];
             final season = seasons.firstWhere(
               (s) => s.id == seasonId,

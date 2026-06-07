@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jellyfin_auth/jellyfin_auth.dart';
+import 'package:jellyfin_download/jellyfin_download.dart';
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_music/jellyfin_music.dart' as music;
@@ -21,16 +22,16 @@ import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
 import '../ui/jellyfin_app_image_provider.dart';
 
-/// 从 Jellyfin 服务器地址推导同 IP 不同端口的服务地址
+/// ? Jellyfin ???????? IP ?????????
 ///
-/// 例: deriveServiceUrl('http://192.168.1.100:8096', 5005)
-///   → 'http://192.168.1.100:5005'
+/// ?: deriveServiceUrl('http://192.168.1.100:8096', 5005)
+///   ? 'http://192.168.1.100:5005'
 String deriveServiceUrl(String serverUrl, int port) {
   final uri = Uri.parse(serverUrl);
   return '${uri.scheme}://${uri.host}:$port';
 }
 
-/// 认证重定向纯函数
+/// ????????
 String? resolveAuthRedirect({
   required bool isLoggedIn,
   required String matchedLocation,
@@ -43,7 +44,17 @@ String? resolveAuthRedirect({
   return null;
 }
 
-/// 创建 App 路由表
+String _buildMediaDownloadUrl({
+  required AppSession session,
+  required models.MediaItem item,
+}) {
+  final serverUrl = session.serverUrl.replaceFirst(RegExp(r'/$'), '');
+  final itemId = Uri.encodeComponent(item.id);
+  final token = Uri.encodeQueryComponent(session.accessToken);
+  return '$serverUrl/Items/$itemId/Download?api_key=$token';
+}
+
+/// ?? App ???
 GoRouter createAppRouter({
   required AppSessionController sessionController,
   JellyfinGateway? gateway,
@@ -55,6 +66,34 @@ GoRouter createAppRouter({
 }) {
   final effectiveGateway = gateway ?? _StubGateway();
   final effectiveAudioPort = audioPlaybackPort;
+  final downloadController = DownloadController();
+
+  Future<void> startMediaDownload(
+    BuildContext context,
+    models.MediaItem item,
+  ) async {
+    final session = sessionController.currentSession;
+    if (session == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('????????')));
+      return;
+    }
+
+    final downloadUrl = _buildMediaDownloadUrl(session: session, item: item);
+
+    downloadController.startListening();
+    await downloadController.startDownload(
+      downloadUrl,
+      title: item.name,
+      mediaItemId: item.id,
+      imageItemId: item.id,
+      imageTag: item.primaryImageTag,
+    );
+
+    if (!context.mounted) return;
+    context.push('/downloads');
+  }
 
   return GoRouter(
     initialLocation: initialLocation,
@@ -83,7 +122,7 @@ GoRouter createAppRouter({
                   sessionController.setSession(session);
                   return null;
                 } catch (e) {
-                  return '登录失败: $e';
+                  return '????: $e';
                 }
               },
         ),
@@ -124,12 +163,12 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 电影筛选页
+      // ?????
       GoRoute(
         path: '/libraries/:libraryId/movies',
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
-          final libraryName = state.uri.queryParameters['name'] ?? '媒体库';
+          final libraryName = state.uri.queryParameters['name'] ?? '???';
           final session = sessionController.currentSession;
           return MoviesRoutePage(
             gateway: effectiveGateway,
@@ -142,12 +181,12 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 剧集列表页
+      // ?????
       GoRoute(
         path: '/libraries/:libraryId/series',
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
-          final libraryName = state.uri.queryParameters['name'] ?? '剧集';
+          final libraryName = state.uri.queryParameters['name'] ?? '??';
           final session = sessionController.currentSession;
           return SeriesListRoutePage(
             gateway: effectiveGateway,
@@ -164,12 +203,12 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 音乐库列表页
+      // ??????
       GoRoute(
         path: '/libraries/:libraryId/music',
         builder: (context, state) {
           final libraryId = state.pathParameters['libraryId']!;
-          final libraryName = state.uri.queryParameters['name'] ?? '音乐';
+          final libraryName = state.uri.queryParameters['name'] ?? '??';
           final session = sessionController.currentSession;
           return MusicLibraryRoutePage(
             gateway: effectiveGateway,
@@ -187,7 +226,7 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 专辑详情页
+      // ?????
       GoRoute(
         path: '/music/albums/:albumId',
         builder: (context, state) {
@@ -199,7 +238,7 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 艺术家详情页
+      // ??????
       GoRoute(
         path: '/music/artists/:artistId',
         builder: (context, state) {
@@ -211,7 +250,7 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 音乐搜索页
+      // ?????
       GoRoute(
         path: '/libraries/:libraryId/music/search',
         builder: (context, state) {
@@ -223,12 +262,12 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 歌词页
+      // ???
       GoRoute(
         path: '/music/lyrics',
         builder: (context, state) {
           if (effectiveAudioPort == null) {
-            return const Scaffold(body: Center(child: Text('播放器未初始化')));
+            return const Scaffold(body: Center(child: Text('???????')));
           }
           final track = effectiveAudioPort.currentTrack;
           return LyricsPage(
@@ -244,7 +283,7 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 电影详情页
+      // ?????
       GoRoute(
         path: '/movies/:itemId',
         builder: (context, state) {
@@ -257,10 +296,11 @@ GoRouter createAppRouter({
               serverUrl: session?.serverUrl ?? '',
               accessToken: session?.accessToken ?? '',
             ),
+            onStartDownload: startMediaDownload,
           );
         },
       ),
-      // 通用媒体详情页
+      // ???????
       GoRoute(
         path: '/media/items/:itemId',
         builder: (context, state) {
@@ -273,10 +313,11 @@ GoRouter createAppRouter({
               serverUrl: session?.serverUrl ?? '',
               accessToken: session?.accessToken ?? '',
             ),
+            onStartDownload: startMediaDownload,
           );
         },
       ),
-      // 剧集季列表
+      // ?????
       GoRoute(
         path: '/series/:seriesId/seasons',
         builder: (context, state) {
@@ -292,7 +333,7 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 剧集集列表
+      // ?????
       GoRoute(
         path: '/series/:seriesId/seasons/:seasonId/episodes',
         builder: (context, state) {
@@ -310,7 +351,7 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 视频播放
+      // ????
       GoRoute(
         path: '/playback/video/:itemId',
         builder: (context, state) {
@@ -322,15 +363,16 @@ GoRouter createAppRouter({
             aiServiceUrl: serverUrl != null && serverUrl.isNotEmpty
                 ? deriveServiceUrl(serverUrl, 5005)
                 : null,
+            onStartDownload: startMediaDownload,
           );
         },
       ),
-      // 音乐播放详情页
+      // ???????
       GoRoute(
         path: '/playback/music',
         builder: (context, state) {
           if (effectiveAudioPort == null) {
-            return const Scaffold(body: Center(child: Text('播放器未初始化')));
+            return const Scaffold(body: Center(child: Text('???????')));
           }
           return MusicPlayerPage(
             playbackPort: effectiveAudioPort,
@@ -346,12 +388,12 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // RVC 语音转换
+      // RVC ????
       GoRoute(
         path: '/rvc',
         builder: (context, state) {
           if (rvcTaskController == null) {
-            return const Scaffold(body: Center(child: Text('RVC 服务未配置')));
+            return const Scaffold(body: Center(child: Text('RVC ?????')));
           }
           final audioPath = state.uri.queryParameters['audioPath'];
           return RvcRoutePage(
@@ -360,13 +402,38 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 个人中心
+      GoRoute(
+        path: '/downloads',
+        builder: (context, state) {
+          final session = sessionController.currentSession;
+          return DownloadsPage(
+            controller: downloadController,
+            imageProvider: session != null
+                ? JellyfinAppImageProvider(
+                    serverUrl: session.serverUrl,
+                    accessToken: session.accessToken,
+                  )
+                : null,
+            onOpenCompletedTask: (context, task) {
+              final mediaItemId = task.mediaItemId;
+              if (mediaItemId == null || mediaItemId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('???????????? id')),
+                );
+                return;
+              }
+              context.push('/playback/video/$mediaItemId');
+            },
+          );
+        },
+      ),
+      // ????
       GoRoute(
         path: '/personal',
         builder: (context, state) {
           final repository = personalRepository;
           if (repository == null) {
-            return const Scaffold(body: Center(child: Text('个人模块未配置')));
+            return const Scaffold(body: Center(child: Text('???????')));
           }
           return PersonalRoutePage(
             repository: repository,
@@ -374,13 +441,13 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 个人设置
+      // ????
       GoRoute(
         path: '/personal/settings',
         builder: (context, state) {
           final repository = personalRepository;
           if (repository == null) {
-            return const Scaffold(body: Center(child: Text('个人模块未配置')));
+            return const Scaffold(body: Center(child: Text('???????')));
           }
           return PersonalSettingsRoutePage(
             repository: repository,
@@ -388,13 +455,13 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // 个人统计
+      // ????
       GoRoute(
         path: '/personal/stats',
         builder: (context, state) {
           final repository = personalRepository;
           if (repository == null) {
-            return const Scaffold(body: Center(child: Text('个人模块未配置')));
+            return const Scaffold(body: Center(child: Text('???????')));
           }
           return PersonalStatsRoutePage(
             repository: repository,
@@ -402,14 +469,14 @@ GoRouter createAppRouter({
           );
         },
       ),
-      // AI 推荐
+      // AI ??
       GoRoute(
         path: '/ai',
         builder: (context, state) {
           final session = sessionController.currentSession;
           final serverUrl = session?.serverUrl;
           if (serverUrl == null || serverUrl.isEmpty) {
-            return const Scaffold(body: Center(child: Text('未登录')));
+            return const Scaffold(body: Center(child: Text('???')));
           }
           return AiRecommendRoutePage(
             gateway: effectiveGateway,
@@ -426,7 +493,7 @@ GoRouter createAppRouter({
   );
 }
 
-/// 测试用空 gateway（无 gateway 时不抛错）
+/// ???? gateway?? gateway ?????
 class _StubGateway implements JellyfinGateway {
   @override
   Future<AppSession> login({

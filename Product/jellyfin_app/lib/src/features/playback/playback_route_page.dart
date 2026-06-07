@@ -1,7 +1,7 @@
-/// 播放路由页面
+/// ??????
 ///
-/// 负责加载 MediaItem → 创建 PlaybackDelegate → 组装 VideoPlayerPage。
-/// 对应架构文档中"产品业务编排层 → features/playback"的角色。
+/// ???? MediaItem ? ?? PlaybackDelegate ? ?? VideoPlayerPage?
+/// ???????"??????? ? features/playback"????
 library;
 
 import 'package:flutter/material.dart';
@@ -14,20 +14,23 @@ import '../../data/jellyfin_gateway.dart';
 import '../../data/playback_adapter.dart';
 import '../../data/watch_assist_client.dart';
 
-/// 视频播放路由页
+/// ???????
 ///
-/// 从 path parameter 取 itemId → Gateway 加载 MediaItem →
-/// PlaybackAdapter 创建 PlaybackDelegate → VideoPlayerPage 播放。
+/// ? path parameter ? itemId ? Gateway ?? MediaItem ?
+/// PlaybackAdapter ?? PlaybackDelegate ? VideoPlayerPage ???
 class VideoPlaybackRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final String? aiServiceUrl;
+  final void Function(BuildContext context, models.MediaItem item)?
+      onStartDownload;
 
   const VideoPlaybackRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
     this.aiServiceUrl,
+    this.onStartDownload,
   });
 
   @override
@@ -46,7 +49,7 @@ class VideoPlaybackRoutePage extends StatelessWidget {
           return Scaffold(
             backgroundColor: Colors.black,
             appBar: AppBar(
-              title: const Text('播放错误', style: TextStyle(color: Colors.white)),
+              title: const Text('????', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
             ),
@@ -62,7 +65,7 @@ class VideoPlaybackRoutePage extends StatelessWidget {
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => context.pop(),
-                    child: const Text('返回'),
+                    child: const Text('??'),
                   ),
                 ],
               ),
@@ -72,8 +75,8 @@ class VideoPlaybackRoutePage extends StatelessWidget {
 
         final item = snapshot.data!;
 
-        // 需要 ApiClient 来创建 PlaybackAdapter
-        // 通过 Gateway 暴露的 apiClient 获取
+        // ?? ApiClient ??? PlaybackAdapter
+        // ?? Gateway ??? apiClient ??
         final apiClient = _getApiClient(gateway);
         if (apiClient == null) {
           return Scaffold(
@@ -82,11 +85,11 @@ class VideoPlaybackRoutePage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('播放器未就绪', style: TextStyle(color: Colors.white)),
+                  const Text('??????', style: TextStyle(color: Colors.white)),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => context.pop(),
-                    child: const Text('返回'),
+                    child: const Text('??'),
                   ),
                 ],
               ),
@@ -105,16 +108,17 @@ class VideoPlaybackRoutePage extends StatelessWidget {
           item: item,
           playback: delegate,
           fetchWatchAssist: watchAssistClient?.fetchWatchAssist,
+          onStartDownload: onStartDownload,
         );
       },
     );
   }
 
-  /// 从 Gateway 实现中获取 ApiClient
+  /// ? Gateway ????? ApiClient
   ///
-  /// 播放模块需要 ApiClient 来调用 PostedPlaybackInfo 等 API，
-  /// 这里通过 dynamic 访问 LegacyJellyfinGateway.apiClient。
-  /// 这是架构文档允许的"data 层 adapter"模式。
+  /// ?????? ApiClient ??? PostedPlaybackInfo ? API?
+  /// ???? dynamic ?? LegacyJellyfinGateway.apiClient?
+  /// ?????????"data ? adapter"???
   static ApiClient? _getApiClient(JellyfinGateway gateway) {
     // ignore: avoid_dynamic_calls
     return (gateway as dynamic).apiClient as ApiClient?;

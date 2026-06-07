@@ -22,11 +22,17 @@ class VideoPlayerPage extends StatefulWidget {
   /// AI 观影解读请求回调。未注入时不显示 AI 解读入口。
   final WatchAssistFetcher? fetchWatchAssist;
 
+  /// 下载按钮回调。未注入时不显示下载入口。
+  ///
+  /// 播放模块只负责展示按钮；真正拼 URL、创建任务、跳转下载页都交给 App 层。
+  final void Function(BuildContext context, MediaItem item)? onStartDownload;
+
   const VideoPlayerPage({
     super.key,
     required this.item,
     required this.playback,
     this.fetchWatchAssist,
+    this.onStartDownload,
   });
 
   @override
@@ -413,25 +419,47 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                   ),
                 ),
                 padding: const EdgeInsets.all(8),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
-                      tooltip: '返回',
-                    ),
-                    Expanded(
-                      child: Text(
-                        widget.item.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                    Row(
+                      children: [
+                        IconButton(
+                          icon:
+                              const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => Navigator.of(context).pop(),
+                          tooltip: '返回',
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        Expanded(
+                          child: Text(
+                            widget.item.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
+                    if (!_isLoading && _errorMessage == null)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.fetchWatchAssist != null)
+                              WatchAssistButton(
+                                onPressed: _showWatchAssistSheet,
+                              ),
+                            if (widget.onStartDownload != null)
+                              _buildDownloadButton(),
+                            _buildQualityBadge(),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -439,20 +467,22 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           ),
 
           // 底部业务控制按钮
-          if (!_isLoading && _errorMessage == null)
-            Positioned(
-              bottom: 0,
-              right: 96,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.fetchWatchAssist != null)
-                    WatchAssistButton(onPressed: _showWatchAssistSheet),
-                  _buildQualityBadge(),
-                ],
-              ),
-            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDownloadButton() {
+    return SizedBox(
+      height: 48,
+      child: TextButton.icon(
+        onPressed: () => widget.onStartDownload?.call(context, widget.item),
+        icon: const Icon(Icons.download_outlined, size: 18),
+        label: const Text('下载'),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+        ),
       ),
     );
   }
