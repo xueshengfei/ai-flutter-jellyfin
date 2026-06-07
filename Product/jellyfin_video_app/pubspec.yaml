@@ -17,8 +17,7 @@ dependencies:
     path: ../../packages/foundation/jellyfin_core
   jellyfin_api:
     path: ../../packages/foundation/jellyfin_api
-  jellyfin_dart:
-    path: ../../packages/vendor/jellyfin_dart_3.8
+  jellyfin_dart: ^0.1.0
   jellyfin_models:
     path: ../../packages/shared/jellyfin_models
   jellyfin_ui_kit:
@@ -38,6 +37,10 @@ dependencies:
   jellyfin_download:
     path: ../../packages/features/jellyfin_download
   http: ^1.2.0
+  flutter_boost:
+    git:
+      url: 'https://github.com/alibaba/flutter_boost.git'
+      ref: 'v5.0.2'
 
 dev_dependencies:
   flutter_test:

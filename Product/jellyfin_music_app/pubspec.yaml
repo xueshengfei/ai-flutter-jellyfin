@@ -20,8 +20,7 @@ dependencies:
     path: ../../packages/foundation/jellyfin_core
   jellyfin_api:
     path: ../../packages/foundation/jellyfin_api
-  jellyfin_dart:
-    path: ../../packages/vendor/jellyfin_dart_3.8
+  jellyfin_dart: ^0.1.0
   jellyfin_models:
     path: ../../packages/shared/jellyfin_models
   jellyfin_ui_kit:
