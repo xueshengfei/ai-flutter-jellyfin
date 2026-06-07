@@ -1,7 +1,7 @@
-name: jellyfin_music_app
-description: "Jellyfin 音乐专用 App"
-publish_to: 'none'
+name: android_jellyfin_module
+description: "Android 壳工程 Flutter Module 桥接层"
 version: 1.0.0+1
+publish_to: 'none'
 
 environment:
   sdk: ^3.9.0
@@ -10,12 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
-  go_router: ^17.2.3
-  shared_preferences: ^2.2.2
-  just_audio: ^0.9.42
-  http: ^1.2.0
-  path_provider: ^2.1.5
+  # FlutterBoost 混合开发框架
+  flutter_boost:
+    git:
+      url: 'https://github.com/alibaba/flutter_boost.git'
+      ref: 'v5.0.2'
+
+  # Jellyfin 基础包（登录 + 媒体库共用）
   jellyfin_core:
     path: ../../packages/foundation/jellyfin_core
   jellyfin_api:
@@ -25,12 +26,11 @@ dependencies:
     path: ../../packages/shared/jellyfin_models
   jellyfin_ui_kit:
     path: ../../packages/shared/jellyfin_ui_kit
-  jellyfin_music:
-    path: ../../packages/features/jellyfin_music
+  # 登录模块
   jellyfin_auth:
     path: ../../packages/features/jellyfin_auth
-  jellyfin_personal:
-    path: ../../packages/features/jellyfin_personal
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
@@ -39,3 +39,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  module:
+    androidX: true
+    androidPackage: com.example.android_jellyfin_module
+    iosBundleIdentifier: com.example.androidJellyfinModule

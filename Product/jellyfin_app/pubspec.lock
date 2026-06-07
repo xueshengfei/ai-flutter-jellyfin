@@ -93,10 +93,10 @@ packages:
     dependency: transitive
     description:
       name: copy_with_extension
-      sha256: c9e09bce2fee69729ea55dbd55f7150d4cf6f7e55461091a02839c21346f1b95
+      sha256: "28b8a99384df46f5287ed87e249869fddedd299752ea83603800448e0523f00b"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "10.0.1"
+    version: "7.1.0"
   cross_file:
     dependency: transitive
     description:
@@ -312,10 +312,10 @@ packages:
     dependency: "direct main"
     description:
       name: jellyfin_dart
-      sha256: "269fddfee36ee4a0fa2d03cf9e6f448d77ca35893faa77723c677889ac3f7e6f"
+      sha256: "1dd73d8056a09bb0abf9c3b72e721513a8f688f03f12468b3313b6530a7879ca"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "0.1.2"
+    version: "0.1.0"
   jellyfin_download:
     dependency: "direct main"
     description:
