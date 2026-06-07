@@ -86,12 +86,15 @@ class MovieDetailRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final JellyfinVideoImageProvider? imageProvider;
+  final void Function(BuildContext context, models.MediaItem item)?
+      onStartDownload;
 
   const MovieDetailRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
     this.imageProvider,
+    this.onStartDownload,
   });
 
   @override
@@ -131,6 +134,7 @@ class MovieDetailRoutePage extends StatelessWidget {
           onStartPlayback: (context, item) {
             context.push('/playback/video/${item.id}');
           },
+          onStartDownload: onStartDownload,
         );
       },
     );
@@ -143,12 +147,15 @@ class MediaDetailRoutePage extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final JellyfinVideoImageProvider? imageProvider;
+  final void Function(BuildContext context, models.MediaItem item)?
+      onStartDownload;
 
   const MediaDetailRoutePage({
     super.key,
     required this.gateway,
     required this.itemId,
     this.imageProvider,
+    this.onStartDownload,
   });
 
   @override
@@ -196,6 +203,7 @@ class MediaDetailRoutePage extends StatelessWidget {
           onStartPlayback: (context, item) {
             context.push('/playback/video/${item.id}');
           },
+          onStartDownload: onStartDownload,
         );
       },
     );

@@ -14,6 +14,11 @@ class MovieDetailPage extends StatefulWidget {
   final MovieDetailFetcher fetchDetail;
   final void Function(BuildContext context, MediaItem movie)? onStartPlayback;
 
+  /// 开始下载。
+  ///
+  /// 电影详情页只提供 UI 入口，真正下载由主 App 路由层注入。
+  final void Function(BuildContext context, MediaItem movie)? onStartDownload;
+
   /// 图片加载抽象，为 null 时回退到 Image.network
   final JellyfinImageProvider? imageProvider;
 
@@ -22,6 +27,7 @@ class MovieDetailPage extends StatefulWidget {
     required this.movie,
     required this.fetchDetail,
     this.onStartPlayback,
+    this.onStartDownload,
     this.imageProvider,
   });
 
@@ -326,6 +332,15 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                     Chip(
                         label: Text(movie.durationText),
                         visualDensity: VisualDensity.compact),
+                  if (widget.onStartDownload != null)
+                    ActionChip(
+                      avatar: const Icon(Icons.download_outlined, size: 16),
+                      label: const Text('下载'),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        widget.onStartDownload?.call(context, movie);
+                      },
+                    ),
                 ],
               ),
             ],

@@ -37,6 +37,14 @@ class MethodChannelNativeVideoDownloader extends NativeVideoDownloaderPlatform {
   }
 
   @override
+  Future<bool> pauseDownload(String taskId) async {
+    final result = await methodChannel.invokeMethod<bool>('pauseDownload', {
+      'taskId': taskId,
+    });
+    return result ?? false;
+  }
+
+  @override
   Future<bool> deleteDownload(String taskId) async {
     final result = await methodChannel.invokeMethod<bool>('deleteDownload', {
       'taskId': taskId,

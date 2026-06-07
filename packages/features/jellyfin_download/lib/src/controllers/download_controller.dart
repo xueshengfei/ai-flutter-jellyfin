@@ -13,32 +13,27 @@ import '../models/download_task_view_model.dart';
 /// - 监听 [NativeVideoDownloader.watchDownloadEvents] 接收原生进度。
 /// - 把原生事件转换成页面可以直接显示的 [DownloadTaskViewModel]。
 /// - 调用 [notifyListeners] 通知页面刷新。
-///
-/// 注意：这里不直接写 OkHttp、不写文件 IO、不写 Android 逻辑。
-/// 这些底层能力都留在 native_video_downloader 插件里。
 class DownloadController extends ChangeNotifier {
   DownloadController({NativeVideoDownloader? downloader})
     : _downloader = downloader ?? NativeVideoDownloader();
 
-  /// Android 原生下载插件的 Dart 门面。
   final NativeVideoDownloader _downloader;
 
-  /// EventChannel 订阅句柄。
-  ///
-  /// controller 销毁时必须取消订阅，否则页面销毁后还可能收到事件。
   StreamSubscription<Map<Object?, Object?>>? _subscription;
 
-  /// 内部可变任务列表。
-  ///
-  /// 页面不要直接修改这个列表，而是通过 [tasks] 读取只读快照。
   final List<DownloadTaskViewModel> _tasks = [];
 
-  /// 对外暴露只读任务列表。
+  /// 原生事件只会回传 taskId、进度、速度等下载状态。
+  ///
+  /// 标题、媒体 id、封面图这些是 Flutter 主 App 在点击下载时知道的业务信息。
+  /// 所以这里用一个 Map 暂存：taskId -> 媒体展示信息。
+  final Map<String, _DownloadTaskMetadata> _metadataByTaskId = {};
+
   List<DownloadTaskViewModel> get tasks => List.unmodifiable(_tasks);
 
   /// 开始监听 Android 原生插件推回来的下载事件。
   ///
-  /// 这个方法通常在页面 initState 里调用一次。
+  /// 这个方法可以被重复调用；重复调用时会先取消旧订阅，再建立新订阅。
   void startListening() {
     _subscription?.cancel();
 
@@ -50,28 +45,40 @@ class DownloadController extends ChangeNotifier {
     });
   }
 
-  /// 兼容旧页面调用。
-  ///
-  /// 之前页面调用的是 startMockProgress()；现在真实进度来自原生插件。
-  /// 后面改完页面后，可以把这个方法删掉。
   void startMockProgress() {
     startListening();
   }
 
   /// 发起一个原生下载任务。
   ///
-  /// [url] 是要下载的 MP4 直链。当前阶段由 example 传测试 URL；
-  /// 后面接入 Jellyfin 时，会从媒体详情页传入真实下载地址。
-  Future<void> startDownload(String url) async {
+  /// [url] 是真实下载地址；主 App 会从 Jellyfin 媒体详情页拼出这个地址。
+  /// [title]、[mediaItemId]、[imageItemId]、[imageTag] 是页面展示需要的业务信息。
+  Future<void> startDownload(
+    String url, {
+    String title = 'Big Buck Bunny',
+    String? mediaItemId,
+    String? imageItemId,
+    String? imageTag,
+  }) async {
     final result = await _downloader.startDownload(url);
     if (result == null || result.isEmpty) return;
 
     final taskId = _taskIdFromStartResult(result);
+    final metadata = _DownloadTaskMetadata(
+      title: title,
+      mediaItemId: mediaItemId,
+      imageItemId: imageItemId ?? mediaItemId,
+      imageTag: imageTag,
+    );
+    _metadataByTaskId[taskId] = metadata;
 
     _upsertTask(
       DownloadTaskViewModel(
         id: taskId,
-        title: 'Big Buck Bunny',
+        mediaItemId: mediaItemId,
+        title: title,
+        imageItemId: imageItemId ?? mediaItemId,
+        imageTag: imageTag,
         state: DownloadTaskState.downloading,
         progress: 0,
         speedText: 'Starting',
@@ -82,8 +89,7 @@ class DownloadController extends ChangeNotifier {
 
   /// 删除页面中的任务。
   ///
-  /// 这一版会先通过 MethodChannel 把删除信号发给 Android 原生插件。
-  /// 原生插件当前只接收信号；后面接 Room 和文件删除时，会在原生侧补真正删除逻辑。
+  /// 当前会先通过 MethodChannel 把删除信号发给 Android 原生插件。
   Future<void> deleteTasks(Set<String> taskIds) async {
     if (taskIds.isEmpty) return;
 
@@ -95,15 +101,32 @@ class DownloadController extends ChangeNotifier {
       }
     }
 
+    _metadataByTaskId.removeWhere(
+      (taskId, _) => acceptedTaskIds.contains(taskId),
+    );
     _tasks.removeWhere((task) => acceptedTaskIds.contains(task.id));
     notifyListeners();
   }
 
-  /// 把原生 EventChannel 事件转换成页面模型。
+  Future<void> pauseTask(String taskId) async {
+    final accepted = await _downloader.pauseDownload(taskId);
+    if (!accepted) return;
+
+    final index = _tasks.indexWhere((task) => task.id == taskId);
+    if (index == -1) return;
+
+    _tasks[index] = _tasks[index].copyWith(
+      state: DownloadTaskState.paused,
+      speedText: '已暂停',
+    );
+    notifyListeners();
+  }
+
   DownloadTaskViewModel? _taskFromNativeEvent(Map<Object?, Object?> event) {
     final taskId = event['taskId']?.toString();
     if (taskId == null || taskId.isEmpty) return null;
 
+    final metadata = _metadataByTaskId[taskId];
     final nativeState = event['state']?.toString() ?? 'downloading';
     final progressPercent = _asDouble(event['progress']);
     final downloadedBytes = _asInt(event['downloadedBytes']);
@@ -112,7 +135,10 @@ class DownloadController extends ChangeNotifier {
 
     return DownloadTaskViewModel(
       id: taskId,
-      title: 'Big Buck Bunny',
+      mediaItemId: metadata?.mediaItemId,
+      title: metadata?.title ?? '下载视频',
+      imageItemId: metadata?.imageItemId,
+      imageTag: metadata?.imageTag,
       state: _stateFromNative(nativeState),
       progress: (progressPercent / 100).clamp(0.0, 1.0),
       speedText: _formatSpeed(speedBytesPerSecond),
@@ -121,11 +147,6 @@ class DownloadController extends ChangeNotifier {
     );
   }
 
-  /// 插入或更新任务。
-  ///
-  /// EventChannel 会不断推同一个 taskId 的新状态：
-  /// - 第一次收到：添加到列表。
-  /// - 后续收到：替换旧任务。
   void _upsertTask(DownloadTaskViewModel task) {
     final index = _tasks.indexWhere((item) => item.id == task.id);
 
@@ -138,14 +159,10 @@ class DownloadController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 插件当前为了调试会返回 "taskId|url"。
-  ///
-  /// UI 只需要 taskId，所以这里把左边切出来。
   String _taskIdFromStartResult(String result) {
     return result.split('|').first;
   }
 
-  /// 把原生字符串状态映射成 UI 枚举。
   DownloadTaskState _stateFromNative(String state) {
     return switch (state) {
       'completed' => DownloadTaskState.completed,
@@ -184,4 +201,18 @@ class DownloadController extends ChangeNotifier {
     _subscription?.cancel();
     super.dispose();
   }
+}
+
+class _DownloadTaskMetadata {
+  const _DownloadTaskMetadata({
+    required this.title,
+    this.mediaItemId,
+    this.imageItemId,
+    this.imageTag,
+  });
+
+  final String title;
+  final String? mediaItemId;
+  final String? imageItemId;
+  final String? imageTag;
 }

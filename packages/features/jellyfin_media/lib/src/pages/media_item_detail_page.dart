@@ -30,6 +30,11 @@ class MediaItemDetailPage extends StatefulWidget {
   /// 开始播放
   final void Function(BuildContext context, MediaItem item)? onStartPlayback;
 
+  /// 开始下载。
+  ///
+  /// 详情页只暴露回调，不直接依赖下载插件；主 App 负责接入具体下载模块。
+  final void Function(BuildContext context, MediaItem item)? onStartDownload;
+
   /// 图片加载接口，传入时使用 JellyfinImage，为 null 时回退到 Image.network
   final JellyfinImageProvider? imageProvider;
 
@@ -41,6 +46,7 @@ class MediaItemDetailPage extends StatefulWidget {
     this.onNavigateToPerson,
     this.onNavigateToEpisodes,
     this.onStartPlayback,
+    this.onStartDownload,
     this.imageProvider,
   });
 
@@ -390,6 +396,15 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                     Chip(
                       label: Text(item.durationText),
                       visualDensity: VisualDensity.compact,
+                    ),
+                  if (widget.onStartDownload != null)
+                    ActionChip(
+                      avatar: const Icon(Icons.download_outlined, size: 16),
+                      label: const Text('下载'),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        widget.onStartDownload?.call(context, item);
+                      },
                     ),
                 ],
               ),

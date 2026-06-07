@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../models/download_task_view_model.dart';
 
 /// 单个下载任务的列表项。
-///
-/// 这个 Widget 只负责展示一条任务，不负责下载逻辑，也不直接修改状态。
 class DownloadTaskTile extends StatelessWidget {
   const DownloadTaskTile({
     super.key,
@@ -12,47 +11,118 @@ class DownloadTaskTile extends StatelessWidget {
     this.selectionMode = false,
     this.selected = false,
     this.onSelectedChanged,
+    this.onOpenCompletedTask,
+    this.onPauseTask,
+    this.imageProvider,
   });
 
-  /// 页面传进来的任务展示数据。
   final DownloadTaskViewModel task;
-
-  /// 是否进入“多选管理”模式。
   final bool selectionMode;
-
-  /// 当前任务是否被选中。
   final bool selected;
-
-  /// 用户勾选或取消勾选时回调给页面。
   final ValueChanged<bool>? onSelectedChanged;
+  final VoidCallback? onOpenCompletedTask;
+  final VoidCallback? onPauseTask;
+  final JellyfinImageProvider? imageProvider;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      // 管理模式下显示 checkbox；普通模式下不显示，列表会更干净。
-      leading: selectionMode
-          ? Checkbox(
-              value: selected,
-              onChanged: (value) => onSelectedChanged?.call(value ?? false),
-            )
-          : null,
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        leading: selectionMode
+            ? Checkbox(
+                value: selected,
+                onChanged: (value) => onSelectedChanged?.call(value ?? false),
+              )
+            : _TaskPoster(task: task, imageProvider: imageProvider),
+        onTap: selectionMode
+            ? () => onSelectedChanged?.call(!selected)
+            : task.isCompleted
+            ? onOpenCompletedTask
+            : null,
+        title: Text(task.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            LinearProgressIndicator(value: task.progress),
+            const SizedBox(height: 6),
+            if (task.isCompleted)
+              const Text('已缓存，点击播放')
+            else if (task.isPaused)
+              Text('${task.sizeText}  已暂停')
+            else
+              Text('${task.sizeText}  ${task.speedText}'),
+          ],
+        ),
+        trailing: selectionMode ? null : _buildTrailingAction(),
+      ),
+    );
+  }
 
-      // 管理模式下点击整行也可以切换选择，比只点 checkbox 更顺手。
-      onTap: selectionMode ? () => onSelectedChanged?.call(!selected) : null,
+  Widget? _buildTrailingAction() {
+    if (task.isDownloading) {
+      return IconButton(
+        tooltip: '暂停下载',
+        icon: const Icon(Icons.pause_circle_outline),
+        onPressed: onPauseTask,
+      );
+    }
 
-      // 主标题显示视频名。
-      title: Text(task.title),
-      subtitle: Column(
-        // 让进度条和文字都从左侧开始排列。
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // LinearProgressIndicator 的 value 使用 0.0 到 1.0 的进度值。
-          LinearProgressIndicator(value: task.progress),
-          const SizedBox(height: 6),
+    if (task.isCompleted) {
+      return const Icon(Icons.play_circle_outline);
+    }
 
-          // 下载完成后只留标题和进度条；下载中才显示大小和实时速度。
-          if (!task.isCompleted) Text('${task.sizeText}  ${task.speedText}'),
-        ],
+    if (task.isPaused) {
+      return const Icon(Icons.pause_circle_filled);
+    }
+
+    return null;
+  }
+}
+
+class _TaskPoster extends StatelessWidget {
+  const _TaskPoster({required this.task, required this.imageProvider});
+
+  final DownloadTaskViewModel task;
+  final JellyfinImageProvider? imageProvider;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = _buildPlaceholder(context);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: SizedBox(
+        width: 48,
+        height: 64,
+        child:
+            imageProvider == null ||
+                task.imageItemId == null ||
+                task.imageItemId!.isEmpty
+            ? placeholder
+            : JellyfinImage(
+                imageProvider: imageProvider!,
+                itemId: task.imageItemId!,
+                imageTag: task.imageTag,
+                fillWidth: 96,
+                fillHeight: 128,
+                fit: BoxFit.cover,
+                placeholder: placeholder,
+                errorWidget: placeholder,
+              ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ColoredBox(
+      color: colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: Icon(Icons.movie_outlined, color: colorScheme.onSurfaceVariant),
       ),
     );
   }

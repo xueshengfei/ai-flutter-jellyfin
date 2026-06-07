@@ -4,22 +4,37 @@ import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
  * Android 原生下载管理器。
  *
- * 当前阶段只做最小真实下载：
- * - 用 OkHttp 发起 GET 请求。
- * - 从 ResponseBody 的 byteStream 读取 MP4 字节。
- * - 写入 app cache 目录。
- * - 通过 onProgress 回调把真实进度交给插件入口。
- *
- * 后面再逐步加协程、暂停、恢复、数据库和 Range 多线程。
+ * 这个类不直接认识 Flutter，也不直接操作 MethodChannel。
+ * 它只专心做“原生下载业务”：OkHttp 下载、Room 状态保存、进度事件回调。
  */
-class NativeDownloadManager {
+class NativeDownloadManager(
+    private val downloadTaskDao: DownloadTaskDao
+) {
     private val client = OkHttpClient()
+
+    /**
+     * 正在下载的 OkHttp Call。
+     *
+     * taskId -> Call。暂停时通过 taskId 找到 Call，然后 cancel。
+     */
+    private val activeCalls = ConcurrentHashMap<String, Call>()
+
+    /**
+     * 记录哪些任务是“用户主动暂停”。
+     *
+     * OkHttp Call 被 cancel 后也会抛异常；这里用这个集合区分：
+     * - 用户暂停导致的异常 -> paused
+     * - 网络/HTTP 失败导致的异常 -> failed
+     */
+    private val pausedTaskIds = ConcurrentHashMap.newKeySet<String>()
 
     fun startDownload(
         url: String,
@@ -41,17 +56,30 @@ class NativeDownloadManager {
     }
 
     /**
+     * 暂停下载。
+     *
+     * 当前阶段的“暂停”本质是取消正在进行的 OkHttp Call。
+     * 后面做断点续传时，会继续记录已下载字节和 Range 起点，再实现 resume。
+     */
+    fun pauseDownload(
+        taskId: String,
+        onProgress: (Map<String, Any>) -> Unit
+    ): Boolean {
+        val call = activeCalls[taskId] ?: return false
+        pausedTaskIds.add(taskId)
+        call.cancel()
+        Log.d(TAG, "pauseDownload requested: $taskId")
+        return true
+    }
+
+    /**
      * 接收 Flutter 发来的删除下载任务信号。
      *
-     * 当前阶段只证明 MethodChannel 已经打通到 Android 原生层。
-     * 后面接 Room 时，这里会继续做：
-     * - 查询数据库里的下载记录。
-     * - 删除本地视频文件。
-     * - 删除或更新 Room 里的任务状态。
-     * - 如果任务还在下载中，再取消对应 OkHttp Call。
+     * 当前阶段只删除 Room 记录，不删除本地视频文件。
      */
     fun deleteDownload(taskId: String): Boolean {
-        Log.d(TAG, "deleteDownload requested: $taskId")
+        val deletedRows = downloadTaskDao.deleteByTaskId(taskId)
+        Log.d(TAG, "deleteDownload requested: $taskId, deletedRows=$deletedRows")
         return true
     }
 
@@ -62,8 +90,19 @@ class NativeDownloadManager {
         onProgress: (Map<String, Any>) -> Unit
     ) {
         val outputFile = File(cacheDir, "$taskId.mp4")
+        var totalBytes = 0L
+        var downloadedBytes = 0L
 
         try {
+            saveTaskState(
+                taskId = taskId,
+                url = url,
+                filePath = null,
+                totalBytes = 0L,
+                downloadedBytes = 0L,
+                state = STATE_DOWNLOADING
+            )
+
             onProgress(
                 mapOf(
                     "taskId" to taskId,
@@ -71,23 +110,24 @@ class NativeDownloadManager {
                     "downloadedBytes" to 0L,
                     "totalBytes" to 0L,
                     "speedBytesPerSecond" to 0L,
-                    "state" to "downloading"
+                    "state" to STATE_DOWNLOADING
                 )
             )
 
             val request = Request.Builder()
                 .url(url)
                 .build()
+            val call = client.newCall(request)
+            activeCalls[taskId] = call
 
-            client.newCall(request).execute().use { response ->
+            call.execute().use { response ->
                 if (!response.isSuccessful) {
                     throw IOException("Unexpected HTTP ${response.code}")
                 }
 
                 val body = response.body ?: throw IOException("Empty response body")
-                val totalBytes = body.contentLength()
+                totalBytes = body.contentLength()
                 val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                var downloadedBytes = 0L
                 var lastReportBytes = 0L
                 var lastReportAt = System.currentTimeMillis()
 
@@ -116,7 +156,7 @@ class NativeDownloadManager {
                                         "downloadedBytes" to downloadedBytes,
                                         "totalBytes" to totalBytes,
                                         "speedBytesPerSecond" to speed,
-                                        "state" to "downloading"
+                                        "state" to STATE_DOWNLOADING
                                     )
                                 )
 
@@ -127,6 +167,15 @@ class NativeDownloadManager {
                     }
                 }
 
+                saveTaskState(
+                    taskId = taskId,
+                    url = url,
+                    filePath = outputFile.absolutePath,
+                    totalBytes = totalBytes,
+                    downloadedBytes = downloadedBytes,
+                    state = STATE_COMPLETED
+                )
+
                 onProgress(
                     mapOf(
                         "taskId" to taskId,
@@ -134,24 +183,83 @@ class NativeDownloadManager {
                         "downloadedBytes" to downloadedBytes,
                         "totalBytes" to totalBytes,
                         "speedBytesPerSecond" to 0L,
-                        "state" to "completed",
+                        "state" to STATE_COMPLETED,
                         "filePath" to outputFile.absolutePath
                     )
                 )
             }
         } catch (error: Exception) {
+            if (pausedTaskIds.remove(taskId)) {
+                saveTaskState(
+                    taskId = taskId,
+                    url = url,
+                    filePath = if (outputFile.exists()) outputFile.absolutePath else null,
+                    totalBytes = totalBytes,
+                    downloadedBytes = downloadedBytes,
+                    state = STATE_PAUSED
+                )
+
+                onProgress(
+                    mapOf(
+                        "taskId" to taskId,
+                        "progress" to calculateProgress(downloadedBytes, totalBytes),
+                        "downloadedBytes" to downloadedBytes,
+                        "totalBytes" to totalBytes,
+                        "speedBytesPerSecond" to 0L,
+                        "state" to STATE_PAUSED
+                    )
+                )
+                return
+            }
+
+            saveTaskState(
+                taskId = taskId,
+                url = url,
+                filePath = null,
+                totalBytes = totalBytes,
+                downloadedBytes = downloadedBytes,
+                state = STATE_FAILED
+            )
+
             onProgress(
                 mapOf(
                     "taskId" to taskId,
-                    "progress" to 0,
-                    "downloadedBytes" to 0L,
-                    "totalBytes" to 0L,
+                    "progress" to calculateProgress(downloadedBytes, totalBytes),
+                    "downloadedBytes" to downloadedBytes,
+                    "totalBytes" to totalBytes,
                     "speedBytesPerSecond" to 0L,
-                    "state" to "failed",
+                    "state" to STATE_FAILED,
                     "errorMessage" to (error.message ?: error::class.java.simpleName)
                 )
             )
+        } finally {
+            activeCalls.remove(taskId)
         }
+    }
+
+    private fun saveTaskState(
+        taskId: String,
+        url: String,
+        filePath: String?,
+        totalBytes: Long,
+        downloadedBytes: Long,
+        state: String
+    ) {
+        val now = System.currentTimeMillis()
+        val oldTask = downloadTaskDao.findByTaskId(taskId)
+
+        downloadTaskDao.upsert(
+            DownloadTaskEntity(
+                taskId = taskId,
+                url = url,
+                filePath = filePath,
+                totalBytes = totalBytes,
+                downloadedBytes = downloadedBytes,
+                state = state,
+                createdAtMillis = oldTask?.createdAtMillis ?: now,
+                updatedAtMillis = now
+            )
+        )
     }
 
     private fun calculateProgress(
@@ -177,5 +285,10 @@ class NativeDownloadManager {
         const val TAG = "NativeDownloadManager"
         const val DEFAULT_BUFFER_SIZE = 8 * 1024
         const val REPORT_INTERVAL_MS = 500L
+
+        const val STATE_DOWNLOADING = "downloading"
+        const val STATE_PAUSED = "paused"
+        const val STATE_COMPLETED = "completed"
+        const val STATE_FAILED = "failed"
     }
 }

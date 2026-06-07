@@ -17,7 +17,7 @@ import io.flutter.plugin.common.MethodChannel.Result
  * - MethodChannel 接收 Flutter 发来的命令。
  * - EventChannel 把 Android 下载进度推回 Flutter。
  *
- * 真实下载逻辑放在 NativeDownloadManager 里。
+ * 真正下载逻辑放在 NativeDownloadManager 里。
  */
 class NativeVideoDownloaderPlugin :
     FlutterPlugin,
@@ -25,13 +25,18 @@ class NativeVideoDownloaderPlugin :
     private lateinit var channel: MethodChannel
     private lateinit var eventChannel: EventChannel
     private lateinit var applicationContext: Context
+    private lateinit var downloadManager: NativeDownloadManager
 
-    private val downloadManager = NativeDownloadManager()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var eventSink: EventChannel.EventSink? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         applicationContext = flutterPluginBinding.applicationContext
+
+        // Room 数据库入口在插件 attach 时创建一次。
+        // 后面所有下载任务共用同一个 Dao，不要每次下载都重复创建数据库。
+        val database = DownloadDatabase.getInstance(applicationContext)
+        downloadManager = NativeDownloadManager(database.downloadTaskDao())
 
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "native_video_downloader")
         channel.setMethodCallHandler(this)
@@ -84,10 +89,32 @@ class NativeVideoDownloaderPlugin :
                     return
                 }
 
-                // 这里先只把 Flutter 发来的删除信号交给原生管理器。
-                // 后面接 Room 和文件管理时，再在 NativeDownloadManager 里删除数据库记录和本地视频文件。
-                val accepted = downloadManager.deleteDownload(taskId)
-                result.success(accepted)
+                // deleteDownload 会访问 Room，不能在主线程直接执行。
+                // 这里先用 Thread，后面学协程时再换成 CoroutineScope + Dispatchers.IO。
+                Thread {
+                    val accepted = downloadManager.deleteDownload(taskId)
+                    mainHandler.post {
+                        result.success(accepted)
+                    }
+                }.start()
+            }
+
+            "pauseDownload" -> {
+                val taskId = call.argument<String>("taskId")
+                if (taskId.isNullOrBlank()) {
+                    result.error("missing_task_id", "pauseDownload requires a non-empty taskId", null)
+                    return
+                }
+
+                Thread {
+                    val accepted = downloadManager.pauseDownload(
+                        taskId = taskId,
+                        onProgress = ::sendDownloadEvent
+                    )
+                    mainHandler.post {
+                        result.success(accepted)
+                    }
+                }.start()
             }
 
             else -> {

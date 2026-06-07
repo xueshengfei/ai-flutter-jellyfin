@@ -1,12 +1,9 @@
 /// 下载任务在 UI 上的状态。
-///
-/// 这里先只描述页面展示需要的几个状态。
-/// 后面接入 Android 原生下载插件时，可以再按真实任务状态扩展。
 enum DownloadTaskState {
-  /// 正在下载，页面应展示进度和实时速度。
+  /// 正在下载，页面应展示进度、实时速度和暂停按钮。
   downloading,
 
-  /// 已暂停，页面可以展示继续按钮。
+  /// 已暂停，当前阶段只表示原生下载已经停止。
   paused,
 
   /// 已完成，页面会把它归到“已缓存”区域。
@@ -28,15 +25,29 @@ class DownloadTaskViewModel {
     required this.sizeText,
     required this.speedText,
     required this.state,
+    this.mediaItemId,
+    this.imageItemId,
+    this.imageTag,
   });
 
   /// 任务唯一 ID，用来区分不同下载任务。
   final String id;
 
+  /// Jellyfin 媒体 ID。
+  ///
+  /// 下载完成后，页面可以用它跳转到播放器页。
+  final String? mediaItemId;
+
   /// 页面上显示的视频标题。
   final String title;
 
-  /// 当前任务状态，用来决定任务放在哪个分组、显示什么操作。
+  /// 用来加载封面图的 Jellyfin item id。
+  final String? imageItemId;
+
+  /// 封面图 tag。
+  final String? imageTag;
+
+  /// 当前任务状态。
   final DownloadTaskState state;
 
   /// 下载进度，取值范围约定为 0.0 到 1.0。
@@ -48,8 +59,28 @@ class DownloadTaskViewModel {
   /// 页面直接展示的大小文本，例如 420 MB / 1.0 GB。
   final String sizeText;
 
-  /// 是否已经完成。
-  ///
-  /// 页面用这个 getter 把任务分成“下载中”和“已缓存”。
   bool get isCompleted => state == DownloadTaskState.completed;
+
+  bool get isDownloading => state == DownloadTaskState.downloading;
+
+  bool get isPaused => state == DownloadTaskState.paused;
+
+  DownloadTaskViewModel copyWith({
+    DownloadTaskState? state,
+    double? progress,
+    String? speedText,
+    String? sizeText,
+  }) {
+    return DownloadTaskViewModel(
+      id: id,
+      mediaItemId: mediaItemId,
+      title: title,
+      imageItemId: imageItemId,
+      imageTag: imageTag,
+      state: state ?? this.state,
+      progress: progress ?? this.progress,
+      speedText: speedText ?? this.speedText,
+      sizeText: sizeText ?? this.sizeText,
+    );
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jellyfin_auth/jellyfin_auth.dart';
+import 'package:jellyfin_download/jellyfin_download.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_movies/jellyfin_movies.dart' as movies;
 import 'package:jellyfin_personal/jellyfin_personal.dart';
@@ -30,6 +31,19 @@ String? resolveAuthRedirect({
 }
 
 /// 创建视频 App 路由表
+/// 拼 Jellyfin 原文件下载地址。
+///
+/// 当前先走 `/Items/{id}/Download`，让原生 OkHttp 下载尽量拿到直链原文件。
+String _buildMediaDownloadUrl({
+  required AppSession session,
+  required models.MediaItem item,
+}) {
+  final serverUrl = session.serverUrl.replaceFirst(RegExp(r'/$'), '');
+  final itemId = Uri.encodeComponent(item.id);
+  final token = Uri.encodeQueryComponent(session.accessToken);
+  return '$serverUrl/Items/$itemId/Download?api_key=$token';
+}
+
 GoRouter createAppRouter({
   required AppSessionController sessionController,
   JellyfinGateway? gateway,
@@ -38,6 +52,34 @@ GoRouter createAppRouter({
   String initialLocation = '/login',
 }) {
   final effectiveGateway = gateway ?? _StubGateway();
+  final downloadController = DownloadController();
+
+  Future<void> startMediaDownload(
+    BuildContext context,
+    models.MediaItem item,
+  ) async {
+    final session = sessionController.currentSession;
+    if (session == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先登录后再下载')));
+      return;
+    }
+
+    final downloadUrl = _buildMediaDownloadUrl(session: session, item: item);
+
+    downloadController.startListening();
+    await downloadController.startDownload(
+      downloadUrl,
+      title: item.name,
+      mediaItemId: item.id,
+      imageItemId: item.id,
+      imageTag: item.primaryImageTag,
+    );
+
+    if (!context.mounted) return;
+    context.push('/downloads');
+  }
 
   return GoRouter(
     initialLocation: initialLocation,
@@ -52,19 +94,24 @@ GoRouter createAppRouter({
         path: '/login',
         builder: (context, state) => LoginPage(
           discoveryService: discoveryService,
-          onLogin: ({required serverUrl, required username, required password}) async {
-            try {
-              final session = await effectiveGateway.login(
-                serverUrl: serverUrl,
-                username: username,
-                password: password,
-              );
-              sessionController.setSession(session);
-              return null;
-            } catch (e) {
-              return '登录失败: $e';
-            }
-          },
+          onLogin:
+              ({
+                required serverUrl,
+                required username,
+                required password,
+              }) async {
+                try {
+                  final session = await effectiveGateway.login(
+                    serverUrl: serverUrl,
+                    username: username,
+                    password: password,
+                  );
+                  sessionController.setSession(session);
+                  return null;
+                } catch (e) {
+                  return '登录失败: $e';
+                }
+              },
         ),
       ),
       // 首页（腾讯视频风格）
@@ -87,6 +134,7 @@ GoRouter createAppRouter({
             imageProvider: session != null
                 ? JellyfinVideoImageProvider.fromSession(session)
                 : null,
+            onStartDownload: startMediaDownload,
           );
         },
       ),
@@ -102,6 +150,7 @@ GoRouter createAppRouter({
             imageProvider: session != null
                 ? JellyfinVideoImageProvider.fromSession(session)
                 : null,
+            onStartDownload: startMediaDownload,
           );
         },
       ),
@@ -149,14 +198,35 @@ GoRouter createAppRouter({
         },
       ),
       // 个人中心
+      // 下载管理
+      GoRoute(
+        path: '/downloads',
+        builder: (context, state) {
+          final session = sessionController.currentSession;
+          return DownloadsPage(
+            controller: downloadController,
+            imageProvider: session != null
+                ? JellyfinVideoImageProvider.fromSession(session)
+                : null,
+            onOpenCompletedTask: (context, task) {
+              final mediaItemId = task.mediaItemId;
+              if (mediaItemId == null || mediaItemId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('这个缓存任务没有绑定媒体 id')),
+                );
+                return;
+              }
+              context.push('/playback/video/$mediaItemId');
+            },
+          );
+        },
+      ),
       GoRoute(
         path: '/personal',
         builder: (context, state) {
           final repository = personalRepository;
           if (repository == null) {
-            return const Scaffold(
-              body: Center(child: Text('个人模块未配置')),
-            );
+            return const Scaffold(body: Center(child: Text('个人模块未配置')));
           }
           return PersonalRoutePage(
             repository: repository,
@@ -170,9 +240,7 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final repository = personalRepository;
           if (repository == null) {
-            return const Scaffold(
-              body: Center(child: Text('个人模块未配置')),
-            );
+            return const Scaffold(body: Center(child: Text('个人模块未配置')));
           }
           return PersonalSettingsRoutePage(
             repository: repository,
@@ -186,9 +254,7 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final repository = personalRepository;
           if (repository == null) {
-            return const Scaffold(
-              body: Center(child: Text('个人模块未配置')),
-            );
+            return const Scaffold(body: Center(child: Text('个人模块未配置')));
           }
           return PersonalStatsRoutePage(
             repository: repository,
@@ -214,9 +280,7 @@ class _VideoHomeWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = sessionController.currentSession;
     if (session == null) {
-      return const Scaffold(
-        body: Center(child: Text('登录态不存在')),
-      );
+      return const Scaffold(body: Center(child: Text('登录态不存在')));
     }
 
     return VideoHomePage(
@@ -291,15 +355,13 @@ class _StubGateway implements JellyfinGateway {
   Future<List<models.MediaItem>> getLatestMediaItems(
     String parentId, {
     int limit = 12,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<List<models.MediaItem>> getSuggestions({
     int? limit,
     List<String>? includeItemTypes,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<movies.MovieFilterResult> fetchMovies(movies.MovieFilter filter) {

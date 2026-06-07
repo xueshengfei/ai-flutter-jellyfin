@@ -16,10 +16,14 @@ class NativeVideoDownloader {
     return NativeVideoDownloaderPlatform.instance.startDownload(url);
   }
 
-  /// 删除一个下载任务。
+  /// 暂停一个下载任务。
   ///
-  /// 这一版先只打通 Flutter -> Android 的删除命令。
-  /// 真正删除本地文件、删除 Room 记录、取消下载线程会在后续步骤实现。
+  /// 当前 Android 侧会取消正在进行的 OkHttp Call，并回传 paused 状态。
+  Future<bool> pauseDownload(String taskId) {
+    return NativeVideoDownloaderPlatform.instance.pauseDownload(taskId);
+  }
+
+  /// 删除一个下载任务。
   Future<bool> deleteDownload(String taskId) {
     return NativeVideoDownloaderPlatform.instance.deleteDownload(taskId);
   }
