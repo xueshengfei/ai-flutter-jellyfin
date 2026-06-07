@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_music/src/models/music_models.dart';
 import 'package:jellyfin_music/src/services/audio_playback_port.dart';
@@ -6,7 +7,7 @@ import 'package:jellyfin_music/src/services/audio_playback_port.dart';
 /// 音乐库页面（三 Tab：专辑 / 艺术家 / 歌曲）
 ///
 /// 不依赖 go_router、JellyfinGateway、just_audio。
-/// 通过回调函数注入数据获取和导航操作。
+/// 通过回调函数注入数据获取，导航通过 [AppNavigator] 完成。
 class MusicLibraryPage extends StatefulWidget {
   final String libraryName;
   final String libraryId;
@@ -16,12 +17,14 @@ class MusicLibraryPage extends StatefulWidget {
   final ArtistsFetcher fetchArtists;
   final SongsFetcher fetchSongs;
 
-  // 导航回调
-  final OnOpenAlbum? onOpenAlbum;
-  final OnOpenArtist? onOpenArtist;
+  // 播放回调（数据操作，保留）
   final OnPlayTracks? onPlayTracks;
-  final VoidCallback? onSearch;
-  final VoidCallback? onOpenPersonal;
+
+  /// 是否启用搜索按钮
+  final bool enableSearch;
+
+  /// 是否启用个人中心按钮
+  final bool enablePersonal;
 
   /// 图片加载器（注入 JellyfinAppImageProvider 以加载认证封面）
   final JellyfinImageProvider? imageProvider;
@@ -33,11 +36,9 @@ class MusicLibraryPage extends StatefulWidget {
     required this.fetchAlbums,
     required this.fetchArtists,
     required this.fetchSongs,
-    this.onOpenAlbum,
-    this.onOpenArtist,
     this.onPlayTracks,
-    this.onSearch,
-    this.onOpenPersonal,
+    this.enableSearch = false,
+    this.enablePersonal = false,
     this.imageProvider,
   });
 
@@ -67,16 +68,26 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
       appBar: AppBar(
         title: Text(widget.libraryName),
         actions: [
-          if (widget.onSearch != null)
+          if (widget.enableSearch)
             IconButton(
               icon: const Icon(Icons.search),
-              onPressed: widget.onSearch,
+              onPressed: () {
+                final navigator = ServiceRegistry.get<AppNavigator>(context);
+                navigator.pushIntent(
+                  JellyfinRouteIntents.musicSearch(
+                    libraryId: widget.libraryId,
+                  ),
+                );
+              },
               tooltip: '搜索',
             ),
-          if (widget.onOpenPersonal != null)
+          if (widget.enablePersonal)
             IconButton(
               icon: const Icon(Icons.person),
-              onPressed: widget.onOpenPersonal,
+              onPressed: () {
+                final navigator = ServiceRegistry.get<AppNavigator>(context);
+                navigator.pushIntent(JellyfinRouteIntents.profile());
+              },
               tooltip: '个人中心',
             ),
         ],
@@ -95,13 +106,11 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
           _AlbumsTab(
             fetchAlbums: widget.fetchAlbums,
             libraryId: widget.libraryId,
-            onOpenAlbum: widget.onOpenAlbum,
             imageProvider: widget.imageProvider,
           ),
           _ArtistsTab(
             fetchArtists: widget.fetchArtists,
             libraryId: widget.libraryId,
-            onOpenArtist: widget.onOpenArtist,
             imageProvider: widget.imageProvider,
           ),
           _SongsTab(
@@ -121,13 +130,11 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
 class _AlbumsTab extends StatefulWidget {
   final AlbumsFetcher fetchAlbums;
   final String libraryId;
-  final OnOpenAlbum? onOpenAlbum;
   final JellyfinImageProvider? imageProvider;
 
   const _AlbumsTab({
     required this.fetchAlbums,
     required this.libraryId,
-    this.onOpenAlbum,
     this.imageProvider,
   });
 
@@ -176,7 +183,12 @@ class _AlbumsTabState extends State<_AlbumsTab>
       itemBuilder: (context, album, index) => _AlbumCard(
         album: album,
         imageProvider: widget.imageProvider,
-        onTap: () => widget.onOpenAlbum?.call(context, album),
+        onTap: () {
+          final navigator = ServiceRegistry.get<AppNavigator>(context);
+          navigator.pushIntent(
+            JellyfinRouteIntents.musicAlbum(albumId: album.id),
+          );
+        },
       ),
     );
   }
@@ -190,13 +202,11 @@ class _AlbumsTabState extends State<_AlbumsTab>
 class _ArtistsTab extends StatefulWidget {
   final ArtistsFetcher fetchArtists;
   final String libraryId;
-  final OnOpenArtist? onOpenArtist;
   final JellyfinImageProvider? imageProvider;
 
   const _ArtistsTab({
     required this.fetchArtists,
     required this.libraryId,
-    this.onOpenArtist,
     this.imageProvider,
   });
 
@@ -244,7 +254,12 @@ class _ArtistsTabState extends State<_ArtistsTab>
       },
       itemBuilder: (context, artist, index) {
         return InkWell(
-          onTap: () => widget.onOpenArtist?.call(context, artist),
+          onTap: () {
+            final navigator = ServiceRegistry.get<AppNavigator>(context);
+            navigator.pushIntent(
+              JellyfinRouteIntents.musicArtist(artistId: artist.id),
+            );
+          },
           child: Column(
             children: [
               Expanded(

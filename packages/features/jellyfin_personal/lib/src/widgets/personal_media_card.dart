@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
-
-import '../contracts/personal_actions.dart';
 
 enum PersonalMediaCardLayout { landscape, poster, square }
 
 /// Compact personal-center media card.
+///
+/// 导航通过 ServiceRegistry 获取 AppNavigator，不需要外部注入回调。
 final class PersonalMediaCard extends StatelessWidget {
   final JellyfinImageProvider imageProvider;
   final models.MediaItem item;
-  final PersonalActions actions;
   final PersonalMediaCardLayout layout;
   final ValueChanged<bool>? onFavoriteToggle;
+  /// 是否显示播放按钮，默认 true
+  final bool showPlayButton;
 
   const PersonalMediaCard({
     super.key,
     required this.imageProvider,
     required this.item,
-    required this.actions,
     this.layout = PersonalMediaCardLayout.poster,
     this.onFavoriteToggle,
+    this.showPlayButton = true,
   });
 
   @override
@@ -32,7 +34,7 @@ final class PersonalMediaCard extends StatelessWidget {
       elevation: 2,
       margin: EdgeInsets.zero,
       child: InkWell(
-        onTap: () => actions.onOpenMedia(context, item),
+        onTap: () => _openMediaDetail(context),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final imageHeight = _imageHeight(
@@ -50,8 +52,8 @@ final class PersonalMediaCard extends StatelessWidget {
                     imageProvider: imageProvider,
                     item: item,
                     layout: effectiveLayout,
-                    actions: actions,
                     onFavoriteToggle: onFavoriteToggle,
+                    showPlayButton: showPlayButton,
                   ),
                 ),
                 Expanded(
@@ -91,6 +93,12 @@ final class PersonalMediaCard extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+
+  void _openMediaDetail(BuildContext context) {
+    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+      JellyfinRouteIntents.mediaDetail(itemId: item.id),
     );
   }
 
@@ -134,15 +142,15 @@ class _Cover extends StatelessWidget {
   final JellyfinImageProvider imageProvider;
   final models.MediaItem item;
   final PersonalMediaCardLayout layout;
-  final PersonalActions actions;
   final ValueChanged<bool>? onFavoriteToggle;
+  final bool showPlayButton;
 
   const _Cover({
     required this.imageProvider,
     required this.item,
     required this.layout,
-    required this.actions,
     required this.onFavoriteToggle,
+    required this.showPlayButton,
   });
 
   JellyfinImageType get _imageType {
@@ -206,7 +214,7 @@ class _Cover extends StatelessWidget {
                   onFavoriteToggle?.call(!(item.isFavorite ?? false)),
             ),
           ),
-        if (actions.onPlayMedia != null)
+        if (showPlayButton)
           Positioned(
             left: 8,
             bottom: 8,
@@ -214,7 +222,7 @@ class _Cover extends StatelessWidget {
               icon: Icons.play_arrow,
               iconColor: Colors.white,
               tooltip: '播放',
-              onPressed: () => actions.onPlayMedia!(context, item),
+              onPressed: () => _playMedia(context),
             ),
           ),
         if (progress > 0 && !(item.played ?? false))
@@ -232,6 +240,12 @@ class _Cover extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  void _playMedia(BuildContext context) {
+    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+      JellyfinRouteIntents.playbackVideo(itemId: item.id),
     );
   }
 

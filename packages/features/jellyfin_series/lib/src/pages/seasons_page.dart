@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_series/src/widgets/season_card.dart';
 
 /// 季列表页面（解耦版）
 ///
-/// 通过回调注入数据和导航，不依赖 JellyfinClient。
+/// 通过回调注入数据获取，通过 AppNavigator 进行页面导航
 class SeasonsPage extends StatefulWidget {
   /// 剧集信息
   final MediaItem series;
 
   /// 获取季列表回调
   final SeasonsFetcher fetchSeasons;
-
-  /// 点击季 → 导航到集列表页
-  final void Function(BuildContext context, MediaItem series, Season season)?
-      onNavigateToEpisodes;
 
   /// 图片加载接口（可选，传入时使用 JellyfinImage 加载认证图片）
   final JellyfinImageProvider? imageProvider;
@@ -24,7 +21,6 @@ class SeasonsPage extends StatefulWidget {
     super.key,
     required this.series,
     required this.fetchSeasons,
-    this.onNavigateToEpisodes,
     this.imageProvider,
   });
 
@@ -138,8 +134,14 @@ class _SeasonsPageState extends State<SeasonsPage> {
                         seriesName: widget.series.name,
                         imageProvider: widget.imageProvider,
                         onTap: () {
-                          widget.onNavigateToEpisodes?.call(
-                              context, widget.series, season);
+                          // 通过 AppNavigator 导航到集列表页
+                          ServiceRegistry.get<AppNavigator>(context)
+                              .pushIntent(
+                            JellyfinRouteIntents.seriesEpisodes(
+                              seriesId: widget.series.id,
+                              seasonId: season.id,
+                            ),
+                          );
                         },
                       );
                     },

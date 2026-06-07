@@ -1,9 +1,12 @@
+import 'package:flutter/widgets.dart';
+
 import 'app_navigator.dart';
+import 'service_registry.dart';
 
 /// 业务模块注册协议
 ///
 /// 每个业务 feature 实现此接口，由 App 壳统一注册。
-/// core 只定义纯 Dart 协议，不包含 Flutter Widget 依赖。
+/// 模块提供路由元数据 + 页面构建能力。
 abstract class JellyfinFeatureModule {
   /// 模块名称（唯一标识）
   String get name;
@@ -21,6 +24,19 @@ abstract class JellyfinFeatureModule {
   ///
   /// 返回模块希望在首页展示的导航项
   List<NavigationEntry> buildNavigationEntries(ModuleContext context);
+
+  /// 根据路由名构建页面 Widget
+  ///
+  /// [context] 已包含 [ServiceRegistry]，可通过
+  /// `ServiceRegistry.get<T>(context)` 获取共享服务。
+  /// [pathParameters] 是 GoRouter 路径参数（如 itemId、libraryId）。
+  /// [extra] 是 GoRouter extra 参数。
+  Widget buildPage(
+    BuildContext context,
+    String routeName, {
+    Map<String, String> pathParameters = const {},
+    Object? extra,
+  });
 }
 
 /// 模块上下文

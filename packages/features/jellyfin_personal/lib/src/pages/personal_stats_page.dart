@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
-import '../contracts/personal_actions.dart';
 import '../contracts/personal_repository.dart';
 import '../models/personal_media_query.dart';
 import '../models/personal_module_config.dart';
@@ -11,18 +10,18 @@ import '../widgets/personal_media_card.dart';
 import '../widgets/stats_summary_card.dart';
 
 /// 个人统计页
+///
+/// 导航通过 PersonalMediaCard 内部的 ServiceRegistry 获取 AppNavigator。
 final class PersonalStatsPage extends StatefulWidget {
   final PersonalRepository repository;
   final PersonalModuleConfig config;
   final JellyfinImageProvider imageProvider;
-  final PersonalActions actions;
 
   const PersonalStatsPage({
     super.key,
     required this.repository,
     required this.config,
     required this.imageProvider,
-    required this.actions,
   });
 
   @override
@@ -118,7 +117,6 @@ class _PersonalStatsPageState extends State<PersonalStatsPage> {
                 _RecentWatchSection(
                   future: _recentFuture,
                   imageProvider: widget.imageProvider,
-                  actions: widget.actions,
                 ),
               ],
             ),
@@ -174,12 +172,10 @@ class _BreakdownRow extends StatelessWidget {
 class _RecentWatchSection extends StatelessWidget {
   final Future<models.MediaItemListResult> future;
   final JellyfinImageProvider imageProvider;
-  final PersonalActions actions;
 
   const _RecentWatchSection({
     required this.future,
     required this.imageProvider,
-    required this.actions,
   });
 
   @override
@@ -228,7 +224,6 @@ class _RecentWatchSection extends StatelessWidget {
                     child: PersonalMediaCard(
                       imageProvider: imageProvider,
                       item: items[index],
-                      actions: actions,
                     ),
                   );
                 },

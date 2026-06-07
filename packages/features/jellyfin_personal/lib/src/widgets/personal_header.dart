@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 
 /// Personal page profile summary.
+///
+/// 导航通过 ServiceRegistry 获取 AppNavigator，不需要外部注入回调。
 final class PersonalHeader extends StatelessWidget {
   final models.UserProfile profile;
   final VoidCallback? onLogout;
-  final VoidCallback? onOpenSettings;
-  final VoidCallback? onOpenStats;
+  final bool showSettings;
+  final bool showStats;
 
   const PersonalHeader({
     super.key,
     required this.profile,
     this.onLogout,
-    this.onOpenSettings,
-    this.onOpenStats,
+    this.showSettings = true,
+    this.showStats = true,
   });
 
   @override
@@ -68,17 +71,17 @@ final class PersonalHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onOpenSettings != null)
+              if (showSettings)
                 IconButton(
                   tooltip: '设置',
                   icon: const Icon(Icons.settings_outlined),
-                  onPressed: onOpenSettings,
+                  onPressed: () => _openSettings(context),
                 ),
-              if (onOpenStats != null)
+              if (showStats)
                 IconButton(
                   tooltip: '统计',
                   icon: const Icon(Icons.bar_chart_outlined),
-                  onPressed: onOpenStats,
+                  onPressed: () => _openStats(context),
                 ),
               if (onLogout != null)
                 IconButton(
@@ -90,6 +93,18 @@ final class PersonalHeader extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _openSettings(BuildContext context) {
+    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+      JellyfinRouteIntents.profileSettings(),
+    );
+  }
+
+  void _openStats(BuildContext context) {
+    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+      JellyfinRouteIntents.profileStats(),
     );
   }
 }

@@ -1,25 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_music/src/models/music_models.dart';
 import 'package:jellyfin_music/src/services/audio_playback_port.dart';
 
 /// 音乐搜索页面
 ///
 /// 不依赖 JellyfinClient、go_router。
-/// 通过回调函数注入搜索、导航和播放操作。
+/// 通过回调函数注入搜索和播放操作，导航通过 [AppNavigator] 完成。
 class MusicSearchPage extends StatefulWidget {
   final String? libraryId;
   final MusicSearchFetcher search;
-  final OnOpenAlbum? onOpenAlbum;
-  final OnOpenArtist? onOpenArtist;
   final OnPlayTracks? onPlayTracks;
 
   const MusicSearchPage({
     super.key,
     this.libraryId,
     required this.search,
-    this.onOpenAlbum,
-    this.onOpenArtist,
     this.onPlayTracks,
   });
 
@@ -190,7 +187,13 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                 final artist = _artists[index];
                 return _ArtistChip(
                   artist: artist,
-                  onTap: () => widget.onOpenArtist?.call(context, artist),
+                  onTap: () {
+                    final navigator =
+                        ServiceRegistry.get<AppNavigator>(context);
+                    navigator.pushIntent(
+                      JellyfinRouteIntents.musicArtist(artistId: artist.id),
+                    );
+                  },
                 );
               },
             ),
@@ -212,7 +215,13 @@ class _MusicSearchPageState extends State<MusicSearchPage> {
                 final album = _albums[index];
                 return _AlbumChip(
                   album: album,
-                  onTap: () => widget.onOpenAlbum?.call(context, album),
+                  onTap: () {
+                    final navigator =
+                        ServiceRegistry.get<AppNavigator>(context);
+                    navigator.pushIntent(
+                      JellyfinRouteIntents.musicAlbum(albumId: album.id),
+                    );
+                  },
                 );
               },
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_series/src/models/series_models.dart';
@@ -7,7 +8,7 @@ import 'package:jellyfin_series/src/widgets/episode_detail_sheet.dart';
 
 /// 集列表页面（解耦版）
 ///
-/// 通过回调注入数据和导航，不依赖 JellyfinClient / ViewModeManager。
+/// 通过回调注入数据获取，通过 AppNavigator 进行页面导航
 class EpisodesPage extends StatefulWidget {
   /// 剧集信息
   final MediaItem series;
@@ -17,10 +18,6 @@ class EpisodesPage extends StatefulWidget {
 
   /// 获取集列表回调
   final EpisodesFetcher fetchEpisodes;
-
-  /// 点击播放回调
-  final void Function(BuildContext context, Episode episode)?
-      onStartPlayback;
 
   /// 自定义列表构建器（可选，用于注入外部布局组件如 MediaListBuilder）
   final Widget Function(
@@ -41,7 +38,6 @@ class EpisodesPage extends StatefulWidget {
     required this.series,
     required this.season,
     required this.fetchEpisodes,
-    this.onStartPlayback,
     this.listBuilder,
     this.appBarActions,
     this.imageProvider,
@@ -185,9 +181,11 @@ class _EpisodesPageState extends State<EpisodesPage> {
     );
   }
 
-  /// 播放剧集
+  /// 播放剧集 - 通过 AppNavigator 导航到视频播放页
   void _playEpisode(BuildContext context, Episode episode) {
-    widget.onStartPlayback?.call(context, episode);
+    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+      JellyfinRouteIntents.playbackVideo(itemId: episode.id),
+    );
   }
 
   /// 显示剧集详情弹窗

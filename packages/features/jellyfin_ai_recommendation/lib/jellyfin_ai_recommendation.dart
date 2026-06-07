@@ -3,7 +3,7 @@
 /// 业务解耦设计：
 /// - 通过 JellyfinImageProvider 加载图片
 /// - 通过 MediaItemDetailFetcher 获取详情
-/// - 通过回调函数跳转到其它 feature 页面
+/// - 通过 AppNavigator（ServiceRegistry 注入）进行页面跳转
 /// - 不直接 import MediaItemDetailPage/AlbumDetailPage/ArtistDetailPage/AudioPlayerPage
 
 // 模型
@@ -15,6 +15,9 @@ export 'src/services/ai_recommendation_service.dart';
 export 'src/services/tts_playback_service.dart';
 export 'src/services/tts_settings_storage.dart';
 export 'src/services/tts_voice_loader.dart';
+
+// 路由模块
+export 'src/routes/ai_routes.dart';
 
 // 页面
 export 'src/pages/ai_recommend_page.dart';

@@ -11,10 +11,16 @@ abstract final class JellyfinRouteNames {
   static const seriesSeasons = 'series.seasons';
   static const seriesEpisodes = 'series.episodes';
   static const playbackVideo = 'playback.video';
+  static const playbackMusic = 'playback.music';
   static const musicLibrary = 'music.library';
   static const musicAlbum = 'music.album';
   static const musicArtist = 'music.artist';
   static const musicSearch = 'music.search';
+  static const musicLyrics = 'music.lyrics';
   static const aiRecommend = 'ai.recommend';
   static const profile = 'profile';
+  static const profileSettings = 'profile.settings';
+  static const profileStats = 'profile.stats';
+  static const rvc = 'rvc';
+  static const downloads = 'downloads';
 }

@@ -90,4 +90,47 @@ abstract final class JellyfinRouteIntents {
       const RouteNavigationIntent(
         routeName: JellyfinRouteNames.profile,
       );
+
+  /// 个人设置（无参）
+  static RouteNavigationIntent profileSettings() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.profileSettings,
+      );
+
+  /// 个人统计（无参）
+  static RouteNavigationIntent profileStats() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.profileStats,
+      );
+
+  /// 音乐播放（无参）
+  static RouteNavigationIntent playbackMusic() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.playbackMusic,
+      );
+
+  /// 歌词页（无参）
+  static RouteNavigationIntent musicLyrics() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.musicLyrics,
+      );
+
+  /// RVC 语音转换
+  static RouteNavigationIntent rvc({String? audioPath}) =>
+      RouteNavigationIntent(
+        routeName: JellyfinRouteNames.rvc,
+        arguments: {if (audioPath != null) 'audioPath': audioPath},
+      );
+
+  /// AI 推荐（无参）
+  static RouteNavigationIntent aiRecommend() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.aiRecommend,
+      );
+
+  /// 下载管理（无参）
+  static RouteNavigationIntent downloads() =>
+      const RouteNavigationIntent(
+        routeName: JellyfinRouteNames.downloads,
+      );
 }

@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_music/src/models/music_models.dart';
 
 /// 艺术家详情页（解耦版）
 ///
-/// 通过回调函数注入数据获取和导航操作，不依赖 JellyfinClient。
+/// 通过回调函数注入数据获取，导航通过 [AppNavigator] 完成。
 class ArtistDetailPage extends StatefulWidget {
   final MusicArtist artist;
   final ArtistDetailFetcher fetchArtistDetail;
   final ArtistAlbumsFetcher fetchArtistAlbums;
-  final OnNavigateToAlbum? onNavigateToAlbum;
 
   const ArtistDetailPage({
     super.key,
     required this.artist,
     required this.fetchArtistDetail,
     required this.fetchArtistAlbums,
-    this.onNavigateToAlbum,
   });
 
   @override
@@ -119,7 +118,13 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                           return _AlbumCard(
                             album: album,
                             onTap: () {
-                              widget.onNavigateToAlbum?.call(context, album);
+                              final navigator =
+                                  ServiceRegistry.get<AppNavigator>(context);
+                              navigator.pushIntent(
+                                JellyfinRouteIntents.musicAlbum(
+                                  albumId: album.id,
+                                ),
+                              );
                             },
                           );
                         },

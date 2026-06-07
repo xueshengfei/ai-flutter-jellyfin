@@ -9,17 +9,9 @@ import 'package:jellyfin_ai_recommendation/src/services/tts_playback_service.dar
 import 'package:jellyfin_ai_recommendation/src/services/tts_settings_storage.dart';
 import 'package:jellyfin_ai_recommendation/src/widgets/tts_control_button.dart';
 import 'package:jellyfin_ai_recommendation/src/widgets/tts_settings_dialog.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
-
-/// 获取媒体详情的抽象回调
-///
-/// 用于解耦 AI 模块对根包 JellyfinClient 的直接依赖。
-/// 根包通过注入 `JellyfinClient.mediaLibrary.getMediaItemDetail` 实现。
-typedef MediaItemDetailFetcher = Future<MediaItem> Function(String itemId);
-
-/// 获取 AI 服务地址的抽象回调
-typedef AiServiceUrlProvider = String Function();
 
 /// AI 挑片页面
 ///
@@ -32,8 +24,7 @@ typedef AiServiceUrlProvider = String Function();
 /// **业务解耦设计**：
 /// - 通过 [imageProvider] 加载图片，不直接依赖 JellyfinClient
 /// - 通过 [fetchMediaItemDetail] 获取详情，不直接依赖 MediaLibraryService
-/// - 通过 [onNavigateToMediaItem] / [onNavigateToAlbum] / [onNavigateToArtist]
-///   / [onPlaySong] 回调跳转，不直接 import 其它 feature 页面
+/// - 通过 AppNavigator（ServiceRegistry 注入）进行页面跳转
 class AiRecommendPage extends StatefulWidget {
   /// AI 服务地址
   final String aiServiceUrl;
@@ -44,27 +35,11 @@ class AiRecommendPage extends StatefulWidget {
   /// 获取媒体详情的回调
   final MediaItemDetailFetcher fetchMediaItemDetail;
 
-  /// 卡片点击 → 通用媒体详情页
-  final void Function(BuildContext context, MediaItem item)? onNavigateToMediaItem;
-
-  /// 卡片点击 → 专辑详情页
-  final void Function(BuildContext context, MediaItem item)? onNavigateToAlbum;
-
-  /// 卡片点击 → 歌手详情页
-  final void Function(BuildContext context, MediaItem item)? onNavigateToArtist;
-
-  /// 卡片点击 → 播放歌曲
-  final void Function(BuildContext context, MediaItem item)? onPlaySong;
-
   const AiRecommendPage({
     super.key,
     required this.aiServiceUrl,
     required this.imageProvider,
     required this.fetchMediaItemDetail,
-    this.onNavigateToMediaItem,
-    this.onNavigateToAlbum,
-    this.onNavigateToArtist,
-    this.onPlaySong,
   });
 
   @override
@@ -315,29 +290,32 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
     });
   }
 
-  /// 卡片点击 → 根据 AiCardType 通过回调跳转（业务解耦）
+  /// 卡片点击 → 根据 AiCardType 通过 AppNavigator 跳转（业务解耦）
   void _navigateToDetail(MediaItem item, AiCardType type) {
+    final navigator = ServiceRegistry.tryGet<AppNavigator>(context);
+    if (navigator == null) return;
+
     switch (type) {
-      // 视频类 → 通用详情页回调
+      // 视频类 → 通用媒体详情页
       case AiCardType.movie:
       case AiCardType.series:
       case AiCardType.episode:
       case AiCardType.video:
       case AiCardType.season:
       case AiCardType.musicvideo:
-        widget.onNavigateToMediaItem?.call(context, item);
+        navigator.pushIntent(JellyfinRouteIntents.mediaDetail(itemId: item.id));
 
-      // 歌曲 → 播放回调
+      // 歌曲 → 播放
       case AiCardType.audio:
-        widget.onPlaySong?.call(context, item);
+        navigator.pushIntent(JellyfinRouteIntents.playbackVideo(itemId: item.id));
 
-      // 专辑 → 专辑详情回调
+      // 专辑 → 专辑详情
       case AiCardType.musicalbum:
-        widget.onNavigateToAlbum?.call(context, item);
+        navigator.pushIntent(JellyfinRouteIntents.musicAlbum(albumId: item.id));
 
-      // 歌手 → 歌手详情回调
+      // 歌手 → 歌手详情
       case AiCardType.musicartist:
-        widget.onNavigateToArtist?.call(context, item);
+        navigator.pushIntent(JellyfinRouteIntents.musicArtist(artistId: item.id));
     }
   }
 

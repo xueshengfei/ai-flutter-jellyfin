@@ -13,3 +13,6 @@
 library;
 
 export 'src/models/series_models.dart';
+
+// 路由模块
+export 'src/routes/series_routes.dart';

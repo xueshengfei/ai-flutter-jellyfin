@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
@@ -9,10 +10,10 @@ typedef MovieDetailFetcher = Future<MediaItem> Function(String itemId);
 ///
 /// 显示电影的完整元数据信息。
 /// 通过回调解耦，不依赖 JellyfinClient。
+/// 导航通过 ServiceRegistry 获取 AppNavigator。
 class MovieDetailPage extends StatefulWidget {
   final MediaItem movie;
   final MovieDetailFetcher fetchDetail;
-  final void Function(BuildContext context, MediaItem movie)? onStartPlayback;
 
   /// 开始下载。
   ///
@@ -26,7 +27,6 @@ class MovieDetailPage extends StatefulWidget {
     super.key,
     required this.movie,
     required this.fetchDetail,
-    this.onStartPlayback,
     this.onStartDownload,
     this.imageProvider,
   });
@@ -178,7 +178,11 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () => widget.onStartPlayback?.call(context, movie),
+              onPressed: () {
+                  ServiceRegistry.get<AppNavigator>(context).pushIntent(
+                    JellyfinRouteIntents.playbackVideo(itemId: movie.id),
+                  );
+                },
               icon: const Icon(Icons.play_arrow),
               label: const Text('播放'),
               style: FilledButton.styleFrom(

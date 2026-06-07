@@ -15,6 +15,8 @@ dependencies:
     path: ../../shared/jellyfin_models
   jellyfin_ui_kit:
     path: ../../shared/jellyfin_ui_kit
+  jellyfin_core:
+    path: ../../foundation/jellyfin_core
 
 dev_dependencies:
   flutter_test:

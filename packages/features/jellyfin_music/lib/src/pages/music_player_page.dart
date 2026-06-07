@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_music/src/services/audio_playback_port.dart';
 import 'package:jellyfin_music/src/services/lyrics_port.dart';
 import 'package:jellyfin_music/src/models/lyrics_models.dart';
@@ -10,18 +11,14 @@ import 'package:jellyfin_music/src/models/lyrics_models.dart';
 /// 移动端布局：唱片旋转 + 歌名/歌手/词按钮 + 进度条 + 控制栏
 /// 宽屏布局：唱片 + 右侧歌词面板
 /// 支持动态取色（从封面提取主题色生成渐变背景）
-/// 只依赖 [AudioPlaybackPort] 接口，不依赖旧 jellyfin_service。
+/// 只依赖 [AudioPlaybackPort] 接口，导航通过 [AppNavigator] 完成。
 class MusicPlayerPage extends StatefulWidget {
   final AudioPlaybackPort playbackPort;
-  final VoidCallback? onOpenLyrics;
-  final VoidCallback? onOpenRvc;
   final LyricsFetcher? fetchLyrics;
 
   const MusicPlayerPage({
     super.key,
     required this.playbackPort,
-    this.onOpenLyrics,
-    this.onOpenRvc,
     this.fetchLyrics,
   });
 
@@ -180,7 +177,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       setState(() => _showWebLyrics = !_showWebLyrics);
       if (_showWebLyrics) _loadLyrics();
     } else {
-      widget.onOpenLyrics?.call();
+      final navigator = ServiceRegistry.get<AppNavigator>(context);
+      navigator.pushIntent(JellyfinRouteIntents.musicLyrics());
     }
   }
 
@@ -665,7 +663,12 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         ),
         const SizedBox(width: 4),
         // RVC
-        if (widget.onOpenRvc != null) _RvcButton(onTap: widget.onOpenRvc!),
+        _RvcButton(
+          onTap: () {
+            final navigator = ServiceRegistry.get<AppNavigator>(context);
+            navigator.pushIntent(JellyfinRouteIntents.rvc());
+          },
+        ),
       ],
     );
   }

@@ -1,41 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
-// MediaItemDetailFetcher ? SeasonsFetcher ???? jellyfin_models/media_contracts.dart
-// ?? re-export ?????? jellyfin_media_pages.dart ????
+// MediaItemDetailFetcher 和 SeasonsFetcher 已收敛到 jellyfin_models/media_contracts.dart
+// 此处 re-export 以保持子入口 jellyfin_media_pages.dart 的兼容性
 
-/// ?????????
+/// 通用媒体项详情页面
 ///
-/// ?????????Movie, Series, Episode ?
-/// ????????????????
+/// 支持所有媒体类型：Movie, Series, Episode 等
+/// 通过回调解耦数据获取，通过 AppNavigator 进行页面导航
 class MediaItemDetailPage extends StatefulWidget {
-  /// ???????
+  /// 初始媒体项数据
   final MediaItem item;
 
-  /// ??????
+  /// 获取详情回调
   final MediaItemDetailFetcher fetchDetail;
 
-  /// ???????
+  /// 获取季列表回调
   final SeasonsFetcher? fetchSeasons;
 
-  /// ????????
+  /// 跳转到人员详情页
   final void Function(BuildContext context, String personId, String personName,
       String personType)? onNavigateToPerson;
 
-  /// ????????
-  final void Function(BuildContext context, MediaItem series, Season season)?
-      onNavigateToEpisodes;
-
-  /// ????
-  final void Function(BuildContext context, MediaItem item)? onStartPlayback;
-
-  /// ?????
+  /// 开始下载。
   ///
-  /// ???????????????????? App ???????????
+  /// 详情页只暴露回调，不直接依赖下载插件；主 App 负责接入具体下载模块。
   final void Function(BuildContext context, MediaItem item)? onStartDownload;
 
-  /// ???????????? JellyfinImage?? null ???? Image.network
+  /// 图片加载接口，传入时使用 JellyfinImage，为 null 时回退到 Image.network
   final JellyfinImageProvider? imageProvider;
 
   const MediaItemDetailPage({
@@ -44,8 +38,6 @@ class MediaItemDetailPage extends StatefulWidget {
     required this.fetchDetail,
     this.fetchSeasons,
     this.onNavigateToPerson,
-    this.onNavigateToEpisodes,
-    this.onStartPlayback,
     this.onStartDownload,
     this.imageProvider,
   });
@@ -104,7 +96,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
               IconButton(
                 icon: const Icon(Icons.play_arrow),
                 onPressed: _startPlayback,
-                tooltip: '??',
+                tooltip: '播放',
               ),
               IconButton(
                 icon: const Icon(Icons.refresh),
@@ -117,7 +109,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                     context,
                     widget.item,
                   ),
-                  tooltip: '??',
+                  tooltip: '下载',
                 ),
             ],
           ),
@@ -132,7 +124,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                       children: [
                         const CircularProgressIndicator(),
                         const SizedBox(height: 16),
-                        const Text('??????...'),
+                        const Text('正在加载详情...'),
                       ],
                     ),
                   ),
@@ -148,11 +140,11 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                         const Icon(Icons.error_outline,
                             size: 64, color: Colors.red),
                         const SizedBox(height: 16),
-                        Text('????: ${snapshot.error}'),
+                        Text('加载失败: ${snapshot.error}'),
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: _loadData,
-                          child: const Text('??'),
+                          child: const Text('重试'),
                         ),
                       ],
                     ),
@@ -235,7 +227,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
         ),
         const SizedBox(height: 16),
 
-        // ????
+        // 播放按钮
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: SizedBox(
@@ -243,7 +235,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
             child: FilledButton.icon(
               onPressed: _startPlayback,
               icon: const Icon(Icons.play_arrow),
-              label: const Text('??'),
+              label: const Text('播放'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
@@ -252,14 +244,14 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
         ),
         const SizedBox(height: 16),
 
-        // ????
+        // 剧情简介
         if (item.overview != null && item.overview!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionTitle('????'),
+                _buildSectionTitle('剧情简介'),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.only(right: 16),
@@ -276,15 +268,15 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
             ),
           ),
 
-        // ???
+        // 季列表
         if (item.type.toLowerCase() == 'series') _buildSeasonsList(),
         const SizedBox(height: 24),
 
-        // ????
+        // 演员列表
         if (item.actorInfos != null && item.actorInfos!.isNotEmpty)
           PersonListRow(
             persons: item.actorInfos!,
-            title: '??',
+            title: '演员',
             itemBuilder: (person) => PersonAvatarCard(
               person: person,
               onTap: () {
@@ -297,11 +289,11 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           ),
         const SizedBox(height: 24),
 
-        // ????
+        // 导演列表
         if (item.directorInfos != null && item.directorInfos!.isNotEmpty)
           PersonListRow(
             persons: item.directorInfos!,
-            title: '??',
+            title: '导演',
             itemBuilder: (person) => PersonAvatarCard(
               person: person,
               onTap: () {
@@ -314,11 +306,11 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           ),
         const SizedBox(height: 24),
 
-        // ????
+        // 编剧列表
         if (item.writerInfos != null && item.writerInfos!.isNotEmpty)
           PersonListRow(
             persons: item.writerInfos!,
-            title: '??',
+            title: '编剧',
             itemBuilder: (person) => PersonAvatarCard(
               person: person,
               onTap: () {
@@ -331,7 +323,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           ),
         const SizedBox(height: 24),
 
-        // ????
+        // 其他信息
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _buildAdditionalInfo(item),
@@ -409,7 +401,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                   if (widget.onStartDownload != null)
                     ActionChip(
                       avatar: const Icon(Icons.download_outlined, size: 16),
-                      label: const Text('??'),
+                      label: const Text('下载'),
                       visualDensity: VisualDensity.compact,
                       onPressed: () {
                         widget.onStartDownload?.call(context, item);
@@ -465,7 +457,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                '?',
+                '季',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -493,7 +485,13 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
   Widget _buildSeasonCard(Season season) {
     return InkWell(
       onTap: () {
-        widget.onNavigateToEpisodes?.call(context, widget.item, season);
+        // 通过 AppNavigator 导航到集列表页
+        ServiceRegistry.get<AppNavigator>(context).pushIntent(
+          JellyfinRouteIntents.seriesEpisodes(
+            seriesId: widget.item.id,
+            seasonId: season.id,
+          ),
+        );
       },
       child: SizedBox(
         width: 120,
@@ -570,7 +568,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
             ),
             if (season.episodeCount != null)
               Text(
-                '${season.episodeCount} ?',
+                '${season.episodeCount} 集',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.grey.shade600,
                       fontSize: 10,
@@ -587,7 +585,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (item.genres != null && item.genres!.isNotEmpty) ...[
-          _buildSectionTitle('??'),
+          _buildSectionTitle('类型'),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -605,7 +603,7 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
           const SizedBox(height: 24),
         ],
         if (item.studios != null && item.studios!.isNotEmpty) ...[
-          _buildSectionTitle('???'),
+          _buildSectionTitle('工作室'),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -640,6 +638,9 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
   }
 
   void _startPlayback() {
-    widget.onStartPlayback?.call(context, widget.item);
+    // 通过 AppNavigator 导航到视频播放页
+    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+      JellyfinRouteIntents.playbackVideo(itemId: widget.item.id),
+    );
   }
 }

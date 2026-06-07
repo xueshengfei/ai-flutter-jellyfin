@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
-import '../contracts/personal_actions.dart';
 import '../contracts/personal_repository.dart';
 import '../controllers/personal_controller.dart';
 import '../models/personal_media_query.dart';
@@ -12,20 +11,20 @@ import '../widgets/personal_section_view.dart';
 
 /// 个人中心页面
 ///
-/// 接收 Repository、配置、图片 provider 和动作协议，
-/// 不依赖 go_router / jellyfin_dart / Session。
+/// 接收 Repository、配置、图片 provider，
+/// 导航通过 ServiceRegistry 获取 AppNavigator。
 final class PersonalPage extends StatefulWidget {
   final PersonalRepository repository;
   final PersonalModuleConfig config;
   final JellyfinImageProvider imageProvider;
-  final PersonalActions actions;
+  final VoidCallback? onLogout;
 
   const PersonalPage({
     super.key,
     required this.repository,
     required this.config,
     required this.imageProvider,
-    required this.actions,
+    this.onLogout,
   });
 
   @override
@@ -97,10 +96,8 @@ class _PersonalPageState extends State<PersonalPage> {
                       return PersonalHeader(
                         profile: profile,
                         onLogout: widget.config.showLogoutAction
-                            ? widget.actions.onLogout
+                            ? widget.onLogout
                             : null,
-                        onOpenSettings: widget.actions.onOpenSettings,
-                        onOpenStats: widget.actions.onOpenStats,
                       );
                     },
                   ),
@@ -111,7 +108,6 @@ class _PersonalPageState extends State<PersonalPage> {
                     title: section.labelFor(_controller.typeFilter),
                     state: _controller.sectionState(section),
                     imageProvider: widget.imageProvider,
-                    actions: widget.actions,
                     onFavoriteToggle: _controller.toggleFavorite,
                   ),
                 const SizedBox(height: 24),

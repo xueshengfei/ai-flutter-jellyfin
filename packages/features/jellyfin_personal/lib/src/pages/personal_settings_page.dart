@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../contracts/personal_repository.dart';
 
 /// 个人设置页
+///
+/// 导航通过 ServiceRegistry 获取 AppNavigator。
 final class PersonalSettingsPage extends StatelessWidget {
   final PersonalRepository repository;
   final JellyfinImageProvider imageProvider;
   final VoidCallback? onLogout;
-  final VoidCallback? onOpenStats;
 
   const PersonalSettingsPage({
     super.key,
     required this.repository,
     required this.imageProvider,
     this.onLogout,
-    this.onOpenStats,
   });
 
   @override
@@ -37,13 +38,12 @@ final class PersonalSettingsPage extends StatelessWidget {
             children: [
               _ProfileCard(profile: profile, imageProvider: imageProvider),
               const Divider(height: 1),
-              if (onOpenStats != null)
-                ListTile(
-                  leading: const Icon(Icons.bar_chart_outlined),
-                  title: const Text('查看统计'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: onOpenStats,
-                ),
+              ListTile(
+                leading: const Icon(Icons.bar_chart_outlined),
+                title: const Text('查看统计'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openStats(context),
+              ),
               if (onLogout != null) ...[
                 const Divider(height: 1),
                 ListTile(
@@ -68,6 +68,12 @@ final class PersonalSettingsPage extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  void _openStats(BuildContext context) {
+    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+      JellyfinRouteIntents.profileStats(),
     );
   }
 }

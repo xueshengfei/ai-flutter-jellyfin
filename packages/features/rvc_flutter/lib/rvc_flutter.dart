@@ -3,4 +3,5 @@ library;
 
 export 'src/controllers/rvc_task_controller.dart';
 export 'src/models/rvc_task.dart';
+export 'src/routes/rvc_routes.dart';
 export 'src/rvc_page.dart';

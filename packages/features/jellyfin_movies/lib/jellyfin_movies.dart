@@ -14,3 +14,4 @@ library;
 
 export 'src/models/movie_filter_models.dart';
 export 'src/pages/movie_detail_page.dart' show MovieDetailPage, MovieDetailFetcher;
+export 'src/routes/movies_routes.dart';

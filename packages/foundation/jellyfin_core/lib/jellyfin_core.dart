@@ -15,3 +15,5 @@ export 'src/module/navigation_intent.dart';
 export 'src/module/app_navigator.dart';
 export 'src/module/jellyfin_route_names.dart';
 export 'src/module/jellyfin_route_intents.dart';
+export 'src/module/service_registry.dart';
+export 'src/module/go_router_app_navigator.dart';

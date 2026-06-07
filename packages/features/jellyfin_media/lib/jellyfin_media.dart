@@ -28,3 +28,6 @@ library;
 // PersonDetailFetcher 和 PersonCreditsFetcher 保留在此模块（依赖 Person 模型）
 export 'src/pages/person_detail_page.dart'
     show PersonDetailFetcher, PersonCreditsFetcher;
+
+// 路由模块
+export 'src/routes/media_routes.dart';

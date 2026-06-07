@@ -3,5 +3,6 @@ library;
 
 export 'src/models/lyrics_models.dart';
 export 'src/models/music_models.dart';
+export 'src/routes/music_routes.dart';
 export 'src/services/audio_playback_port.dart';
 export 'src/services/lyrics_port.dart';

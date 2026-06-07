@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
@@ -96,18 +97,15 @@ class _HomePageState extends State<_HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AiRecommendPage(
-                      aiServiceUrl: aiUrl,
-                      imageProvider: _StubImageProvider(),
-                      fetchMediaItemDetail: (id) => _stubDetail(id, jfUrl),
-                      onNavigateToMediaItem: (ctx, item) =>
-                          _showSnack(ctx, '媒体详情: ${item.name}'),
-                      onNavigateToAlbum: (ctx, item) =>
-                          _showSnack(ctx, '专辑: ${item.name}'),
-                      onNavigateToArtist: (ctx, item) =>
-                          _showSnack(ctx, '歌手: ${item.name}'),
-                      onPlaySong: (ctx, item) =>
-                          _showSnack(ctx, '播放: ${item.name}'),
+                    builder: (_) => ServiceRegistry(
+                      services: {
+                        AppNavigator: _StubNavigator(context),
+                      },
+                      child: AiRecommendPage(
+                        aiServiceUrl: aiUrl,
+                        imageProvider: _StubImageProvider(),
+                        fetchMediaItemDetail: (id) => _stubDetail(id, jfUrl),
+                      ),
                     ),
                   ),
                 );
@@ -188,4 +186,36 @@ Future<MediaItem> _stubDetail(String itemId, String serverUrl) async {
     productionYear: 2024,
     communityRating: 8.5,
   );
+}
+
+/// 占位导航器 — SnackBar 回显
+class _StubNavigator implements AppNavigator {
+  final BuildContext _rootContext;
+
+  _StubNavigator(this._rootContext);
+
+  @override
+  Future<T?> push<T>(String routeName, {Map<String, Object?>? arguments}) {
+    _showSnack(_rootContext, '导航: $routeName');
+    return Future<T?>.value();
+  }
+
+  @override
+  Future<T?> pushIntent<T>(NavigationIntent intent) {
+    if (intent is RouteNavigationIntent) {
+      _showSnack(_rootContext, '导航: ${intent.routeName}');
+    }
+    return Future<T?>.value();
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    // 示例中不需要实现
+  }
+
+  @override
+  Future<T?> replace<T>(String routeName, {Map<String, Object?>? arguments}) {
+    _showSnack(_rootContext, '替换: $routeName');
+    return Future<T?>.value();
+  }
 }

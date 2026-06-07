@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_movies/src/models/movie_filter_models.dart';
@@ -7,15 +8,13 @@ import 'package:jellyfin_movies/src/models/movie_filter_models.dart';
 ///
 /// 通过回调解耦，不依赖 JellyfinClient、ViewModeManager、MediaListBuilder。
 /// 列表布局通过 listBuilder 注入。
+/// 导航通过 ServiceRegistry 获取 AppNavigator。
 class MovieFilterPage extends StatefulWidget {
   final String libraryId;
   final String libraryName;
 
   /// 获取电影列表回调
   final MoviesFetcher fetchMovies;
-
-  /// 点击电影项回调
-  final void Function(BuildContext context, MediaItem item)? onNavigateToMovie;
 
   /// 列表构建器（注入 MediaListBuilder 等外部布局）
   final Widget Function({
@@ -31,7 +30,6 @@ class MovieFilterPage extends StatefulWidget {
     required this.libraryId,
     required this.libraryName,
     required this.fetchMovies,
-    this.onNavigateToMovie,
     this.listBuilder,
     this.appBarActions,
   });
@@ -194,8 +192,11 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
                   : (context, page) {
                       return widget.listBuilder!(
                         items: page.items,
-                        onTap: (item) =>
-                            widget.onNavigateToMovie?.call(context, item),
+                        onTap: (item) {
+                          ServiceRegistry.get<AppNavigator>(context).pushIntent(
+                            JellyfinRouteIntents.movieDetail(itemId: item.id),
+                          );
+                        },
                       );
                     },
               itemBuilder: (context, movie, index) {
@@ -209,7 +210,11 @@ class _MovieFilterPageState extends State<MovieFilterPage> {
                   title: Text(movie.name),
                   subtitle: Text(
                       '${movie.productionYear ?? ""} ${movie.communityRating != null ? "⭐ ${movie.ratingText}" : ""}'),
-                  onTap: () => widget.onNavigateToMovie?.call(context, movie),
+                  onTap: () {
+                    ServiceRegistry.get<AppNavigator>(context).pushIntent(
+                      JellyfinRouteIntents.movieDetail(itemId: movie.id),
+                    );
+                  },
                 );
               },
             ),
