@@ -14,8 +14,9 @@ Jellyfin_Service/
 │
 ├── Product/                      # 产品 App（入口）
 │   ├── jellyfin_app/             # 全功能 App（电影+音乐+AI+个人）
-│   ├── jellyfin_video_app/       # 视频专用 App（腾讯视频风格，电影+剧集）
-│   └── jellyfin_music_app/       # 音乐专用 App
+│   ├── jellyfin_video_app/       # 视频专用 App（支持 FlutterBoost 宿主路由）
+│   ├── jellyfin_music_app/       # 音乐专用 App
+│   └── android_jellyfin_module/  # Android 宿主集成用 FlutterBoost 模块
 │
 ├── packages/
 │   ├── foundation/               # 基础组件/基础工具包
@@ -75,13 +76,13 @@ Jellyfin_Service/
 
 各 feature 包之间 **禁止互相 import**，通过回调/协议解耦。feature 包不直接创建 `JellyfinClient`，由产品层 Gateway/Repository/Port 注入数据和能力。
 
-## 新 App 架构（jellyfin_app）
+## 产品 App 架构与路由入口
 
 ```
 Product/jellyfin_app/lib/src/
 ├── app/
 │   ├── jellyfin_app.dart          # MaterialApp 入口
-│   └── app_router.dart            # GoRouter 路由注册
+│   └── app_router.dart            # GoRouter 路由表与 ServiceRegistry 注入
 ├── session/
 │   ├── app_session.dart           # 登录态（token/serverUrl/userId）
 │   └── app_session_controller.dart
@@ -102,6 +103,17 @@ Product/jellyfin_app/lib/src/
     └── jellyfin_app_image_provider.dart # 图片 Provider 注入
 ```
 
+当前产品层允许按交付形态选择路由入口：
+
+| 产品形态 | 路由方式 | 适用场景 |
+|---|---|---|
+| `Product/jellyfin_app` | `GoRouter + MaterialApp.router` | 全功能独立 App，本仓库内联调和完整业务验证 |
+| `Product/jellyfin_music_app` | `GoRouter + MaterialApp.router` | 音乐专用独立 App |
+| `Product/jellyfin_video_app` | `FlutterBoostApp + routeFactory` 为当前入口，保留 GoRouter 文件作独立 App/迁移参考 | 宿主 App 通过页面名打开视频业务页 |
+| `Product/android_jellyfin_module` | `FlutterBoostApp + routeFactory` | Android 原生团队集成 Flutter 模块 |
+
+路由框架只属于产品层。业务 feature 不绑定 `go_router`、`flutter_boost` 或宿主 App 页面类，只暴露页面、模型、回调、Repository、Port、`AppNavigator`/`NavigationIntent` 等稳定契约。产品层负责把稳定 route name、宿主页面名或 URL path 映射到具体页面，并注入 Gateway、Session、ImageProvider、播放适配器等依赖。
+
 ## 核心约定
 
 ### 模块化规则
@@ -113,14 +125,22 @@ Product/jellyfin_app/lib/src/
 6. `MovieFilter`/`MovieFilterResult` 在 `jellyfin_movies` 包，不在 `jellyfin_models`
 
 ### 路由注册模式
-- 每个 feature 有 `*_pages.dart` barrel，导出纯 UI 页面
-- Product App 的 `*_route_page.dart` 负责注入 Gateway/回调，用 FutureBuilder 包装
-- GoRouter 路由集中在 `app_router.dart`
+- 每个 feature 有 public barrel，导出纯 UI 页面、协议、Repository/Port/Fetcher typedef
+- Feature 内部跳转通过回调、`AppNavigator` 或 `NavigationIntent` 表达，不直接依赖具体路由框架
+- 独立 App 可以在 `app_router.dart` 里集中注册 GoRouter 路由
+- 宿主集成 App 使用 `FlutterBoostApp` 的 `routeFactory` 按稳定页面名注册路由
+- Product 层的 route page、route widget 或 route factory 负责注入 Gateway/回调，并按需用 FutureBuilder 包装异步数据
 
 ### 数据获取模式
 - Gateway 定义数据获取接口
 - Route Page 用 FutureBuilder 调 Gateway，结果注入 feature 页面
 - Feature 页面通过 `typedef` 回调获取数据（如 `MediaItemDetailFetcher`）
+
+### CI/CD 与版本化协作
+- 多团队协作时以 `packages/features/*`、`packages/shared/*`、`Product/*` 为交付边界，避免跨 feature 私有 `src/` 依赖
+- 可独立发布的包必须维护 `pubspec.yaml` `version` 和 `CHANGELOG.md`，通过版本号表达兼容性和交付内容
+- 宿主侧优先依赖 CI/CD 产出的 Flutter module/AAR/HAR 或锁定版本的内部包，不直接绑定开发分支临时代码
+- 稳定 route name、页面名、Repository/Port 接口属于跨团队契约，变更时必须同步版本号、文档和兼容说明
 
 ### 图片加载
 - `JellyfinImageProvider` 注入式，各 App 提供 URL 构建实现
@@ -159,5 +179,6 @@ cd Product/jellyfin_app && flutter analyze
 
 - 中文代码注释和文档
 - UI 文本中文显示
+- Git 日志使用中文，长度控制在 10 到 100 字，说明本次实际变更
 - 过滤器后做，先整理业务链路
 - 旧 `lib/` 冻结维护，新功能只加在 `packages/` 和 `Product/`

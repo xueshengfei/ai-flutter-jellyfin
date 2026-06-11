@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_boost/flutter_boost.dart';
 
-import 'src/app/boost_app.dart';
+import 'boost_app.dart';
 
 void main() {
   CustomFlutterBinding();
-  runApp(const BoostVideoApp());
+  runApp(const BoostModuleApp());
 }
 
 /// FlutterBoost 自定义 Binding

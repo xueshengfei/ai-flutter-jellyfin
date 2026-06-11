@@ -97,6 +97,21 @@ sequenceDiagram
 
 ---
 
+## 路由与多团队集成
+
+项目按产品形态保留两类路由入口：
+
+| 产品形态 | 路由方式 | 用途 |
+|---|---|---|
+| 全功能 App、音乐 App | `GoRouter + MaterialApp.router` | 独立 Flutter App 运行、调试、完整业务验证 |
+| 视频 App、Android Flutter 模块 | `FlutterBoostApp + routeFactory` | 原生宿主按稳定页面名打开 Flutter 页面，适合 CI/CD 产物集成 |
+
+产品层负责把 `login`、`home`、`movie_detail`、`media_detail`、`series_seasons`、`series_episodes`、`playback`、`personal` 等稳定页面名或 route name 映射到具体页面，并注入 Gateway、Session、ImageProvider、播放适配器等依赖。业务 feature 只暴露页面、模型、回调、Repository/Port 和导航意图，不直接绑定宿主 App、`go_router` 或 `flutter_boost`。
+
+多团队协作时，建议以 feature 包、shared 包和产品模块为交付边界，通过 `pubspec.yaml` `version`、`CHANGELOG.md` 和 CI/CD 构建产物记录可集成版本。宿主团队集成 Flutter 模块时优先依赖版本化产物，路由页面名和跨模块接口作为兼容契约管理。
+
+---
+
 ## 全类型流媒体
 
 ### 登录与首页
@@ -299,7 +314,8 @@ for (final lib in libraries.libraries) {
 ├── Product/                            # 产品层：具体 App 入口
 │   ├── jellyfin_app/
 │   ├── jellyfin_video_app/
-│   └── jellyfin_music_app/
+│   ├── jellyfin_music_app/
+│   └── android_jellyfin_module/
 ├── lib/                                # 旧单体实现，冻结维护，仅作参考
 ├── scripts/                           # 验证脚本
 │   ├── verify_imports.sh

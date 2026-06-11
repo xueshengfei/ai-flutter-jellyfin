@@ -39,7 +39,7 @@
 
 | 层级 | 判断标准 | 典型内容 |
 |---|---|---|
-| 产品层 | 一个具体 App 或产品形态；负责把业务、组件、工具装配成可运行产品 | App 入口、MaterialApp、GoRouter、session、Gateway 注入、产品级 adapter |
+| 产品层 | 一个具体 App 或产品形态；负责把业务、组件、工具装配成可运行产品 | App 入口、MaterialApp/FlutterBoostApp、GoRouter/routeFactory、session、Gateway 注入、产品级 adapter |
 | 业务层 | 面向用户场景的业务功能；可以独立沉淀为 feature 包 | 登录、电影、剧集、音乐、播放页、AI 推荐、个人中心、RVC 页面 |
 | 基础组件层 | 被业务直接组合使用的模型、协议、UI、Flutter 生态组件或可复用能力组件 | `jellyfin_models`、`jellyfin_ui_kit`、`jellyfin_core`、`video_player`、`video_player_ohos`、`just_audio`、`fluttertpc_chewie`、手势组件 |
 | 基础工具层 | 支撑组件和业务运行的底层技术工具、外部接口、SDK/API 适配 | `jellyfin_api`、`jellyfin_dart`、`path_provider`、`shared_preferences`、Dio、文件工具、缓存工具、字符串工具、日志工具 |
@@ -58,8 +58,9 @@
 | 路径 / 依赖 | 层级 | 说明 |
 |---|---|---|
 | `Product/jellyfin_app` | 产品层 | 全功能 App，组合电影、音乐、AI、个人中心、RVC |
-| `Product/jellyfin_video_app` | 产品层 | 视频专用 App |
+| `Product/jellyfin_video_app` | 产品层 | 视频专用 App，当前入口支持 FlutterBoost 宿主路由 |
 | `Product/jellyfin_music_app` | 产品层 | 音乐专用 App |
+| `Product/android_jellyfin_module` | 产品层 | Android 宿主集成用 FlutterBoost 模块 |
 | `packages/features/jellyfin_auth` | 业务层 | 登录/注册 UI |
 | `packages/features/jellyfin_movies` | 业务层 | 电影筛选、电影详情 |
 | `packages/features/jellyfin_series` | 业务层 | 剧集季/集列表 |
@@ -94,13 +95,15 @@
 - 可以直接依赖基础工具层，并把 API、存储、播放器、平台能力适配成 Gateway / Repository / Port 后注入给业务层。
 - 不允许直接 import feature 的 `src/` 内部文件，只使用 public barrel。
 - 不允许继续扩张旧根包 `lib/src/ui/pages` 的业务页面。
+- 路由框架由产品层选择：独立 App 可使用 `GoRouter`，宿主集成模块可使用 `FlutterBoostApp + routeFactory`。
+- 产品层负责把稳定 route name、宿主页面名或 URL path 映射到具体页面，并维护跨团队可复用的导航契约。
 
 ### 业务层
 
 - 只表达一个清晰业务能力，避免多个 feature 互相 import。
-- 不持有 `AppSession`，不直接依赖 `go_router`，不直接创建 `JellyfinClient`。
+- 不持有 `AppSession`，不直接依赖 `go_router`、`flutter_boost`，不直接创建 `JellyfinClient`。
 - 需要数据时，通过产品层注入的 fetcher、repository、delegate、port 获取。
-- 需要跳转时，通过回调、导航协议或产品层 route page 完成。
+- 需要跳转时，通过回调、`AppNavigator`、`NavigationIntent` 或产品层 route page/route factory 完成。
 - 可以依赖基础组件层，例如模型、UI Kit、播放器组件、手势组件、协议。
 - 原则上不直接依赖基础工具层；确需依赖时要确认它是该业务模块内部的底层实现细节，并避免外泄到 public API。
 
@@ -120,7 +123,20 @@
 - 文件、缓存、键值存储、字符串、格式化、日志、网络 client、Jellyfin SDK、RVC/TTS SDK 都放在这一层。
 - 这一层可以被产品层直接使用，也可以被基础组件层内部使用。
 
-## 4. 新功能放置规则
+## 4. 路由与版本化协作规则
+
+当前产品层存在两类有效路由入口：
+
+| 产品形态 | 当前入口 | 说明 |
+|---|---|---|
+| `Product/jellyfin_app` | `GoRouter + MaterialApp.router` | 全功能独立 App，集中注册完整业务路由 |
+| `Product/jellyfin_music_app` | `GoRouter + MaterialApp.router` | 音乐专用独立 App |
+| `Product/jellyfin_video_app` | `FlutterBoostApp + routeFactory` | 视频专用宿主集成入口，保留 GoRouter 文件作独立 App/迁移参考 |
+| `Product/android_jellyfin_module` | `FlutterBoostApp + routeFactory` | Android 原生宿主按页面名打开 Flutter 页面 |
+
+跨团队协作时，稳定 route name、FlutterBoost 页面名、Repository/Port 接口、模型字段和 public barrel 都属于兼容契约。契约变更必须同步版本号、文档和 changelog；宿主侧应优先接入 CI/CD 产出的 Flutter module/AAR/HAR 或锁定版本的内部包。
+
+## 5. 新功能放置规则
 
 新增代码时先问两个问题：
 
@@ -143,12 +159,12 @@
 | Jellyfin API 新端点封装 | 基础工具层 |
 | App 内把某个 API 结果转成 feature 页面参数 | 产品层 |
 
-## 5. 当前 App 数据流
+## 6. 当前 App 数据流
 
 ```text
 LoginPage / Feature Page
   -> 产品层注入的回调 / Repository / Port
-  -> Product/jellyfin_app 的 Gateway / Adapter
+  -> Product App 的 Gateway / Adapter
   -> 基础工具层 jellyfin_api / jellyfin_dart / RVC SDK / TTS SDK
   -> Jellyfin Server / Agent Server / RVC Server
 ```
@@ -159,7 +175,7 @@ LoginPage / Feature Page
 - Feature 页面只接收业务模型、基础组件层模型或回调，不接收 `BaseItemDto`。
 - 图片 URL、鉴权 token、服务端地址等产品上下文由产品层注入。
 
-## 6. 文档使用规则
+## 7. 文档使用规则
 
 - 本文档是当前有效分层规范。
 - 根目录只保留当前有效的项目说明和架构说明。
