@@ -273,6 +273,8 @@ for (final lib in libraries.libraries) {
 
 当前有效分层规范详见 [`JELLYFIN_APP_ARCHITECTURE_LAYERS.md`](JELLYFIN_APP_ARCHITECTURE_LAYERS.md)。
 
+> 当前 `master` 只维护 `Product/jellyfin_app` 一个主 App。多 App 拆分、视频/音乐专用 App 与 Android 混合开发已保存到 `codex/save-multi-app-dev` 分支，主线暂不继续推进。
+
 ---
 
 ## 项目结构
@@ -297,9 +299,7 @@ for (final lib in libraries.libraries) {
 │   └── 音乐功能演示视频.mp4
 ├── images/                            # 界面截图
 ├── Product/                            # 产品层：具体 App 入口
-│   ├── jellyfin_app/
-│   ├── jellyfin_video_app/
-│   └── jellyfin_music_app/
+│   └── jellyfin_app/                   # 当前主线唯一维护的主 App
 ├── lib/                                # 旧单体实现，冻结维护，仅作参考
 ├── scripts/                           # 验证脚本
 │   ├── verify_imports.sh

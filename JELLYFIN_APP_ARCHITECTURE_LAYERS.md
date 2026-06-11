@@ -4,14 +4,13 @@
 >
 > 本文档是当前项目分层的主参考。`docs/archive/` 下的旧计划、旧阶段报告、历史策略只用于追溯，不再作为新开发依据。
 
-本文档用于指导 `Product/*`、`packages/features/*`、`packages/shared/*`、`packages/foundation/*`、`packages/ohos/*`、`packages/plugins/*` 后续开发。当前项目采用四层模型：
+本文档用于指导 `Product/jellyfin_app`、`packages/features/*`、`packages/shared/*`、`packages/foundation/*`、`packages/ohos/*`、`packages/plugins/*` 后续开发。当前 `master` 只维护一个主 App；多 App 拆分与 Android 混合开发已保存到 `codex/save-multi-app-dev` 分支，主线暂不推进。当前项目采用四层模型：
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │ 产品层 Product                                                │
-│ Product/jellyfin_app、Product/jellyfin_video_app、              │
-│ Product/jellyfin_music_app                                    │
-│ App 入口、主题、路由、登录态、全局对象生命周期、产品级组装         │
+│ Product/jellyfin_app                                           │
+│ 主 App 入口、主题、路由、登录态、全局对象生命周期、产品级组装       │
 ├──────────────────────────────────────────────────────────────┤
 │ 业务层 Business                                                │
 │ packages/features/*                                           │
@@ -39,7 +38,7 @@
 
 | 层级 | 判断标准 | 典型内容 |
 |---|---|---|
-| 产品层 | 一个具体 App 或产品形态；负责把业务、组件、工具装配成可运行产品 | App 入口、MaterialApp、GoRouter、session、Gateway 注入、产品级 adapter |
+| 产品层 | 当前主线唯一维护的主 App；负责把业务、组件、工具装配成可运行产品 | App 入口、MaterialApp、GoRouter、session、Gateway 注入、产品级 adapter |
 | 业务层 | 面向用户场景的业务功能；可以独立沉淀为 feature 包 | 登录、电影、剧集、音乐、播放页、AI 推荐、个人中心、RVC 页面 |
 | 基础组件层 | 被业务直接组合使用的模型、协议、UI、Flutter 生态组件或可复用能力组件 | `jellyfin_models`、`jellyfin_ui_kit`、`jellyfin_core`、`video_player`、`video_player_ohos`、`just_audio`、`fluttertpc_chewie`、手势组件 |
 | 基础工具层 | 支撑组件和业务运行的底层技术工具、外部接口、SDK/API 适配 | `jellyfin_api`、`jellyfin_dart`、`path_provider`、`shared_preferences`、Dio、文件工具、缓存工具、字符串工具、日志工具 |
@@ -57,9 +56,7 @@
 
 | 路径 / 依赖 | 层级 | 说明 |
 |---|---|---|
-| `Product/jellyfin_app` | 产品层 | 全功能 App，组合电影、音乐、AI、个人中心、RVC |
-| `Product/jellyfin_video_app` | 产品层 | 视频专用 App |
-| `Product/jellyfin_music_app` | 产品层 | 音乐专用 App |
+| `Product/jellyfin_app` | 产品层 | 主 App，组合电影、音乐、AI、个人中心、RVC |
 | `packages/features/jellyfin_auth` | 业务层 | 登录/注册 UI |
 | `packages/features/jellyfin_movies` | 业务层 | 电影筛选、电影详情 |
 | `packages/features/jellyfin_series` | 业务层 | 剧集季/集列表 |

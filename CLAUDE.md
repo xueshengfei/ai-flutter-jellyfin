@@ -13,9 +13,7 @@ Jellyfin_Service/
 │   └── src/                      # 旧代码：core/services/models/ui/app_shell/
 │
 ├── Product/                      # 产品 App（入口）
-│   ├── jellyfin_app/             # 全功能 App（电影+音乐+AI+个人）
-│   ├── jellyfin_video_app/       # 视频专用 App（腾讯视频风格，电影+剧集）
-│   └── jellyfin_music_app/       # 音乐专用 App
+│   └── jellyfin_app/             # 主 App（电影+音乐+AI+个人）
 │
 ├── packages/
 │   ├── foundation/               # 基础组件/基础工具包
@@ -55,7 +53,7 @@ Jellyfin_Service/
 
 ```
 产品层 Product
-  Product/jellyfin_app / jellyfin_video_app / jellyfin_music_app
+  Product/jellyfin_app
     ↓
 业务层 Business
   packages/features/*
@@ -75,7 +73,7 @@ Jellyfin_Service/
 
 各 feature 包之间 **禁止互相 import**，通过回调/协议解耦。feature 包不直接创建 `JellyfinClient`，由产品层 Gateway/Repository/Port 注入数据和能力。
 
-## 新 App 架构（jellyfin_app）
+## 主 App 架构（jellyfin_app）
 
 ```
 Product/jellyfin_app/lib/src/
@@ -103,6 +101,11 @@ Product/jellyfin_app/lib/src/
 ```
 
 ## 核心约定
+
+### 主线维护范围
+- 当前 `master` 只维护 `Product/jellyfin_app` 一个主 App。
+- 多 App 拆分、视频专用 App、音乐专用 App 与 Android FlutterBoost 混合开发已保存到 `codex/save-multi-app-dev` 分支，主线暂不继续推进。
+- 后续如需恢复多 App 或混合开发，先从保存分支对照迁回，不直接在主线重建临时壳工程。
 
 ### 模块化规则
 1. **Feature 模块**通过 `flutter create --template=package` 创建
@@ -153,11 +156,12 @@ cd packages/features/jellyfin_movies && flutter test
 cd Product/jellyfin_app && flutter analyze
 ```
 
-测试规模：jellyfin_app 15 个测试，jellyfin_video_app 8 个测试，jellyfin_music_app 8 个测试，各 feature 包独立测试。
+测试规模：以 `jellyfin_app` 和各 feature 包独立测试为准。
 
 ## 开发偏好
 
 - 中文代码注释和文档
 - UI 文本中文显示
+- Git 日志使用中文，长度控制在 10 到 100 字，说明本次实际变更
 - 过滤器后做，先整理业务链路
 - 旧 `lib/` 冻结维护，新功能只加在 `packages/` 和 `Product/`
