@@ -20,15 +20,11 @@ class MovieDetailPage extends StatefulWidget {
   /// 电影详情页只提供 UI 入口，真正下载由主 App 路由层注入。
   final void Function(BuildContext context, MediaItem movie)? onStartDownload;
 
-  /// 图片加载抽象，为 null 时回退到 Image.network
-  final JellyfinImageProvider? imageProvider;
-
   const MovieDetailPage({
     super.key,
     required this.movie,
     required this.fetchDetail,
     this.onStartDownload,
-    this.imageProvider,
   });
 
   @override
@@ -126,25 +122,16 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          if (widget.imageProvider != null)
-            JellyfinImage(
-              imageProvider: widget.imageProvider!,
-              itemId: widget.movie.id,
-              imageType: JellyfinImageType.backdrop,
-              imageTag: widget.movie.backdropImageTag,
-              fillWidth: 800,
-              fillHeight: 450,
-              fit: BoxFit.cover,
-              errorWidget:
-                  Container(color: Theme.of(context).colorScheme.surface),
-            )
-          else
-            Image.network(
-              widget.movie.getBackdropImageUrl()!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: Theme.of(context).colorScheme.surface),
-            ),
+          JellyfinImage(
+            itemId: widget.movie.id,
+            imageType: JellyfinImageType.backdrop,
+            imageTag: widget.movie.backdropImageTag,
+            fillWidth: 800,
+            fillHeight: 450,
+            fit: BoxFit.cover,
+            errorWidget:
+                Container(color: Theme.of(context).colorScheme.surface),
+          ),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -282,31 +269,19 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
             borderRadius: BorderRadius.circular(8),
             child: SizedBox(
               width: 100,
-              child: widget.imageProvider != null
-                  ? JellyfinImage(
-                      imageProvider: widget.imageProvider!,
-                      itemId: movie.id,
-                      imageTag: movie.primaryImageTag,
-                      fillWidth: 200,
-                      fillHeight: 300,
-                      fit: BoxFit.cover,
-                      errorWidget: Container(
-                        width: 100,
-                        height: 150,
-                        color: Colors.grey.shade300,
-                        child: const Icon(Icons.movie, color: Colors.grey),
-                      ),
-                    )
-                  : Image.network(
-                      movie.getCoverImageUrl()!,
-                      width: 100,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                          width: 100,
-                          height: 150,
-                          color: Colors.grey.shade300,
-                          child: const Icon(Icons.movie, color: Colors.grey)),
-                    ),
+              child: JellyfinImage(
+                itemId: movie.id,
+                imageTag: movie.primaryImageTag,
+                fillWidth: 200,
+                fillHeight: 300,
+                fit: BoxFit.cover,
+                errorWidget: Container(
+                  width: 100,
+                  height: 150,
+                  color: Colors.grey.shade300,
+                  child: const Icon(Icons.movie, color: Colors.grey),
+                ),
+              ),
             ),
           ),
         const SizedBox(width: 16),

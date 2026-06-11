@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../pages/media_item_detail_page.dart';
 
@@ -40,8 +39,6 @@ final class MediaFeatureModule extends JellyfinFeatureModule {
         ServiceRegistry.get<MediaItemDetailFetcher>(context);
     final fetchSeasons =
         ServiceRegistry.tryGet<SeasonsFetcher>(context);
-    final imageProvider =
-        ServiceRegistry.tryGet<JellyfinImageProvider>(context);
 
     // 从 pathParameters 或 extra 中获取 itemId
     final itemId = pathParameters['itemId'] ?? '';
@@ -65,7 +62,6 @@ final class MediaFeatureModule extends JellyfinFeatureModule {
           item: item,
           fetchDetail: fetchDetail,
           fetchSeasons: fetchSeasons,
-          imageProvider: imageProvider,
         ),
       _ => throw ArgumentError(
           'MediaFeatureModule: unknown route $routeName',

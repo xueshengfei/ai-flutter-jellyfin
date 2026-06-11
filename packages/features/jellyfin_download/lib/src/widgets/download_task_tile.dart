@@ -13,7 +13,6 @@ class DownloadTaskTile extends StatelessWidget {
     this.onSelectedChanged,
     this.onOpenCompletedTask,
     this.onPauseTask,
-    this.imageProvider,
   });
 
   final DownloadTaskViewModel task;
@@ -22,7 +21,6 @@ class DownloadTaskTile extends StatelessWidget {
   final ValueChanged<bool>? onSelectedChanged;
   final VoidCallback? onOpenCompletedTask;
   final VoidCallback? onPauseTask;
-  final JellyfinImageProvider? imageProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +33,7 @@ class DownloadTaskTile extends StatelessWidget {
                 value: selected,
                 onChanged: (value) => onSelectedChanged?.call(value ?? false),
               )
-            : _TaskPoster(task: task, imageProvider: imageProvider),
+            : _TaskPoster(task: task),
         onTap: selectionMode
             ? () => onSelectedChanged?.call(!selected)
             : task.isCompleted
@@ -83,10 +81,9 @@ class DownloadTaskTile extends StatelessWidget {
 }
 
 class _TaskPoster extends StatelessWidget {
-  const _TaskPoster({required this.task, required this.imageProvider});
+  const _TaskPoster({required this.task});
 
   final DownloadTaskViewModel task;
-  final JellyfinImageProvider? imageProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -98,12 +95,9 @@ class _TaskPoster extends StatelessWidget {
         width: 48,
         height: 64,
         child:
-            imageProvider == null ||
-                task.imageItemId == null ||
-                task.imageItemId!.isEmpty
+            task.imageItemId == null || task.imageItemId!.isEmpty
             ? placeholder
             : JellyfinImage(
-                imageProvider: imageProvider!,
                 itemId: task.imageItemId!,
                 imageTag: task.imageTag,
                 fillWidth: 96,

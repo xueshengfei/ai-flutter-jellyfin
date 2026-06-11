@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import '../../image/jellyfin_image.dart';
-import '../../image/jellyfin_image_provider.dart';
 
 /// 垂直列表视图
 ///
 /// 左图右文的列表布局
 class VerticalListView extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final List<MediaItem> items;
   final ValueChanged<MediaItem>? onTap;
   final bool shrinkWrap;
@@ -15,7 +13,6 @@ class VerticalListView extends StatelessWidget {
 
   const VerticalListView({
     super.key,
-    required this.imageProvider,
     required this.items,
     this.onTap,
     this.shrinkWrap = false,
@@ -33,7 +30,6 @@ class VerticalListView extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = items[index];
         return _VerticalListItem(
-          imageProvider: imageProvider,
           item: item,
           onTap: () => onTap?.call(item),
         );
@@ -43,12 +39,10 @@ class VerticalListView extends StatelessWidget {
 }
 
 class _VerticalListItem extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaItem item;
   final VoidCallback onTap;
 
   const _VerticalListItem({
-    required this.imageProvider,
     required this.item,
     required this.onTap,
   });
@@ -68,7 +62,6 @@ class _VerticalListItem extends StatelessWidget {
               AspectRatio(
                 aspectRatio: 0.67,
                 child: JellyfinImage(
-                  imageProvider: imageProvider,
                   itemId: item.id,
                   imageTag: item.primaryImageTag,
                   fillWidth: 120,

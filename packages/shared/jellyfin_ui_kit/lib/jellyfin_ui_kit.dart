@@ -15,6 +15,7 @@ library;
 
 // 图片抽象和组件
 export 'src/image/jellyfin_image_provider.dart';
+export 'src/image/jellyfin_image_provider_scope.dart';
 export 'src/image/jellyfin_image.dart';
 
 // 模型

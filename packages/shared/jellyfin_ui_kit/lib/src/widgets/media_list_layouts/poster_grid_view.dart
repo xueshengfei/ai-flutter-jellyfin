@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import '../media_item_card.dart';
-import '../../image/jellyfin_image_provider.dart';
 
 /// 海报网格视图
 ///
 /// 竖版海报网格布局（复用 MediaItemCard）
 class PosterGridView extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final List<MediaItem> items;
   final int crossAxisCount;
   final ValueChanged<MediaItem>? onTap;
@@ -17,7 +15,6 @@ class PosterGridView extends StatelessWidget {
 
   const PosterGridView({
     super.key,
-    required this.imageProvider,
     required this.items,
     this.crossAxisCount = 3,
     this.onTap,
@@ -50,7 +47,6 @@ class PosterGridView extends StatelessWidget {
 
         // 否则使用默认的 MediaItemCard
         return MediaItemCard(
-          imageProvider: imageProvider,
           item: item,
           onTap: handleTap,
         );

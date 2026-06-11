@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import '../image/jellyfin_image.dart';
-import '../image/jellyfin_image_provider.dart';
-
 /// 媒体项卡片组件
 ///
 /// 显示单个媒体项的封面、标题、年份等信息
 class MediaItemCard extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaItem item;
   final VoidCallback onTap;
 
   const MediaItemCard({
     super.key,
-    required this.imageProvider,
     required this.item,
     required this.onTap,
   });
@@ -112,7 +108,6 @@ class MediaItemCard extends StatelessWidget {
     // 如果有封面，使用 JellyfinImage 加载认证图片
     if (item.hasCoverImage) {
       return JellyfinImage(
-        imageProvider: imageProvider,
         itemId: item.id,
         imageTag: item.primaryImageTag,
         fillWidth: 200,

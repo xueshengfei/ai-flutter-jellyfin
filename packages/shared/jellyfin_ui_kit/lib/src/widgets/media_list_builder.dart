@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import '../image/jellyfin_image_provider.dart';
 import '../models/view_mode_models.dart';
 import 'media_list_layouts/banner_list_view.dart';
 import 'media_list_layouts/vertical_list_view.dart';
@@ -11,7 +10,6 @@ import 'media_list_layouts/card_grid_view.dart';
 ///
 /// 根据视图模式配置动态构建不同的布局
 class MediaListBuilder extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final List<MediaItem> items;
   final ViewModeConfig config;
   final ValueChanged<MediaItem>? onTap;
@@ -24,7 +22,6 @@ class MediaListBuilder extends StatelessWidget {
 
   const MediaListBuilder({
     super.key,
-    required this.imageProvider,
     required this.items,
     required this.config,
     this.onTap,
@@ -37,7 +34,6 @@ class MediaListBuilder extends StatelessWidget {
     switch (config.viewMode) {
       case ViewMode.banner:
         return BannerListView(
-          imageProvider: imageProvider,
           items: items,
           onTap: onTap,
           shrinkWrap: shrinkWrap,
@@ -46,7 +42,6 @@ class MediaListBuilder extends StatelessWidget {
 
       case ViewMode.list:
         return VerticalListView(
-          imageProvider: imageProvider,
           items: items,
           onTap: onTap,
           shrinkWrap: shrinkWrap,
@@ -55,7 +50,6 @@ class MediaListBuilder extends StatelessWidget {
 
       case ViewMode.poster:
         return PosterGridView(
-          imageProvider: imageProvider,
           items: items,
           crossAxisCount: config.crossAxisCount,
           onTap: onTap,
@@ -65,7 +59,6 @@ class MediaListBuilder extends StatelessWidget {
 
       case ViewMode.card:
         return CardGridView(
-          imageProvider: imageProvider,
           items: items,
           crossAxisCount: config.crossAxisCount,
           onTap: onTap,

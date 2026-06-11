@@ -9,7 +9,6 @@ enum PersonalMediaCardLayout { landscape, poster, square }
 ///
 /// 导航通过 ServiceRegistry 获取 AppNavigator，不需要外部注入回调。
 final class PersonalMediaCard extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final models.MediaItem item;
   final PersonalMediaCardLayout layout;
   final ValueChanged<bool>? onFavoriteToggle;
@@ -18,7 +17,6 @@ final class PersonalMediaCard extends StatelessWidget {
 
   const PersonalMediaCard({
     super.key,
-    required this.imageProvider,
     required this.item,
     this.layout = PersonalMediaCardLayout.poster,
     this.onFavoriteToggle,
@@ -49,7 +47,6 @@ final class PersonalMediaCard extends StatelessWidget {
                 SizedBox(
                   height: imageHeight,
                   child: _Cover(
-                    imageProvider: imageProvider,
                     item: item,
                     layout: effectiveLayout,
                     onFavoriteToggle: onFavoriteToggle,
@@ -139,14 +136,12 @@ final class PersonalMediaCard extends StatelessWidget {
 }
 
 class _Cover extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final models.MediaItem item;
   final PersonalMediaCardLayout layout;
   final ValueChanged<bool>? onFavoriteToggle;
   final bool showPlayButton;
 
   const _Cover({
-    required this.imageProvider,
     required this.item,
     required this.layout,
     required this.onFavoriteToggle,
@@ -178,7 +173,6 @@ class _Cover extends StatelessWidget {
       children: [
         item.hasCoverImage
             ? JellyfinImage(
-                imageProvider: imageProvider,
                 itemId: item.id,
                 imageType: _imageType,
                 imageTag: _imageTag,

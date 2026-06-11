@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../contracts/personal_repository.dart';
 import '../controllers/personal_controller.dart';
@@ -16,14 +15,12 @@ import '../widgets/personal_section_view.dart';
 final class PersonalPage extends StatefulWidget {
   final PersonalRepository repository;
   final PersonalModuleConfig config;
-  final JellyfinImageProvider imageProvider;
   final VoidCallback? onLogout;
 
   const PersonalPage({
     super.key,
     required this.repository,
     required this.config,
-    required this.imageProvider,
     this.onLogout,
   });
 
@@ -107,7 +104,6 @@ class _PersonalPageState extends State<PersonalPage> {
                     section: section,
                     title: section.labelFor(_controller.typeFilter),
                     state: _controller.sectionState(section),
-                    imageProvider: widget.imageProvider,
                     onFavoriteToggle: _controller.toggleFavorite,
                   ),
                 const SizedBox(height: 24),

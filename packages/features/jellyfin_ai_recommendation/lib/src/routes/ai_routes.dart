@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../pages/ai_recommend_page.dart';
 
@@ -55,7 +54,6 @@ final class AiFeatureModule extends JellyfinFeatureModule {
     Map<String, String> pathParameters = const {},
     Object? extra,
   }) {
-    final imageProvider = ServiceRegistry.get<JellyfinImageProvider>(context);
     final fetchMediaItemDetail =
         ServiceRegistry.get<MediaItemDetailFetcher>(context);
     final aiUrlProvider = ServiceRegistry.tryGet<AiServiceUrlProvider>(context);
@@ -64,7 +62,6 @@ final class AiFeatureModule extends JellyfinFeatureModule {
     return switch (routeName) {
       JellyfinRouteNames.aiRecommend => AiRecommendPage(
           aiServiceUrl: aiServiceUrl,
-          imageProvider: imageProvider,
           fetchMediaItemDetail: fetchMediaItemDetail,
         ),
       _ => throw ArgumentError(

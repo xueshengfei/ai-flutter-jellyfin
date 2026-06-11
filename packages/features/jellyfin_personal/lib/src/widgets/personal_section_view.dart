@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../controllers/personal_section_state.dart';
 import '../models/personal_module_config.dart';
@@ -12,7 +11,6 @@ final class PersonalSectionView extends StatelessWidget {
   final PersonalSection section;
   final String title;
   final PersonalSectionState state;
-  final JellyfinImageProvider imageProvider;
   final void Function(String itemId, bool isFavorite) onFavoriteToggle;
 
   const PersonalSectionView({
@@ -20,7 +18,6 @@ final class PersonalSectionView extends StatelessWidget {
     required this.section,
     required this.title,
     required this.state,
-    required this.imageProvider,
     required this.onFavoriteToggle,
   });
 
@@ -75,7 +72,6 @@ final class PersonalSectionView extends StatelessWidget {
                     height: extent.height,
                     child: PersonalMediaCard(
                       layout: layout,
-                      imageProvider: imageProvider,
                       item: item,
                       onFavoriteToggle: (value) {
                         onFavoriteToggle(item.id, value);

@@ -29,9 +29,6 @@ class MediaItemDetailPage extends StatefulWidget {
   /// 详情页只暴露回调，不直接依赖下载插件；主 App 负责接入具体下载模块。
   final void Function(BuildContext context, MediaItem item)? onStartDownload;
 
-  /// 图片加载接口，传入时使用 JellyfinImage，为 null 时回退到 Image.network
-  final JellyfinImageProvider? imageProvider;
-
   const MediaItemDetailPage({
     super.key,
     required this.item,
@@ -39,7 +36,6 @@ class MediaItemDetailPage extends StatefulWidget {
     this.fetchSeasons,
     this.onNavigateToPerson,
     this.onStartDownload,
-    this.imageProvider,
   });
 
   @override
@@ -168,29 +164,17 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          if (widget.imageProvider != null)
-            JellyfinImage(
-              imageProvider: widget.imageProvider!,
-              itemId: widget.item.id,
-              imageType: JellyfinImageType.backdrop,
-              imageTag: widget.item.backdropImageTag,
-              fillWidth: 800,
-              fillHeight: 450,
-              fit: BoxFit.cover,
-              errorWidget: Container(
-                color: Theme.of(context).colorScheme.surface,
-              ),
-            )
-          else
-            Image.network(
-              widget.item.getBackdropImageUrl()!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Theme.of(context).colorScheme.surface,
-                );
-              },
+          JellyfinImage(
+            itemId: widget.item.id,
+            imageType: JellyfinImageType.backdrop,
+            imageTag: widget.item.backdropImageTag,
+            fillWidth: 800,
+            fillHeight: 450,
+            fit: BoxFit.cover,
+            errorWidget: Container(
+              color: Theme.of(context).colorScheme.surface,
             ),
+          ),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -338,34 +322,19 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
         if (item.hasCoverImage)
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: widget.imageProvider != null
-                ? JellyfinImage(
-                    imageProvider: widget.imageProvider!,
-                    itemId: item.id,
-                    imageTag: item.primaryImageTag,
-                    fillWidth: 200,
-                    fillHeight: 300,
-                    fit: BoxFit.cover,
-                    errorWidget: Container(
-                      width: 100,
-                      height: 150,
-                      color: Colors.grey.shade300,
-                      child: Icon(Icons.movie, color: Colors.grey),
-                    ),
-                  )
-                : Image.network(
-                    item.getCoverImageUrl()!,
-                    width: 100,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 100,
-                        height: 150,
-                        color: Colors.grey.shade300,
-                        child: Icon(Icons.movie, color: Colors.grey),
-                      );
-                    },
-                  ),
+            child: JellyfinImage(
+              itemId: item.id,
+              imageTag: item.primaryImageTag,
+              fillWidth: 200,
+              fillHeight: 300,
+              fit: BoxFit.cover,
+              errorWidget: Container(
+                width: 100,
+                height: 150,
+                color: Colors.grey.shade300,
+                child: Icon(Icons.movie, color: Colors.grey),
+              ),
+            ),
           ),
         const SizedBox(width: 16),
         Expanded(
@@ -507,47 +476,26 @@ class _MediaItemDetailPageState extends State<MediaItemDetailPage> {
                 child: season.hasCoverImage
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: widget.imageProvider != null
-                            ? JellyfinImage(
-                                imageProvider: widget.imageProvider!,
-                                itemId: season.id,
-                                imageTag: season.primaryImageTag,
-                                fillWidth: 240,
-                                fillHeight: 360,
-                                fit: BoxFit.cover,
-                                errorWidget: Container(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                                  child: Center(
-                                    child: Text(
-                                      season.seasonNumberText,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Image.network(
-                                season.getCoverImageUrl()!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    child: Center(
-                                      child: Text(
-                                        season.seasonNumberText,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge,
-                                      ),
-                                    ),
-                                  );
-                                },
+                        child: JellyfinImage(
+                          itemId: season.id,
+                          imageTag: season.primaryImageTag,
+                          fillWidth: 240,
+                          fillHeight: 360,
+                          fit: BoxFit.cover,
+                          errorWidget: Container(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            child: Center(
+                              child: Text(
+                                season.seasonNumberText,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge,
                               ),
+                            ),
+                          ),
+                        ),
                       )
                     : Center(
                         child: Text(

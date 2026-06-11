@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import '../../image/jellyfin_image.dart';
-import '../../image/jellyfin_image_provider.dart';
 
 /// 横幅列表视图
 ///
 /// 大横幅图片布局，适合展示精选内容
 class BannerListView extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final List<MediaItem> items;
   final ValueChanged<MediaItem>? onTap;
   final bool shrinkWrap;
@@ -15,7 +13,6 @@ class BannerListView extends StatelessWidget {
 
   const BannerListView({
     super.key,
-    required this.imageProvider,
     required this.items,
     this.onTap,
     this.shrinkWrap = false,
@@ -32,7 +29,6 @@ class BannerListView extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = items[index];
         return _BannerListItem(
-          imageProvider: imageProvider,
           item: item,
           onTap: () => onTap?.call(item),
         );
@@ -42,12 +38,10 @@ class BannerListView extends StatelessWidget {
 }
 
 class _BannerListItem extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaItem item;
   final VoidCallback onTap;
 
   const _BannerListItem({
-    required this.imageProvider,
     required this.item,
     required this.onTap,
   });
@@ -66,7 +60,6 @@ class _BannerListItem extends StatelessWidget {
             AspectRatio(
               aspectRatio: 2.5,
               child: JellyfinImage(
-                imageProvider: imageProvider,
                 itemId: item.id,
                 imageTag: item.primaryImageTag,
                 fillWidth: 800,

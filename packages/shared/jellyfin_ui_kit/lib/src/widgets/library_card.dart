@@ -2,17 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 
 import '../image/jellyfin_image.dart';
-import '../image/jellyfin_image_provider.dart';
-
 /// Compact media-library card with responsive width.
 class LibraryCard extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaLibrary library;
   final VoidCallback onTap;
 
   const LibraryCard({
     super.key,
-    required this.imageProvider,
     required this.library,
     required this.onTap,
   });
@@ -44,7 +40,7 @@ class LibraryCard extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             child: Row(
               children: [
-                _LibraryCover(imageProvider: imageProvider, library: library),
+                _LibraryCover(library: library),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -87,11 +83,9 @@ class LibraryCard extends StatelessWidget {
 }
 
 class _LibraryCover extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaLibrary library;
 
   const _LibraryCover({
-    required this.imageProvider,
     required this.library,
   });
 
@@ -107,7 +101,6 @@ class _LibraryCover extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: library.hasCoverImage
           ? JellyfinImage(
-              imageProvider: imageProvider,
               itemId: library.id,
               imageTag: library.primaryImageTag,
               fillWidth: 96,

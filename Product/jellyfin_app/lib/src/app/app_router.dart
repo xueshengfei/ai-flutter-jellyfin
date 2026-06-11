@@ -121,14 +121,9 @@ GoRouter createAppRouter({
 
   // ──────────── 服务注册表 ────────────
   Map<Type, Object> buildServices(AppSession? session) {
-    final imageProvider = JellyfinAppImageProvider(
-      serverUrl: session?.serverUrl ?? '',
-      accessToken: session?.accessToken ?? '',
-    );
     return <Type, Object>{
       AppNavigator: goRouterNavigator,
       JellyfinGateway: effectiveGateway,
-      JellyfinImageProvider: imageProvider,
       if (personalRepository != null)
         PersonalRepository: personalRepository,
       if (effectiveAudioPort != null)
@@ -137,6 +132,21 @@ GoRouter createAppRouter({
       PersonalModuleConfig: const PersonalModuleConfig.full(),
       LogoutAction: LogoutAction(() => sessionController.clearSession()),
     };
+  }
+
+  /// 构建 ServiceRegistry + JellyfinImageProviderScope 组合
+  Widget wrapWithProviders(AppSession? session, {required Widget child}) {
+    final imageProvider = JellyfinAppImageProvider(
+      serverUrl: session?.serverUrl ?? '',
+      accessToken: session?.accessToken ?? '',
+    );
+    return JellyfinImageProviderScope(
+      imageProvider: imageProvider,
+      child: ServiceRegistry(
+        services: buildServices(session),
+        child: child,
+      ),
+    );
   }
 
   // ──────────── Feature 模块路由 ────────────
@@ -153,13 +163,12 @@ GoRouter createAppRouter({
         if (session == null) {
           return const Scaffold(body: Center(child: Text('登录态不存在')));
         }
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return PersonalPage(
               repository: personalRepository,
               config: const PersonalModuleConfig.full(),
-              imageProvider: JellyfinAppImageProvider.fromSession(session),
               onLogout: () => sessionController.clearSession(),
             );
           }),
@@ -177,12 +186,11 @@ GoRouter createAppRouter({
         if (session == null) {
           return const Scaffold(body: Center(child: Text('登录态不存在')));
         }
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return PersonalSettingsPage(
               repository: personalRepository,
-              imageProvider: JellyfinAppImageProvider.fromSession(session),
               onLogout: () => sessionController.clearSession(),
             );
           }),
@@ -200,13 +208,12 @@ GoRouter createAppRouter({
         if (session == null) {
           return const Scaffold(body: Center(child: Text('登录态不存在')));
         }
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return PersonalStatsPage(
               repository: personalRepository,
               config: const PersonalModuleConfig.full(),
-              imageProvider: JellyfinAppImageProvider.fromSession(session),
             );
           }),
         );
@@ -220,22 +227,13 @@ GoRouter createAppRouter({
         final libraryId = state.pathParameters['libraryId']!;
         final libraryName = state.uri.queryParameters['name'] ?? '媒体库';
         final session = sessionController.currentSession;
-        final imageProvider = JellyfinAppImageProvider(
-          serverUrl: session?.serverUrl ?? '',
-          accessToken: session?.accessToken ?? '',
-        );
-        return ServiceRegistry(
-          services: {
-            AppNavigator: goRouterNavigator,
-            JellyfinGateway: effectiveGateway,
-            JellyfinImageProvider: imageProvider,
-          },
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return _MoviesRouteContent(
               gateway: effectiveGateway,
               libraryId: libraryId,
               libraryName: libraryName,
-              imageProvider: imageProvider,
             );
           }),
         );
@@ -249,16 +247,8 @@ GoRouter createAppRouter({
         final libraryId = state.pathParameters['libraryId']!;
         final libraryName = state.uri.queryParameters['name'] ?? '剧集';
         final session = sessionController.currentSession;
-        final imageProvider = JellyfinAppImageProvider(
-          serverUrl: session?.serverUrl ?? '',
-          accessToken: session?.accessToken ?? '',
-        );
-        return ServiceRegistry(
-          services: {
-            AppNavigator: goRouterNavigator,
-            JellyfinGateway: effectiveGateway,
-            JellyfinImageProvider: imageProvider,
-          },
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return _SeriesListRouteContent(
               gateway: effectiveGateway,
@@ -268,7 +258,6 @@ GoRouter createAppRouter({
                 type: models.MediaLibraryType.tvshows,
                 serverUrl: session?.serverUrl ?? '',
               ),
-              imageProvider: imageProvider,
             );
           }),
         );
@@ -282,16 +271,12 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final itemId = state.pathParameters['itemId']!;
         final session = sessionController.currentSession;
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return _MovieDetailRouteContent(
               gateway: effectiveGateway,
               itemId: itemId,
-              imageProvider: JellyfinAppImageProvider(
-                serverUrl: session?.serverUrl ?? '',
-                accessToken: session?.accessToken ?? '',
-              ),
               onStartDownload: startMediaDownload,
             );
           }),
@@ -306,16 +291,12 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final itemId = state.pathParameters['itemId']!;
         final session = sessionController.currentSession;
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return _MediaDetailRouteContent(
               gateway: effectiveGateway,
               itemId: itemId,
-              imageProvider: JellyfinAppImageProvider(
-                serverUrl: session?.serverUrl ?? '',
-                accessToken: session?.accessToken ?? '',
-              ),
               onStartDownload: startMediaDownload,
             );
           }),
@@ -330,16 +311,12 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final seriesId = state.pathParameters['seriesId']!;
         final session = sessionController.currentSession;
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return _SeasonsRouteContent(
               gateway: effectiveGateway,
               seriesId: seriesId,
-              imageProvider: JellyfinAppImageProvider(
-                serverUrl: session?.serverUrl ?? '',
-                accessToken: session?.accessToken ?? '',
-              ),
             );
           }),
         );
@@ -354,17 +331,13 @@ GoRouter createAppRouter({
         final seriesId = state.pathParameters['seriesId']!;
         final seasonId = state.pathParameters['seasonId']!;
         final session = sessionController.currentSession;
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return _EpisodesRouteContent(
               gateway: effectiveGateway,
               seriesId: seriesId,
               seasonId: seasonId,
-              imageProvider: JellyfinAppImageProvider(
-                serverUrl: session?.serverUrl ?? '',
-                accessToken: session?.accessToken ?? '',
-              ),
             );
           }),
         );
@@ -378,10 +351,8 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final itemId = state.pathParameters['itemId']!;
         final serverUrl = sessionController.currentSession?.serverUrl;
-        return ServiceRegistry(
-          services: buildServices(
-            sessionController.currentSession,
-          ),
+        return wrapWithProviders(
+          sessionController.currentSession,
           child: Builder(builder: (context) {
             return _PlaybackRouteContent(
               gateway: effectiveGateway,
@@ -403,20 +374,12 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final libraryId = state.pathParameters['libraryId']!;
         final libraryName = state.uri.queryParameters['name'] ?? '音乐';
-        return ServiceRegistry(
-          services: buildServices(
-            sessionController.currentSession,
-          ),
+        return wrapWithProviders(
+          sessionController.currentSession,
           child: Builder(builder: (context) {
             return _MusicLibraryRouteContent(
               gateway: effectiveGateway,
               audioPlaybackPort: effectiveAudioPort,
-              imageProvider: JellyfinAppImageProvider(
-                serverUrl:
-                    sessionController.currentSession?.serverUrl ?? '',
-                accessToken:
-                    sessionController.currentSession?.accessToken ?? '',
-              ),
               library: models.MediaLibrary(
                 id: libraryId,
                 name: libraryName,
@@ -436,10 +399,8 @@ GoRouter createAppRouter({
       name: JellyfinRouteNames.musicAlbum,
       builder: (context, state) {
         final albumId = state.pathParameters['albumId']!;
-        return ServiceRegistry(
-          services: buildServices(
-            sessionController.currentSession,
-          ),
+        return wrapWithProviders(
+          sessionController.currentSession,
           child: Builder(builder: (context) {
             return _AlbumDetailRouteContent(
               gateway: effectiveGateway,
@@ -457,10 +418,8 @@ GoRouter createAppRouter({
       name: JellyfinRouteNames.musicArtist,
       builder: (context, state) {
         final artistId = state.pathParameters['artistId']!;
-        return ServiceRegistry(
-          services: buildServices(
-            sessionController.currentSession,
-          ),
+        return wrapWithProviders(
+          sessionController.currentSession,
           child: Builder(builder: (context) {
             return _ArtistDetailRouteContent(
               gateway: effectiveGateway,
@@ -478,10 +437,8 @@ GoRouter createAppRouter({
       name: JellyfinRouteNames.musicSearch,
       builder: (context, state) {
         final libraryId = state.pathParameters['libraryId']!;
-        return ServiceRegistry(
-          services: buildServices(
-            sessionController.currentSession,
-          ),
+        return wrapWithProviders(
+          sessionController.currentSession,
           child: Builder(builder: (context) {
             return _MusicSearchRouteContent(
               gateway: effectiveGateway,
@@ -524,10 +481,8 @@ GoRouter createAppRouter({
         if (effectiveAudioPort == null) {
           return const Scaffold(body: Center(child: Text('播放器未初始化')));
         }
-        return ServiceRegistry(
-          services: buildServices(
-            sessionController.currentSession,
-          ),
+        return wrapWithProviders(
+          sessionController.currentSession,
           child: Builder(builder: (context) {
             return MusicPlayerPage(
               playbackPort: effectiveAudioPort,
@@ -559,15 +514,8 @@ GoRouter createAppRouter({
       path: '/downloads',
       name: JellyfinRouteNames.downloads,
       builder: (context, state) {
-        final session = sessionController.currentSession;
         return DownloadsPage(
           controller: downloadController,
-          imageProvider: session != null
-              ? JellyfinAppImageProvider(
-                  serverUrl: session.serverUrl,
-                  accessToken: session.accessToken,
-                )
-              : null,
           onOpenCompletedTask: (context, task) {
             final mediaItemId = task.mediaItemId;
             if (mediaItemId == null || mediaItemId.isEmpty) {
@@ -592,17 +540,13 @@ GoRouter createAppRouter({
         if (serverUrl == null || serverUrl.isEmpty) {
           return const Scaffold(body: Center(child: Text('未登录')));
         }
-        return ServiceRegistry(
-          services: buildServices(session),
+        return wrapWithProviders(
+          session,
           child: Builder(builder: (context) {
             return _AiRecommendRouteContent(
               gateway: effectiveGateway,
               aiServiceUrl: deriveServiceUrl(serverUrl, 5005),
               audioPlaybackPort: effectiveAudioPort,
-              imageProvider: JellyfinAppImageProvider(
-                serverUrl: serverUrl,
-                accessToken: session?.accessToken ?? '',
-              ),
             );
           }),
         );
@@ -642,10 +586,6 @@ GoRouter createAppRouter({
         return MediaLibrariesPage(
           gateway: effectiveGateway,
           username: session?.username ?? '',
-          imageProvider: JellyfinAppImageProvider(
-            serverUrl: session?.serverUrl ?? '',
-            accessToken: session?.accessToken ?? '',
-          ),
           onLibraryTap: (library) {
             switch (library.type) {
               case models.MediaLibraryType.movies:
@@ -696,13 +636,11 @@ class _MoviesRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final String libraryId;
   final String libraryName;
-  final JellyfinAppImageProvider imageProvider;
 
   const _MoviesRouteContent({
     required this.gateway,
     required this.libraryId,
     required this.libraryName,
-    required this.imageProvider,
   });
 
   @override
@@ -742,7 +680,6 @@ class _MoviesRouteContentState extends State<_MoviesRouteContent> {
       ],
       listBuilder: ({required items, required onTap}) {
         return MediaListBuilder(
-          imageProvider: widget.imageProvider,
           items: items,
           config: _viewModeConfig,
           onTap: onTap,
@@ -756,12 +693,10 @@ class _MoviesRouteContentState extends State<_MoviesRouteContent> {
 class _SeriesListRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final models.MediaLibrary library;
-  final JellyfinAppImageProvider imageProvider;
 
   const _SeriesListRouteContent({
     required this.gateway,
     required this.library,
-    required this.imageProvider,
   });
 
   @override
@@ -801,7 +736,6 @@ class _SeriesListRouteContentState extends State<_SeriesListRouteContent> {
       ],
       listBuilder: (items, onTap) {
         return MediaListBuilder(
-          imageProvider: widget.imageProvider,
           items: items,
           config: _viewModeConfig,
           onTap: onTap,
@@ -815,14 +749,12 @@ class _SeriesListRouteContentState extends State<_SeriesListRouteContent> {
 class _MovieDetailRouteContent extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
-  final JellyfinAppImageProvider? imageProvider;
   final void Function(BuildContext context, models.MediaItem movie)?
       onStartDownload;
 
   const _MovieDetailRouteContent({
     required this.gateway,
     required this.itemId,
-    this.imageProvider,
     this.onStartDownload,
   });
 
@@ -842,7 +774,6 @@ class _MovieDetailRouteContent extends StatelessWidget {
         return MovieDetailPage(
           movie: snapshot.data!,
           fetchDetail: gateway.getMediaItemDetail,
-          imageProvider: imageProvider,
           onStartDownload: onStartDownload,
         );
       },
@@ -854,14 +785,12 @@ class _MovieDetailRouteContent extends StatelessWidget {
 class _MediaDetailRouteContent extends StatelessWidget {
   final JellyfinGateway gateway;
   final String itemId;
-  final JellyfinAppImageProvider? imageProvider;
   final void Function(BuildContext context, models.MediaItem item)?
       onStartDownload;
 
   const _MediaDetailRouteContent({
     required this.gateway,
     required this.itemId,
-    this.imageProvider,
     this.onStartDownload,
   });
 
@@ -882,7 +811,6 @@ class _MediaDetailRouteContent extends StatelessWidget {
         return MediaItemDetailPage(
           item: item,
           fetchDetail: gateway.getMediaItemDetail,
-          imageProvider: imageProvider,
           fetchSeasons: item.type.toLowerCase() == 'series'
               ? gateway.getSeasons
               : null,
@@ -897,12 +825,10 @@ class _MediaDetailRouteContent extends StatelessWidget {
 class _SeasonsRouteContent extends StatelessWidget {
   final JellyfinGateway gateway;
   final String seriesId;
-  final JellyfinAppImageProvider? imageProvider;
 
   const _SeasonsRouteContent({
     required this.gateway,
     required this.seriesId,
-    this.imageProvider,
   });
 
   @override
@@ -921,7 +847,6 @@ class _SeasonsRouteContent extends StatelessWidget {
         return SeasonsPage(
           series: snapshot.data!,
           fetchSeasons: gateway.getSeasons,
-          imageProvider: imageProvider,
         );
       },
     );
@@ -933,13 +858,11 @@ class _EpisodesRouteContent extends StatelessWidget {
   final JellyfinGateway gateway;
   final String seriesId;
   final String seasonId;
-  final JellyfinAppImageProvider? imageProvider;
 
   const _EpisodesRouteContent({
     required this.gateway,
     required this.seriesId,
     required this.seasonId,
-    this.imageProvider,
   });
 
   @override
@@ -986,7 +909,6 @@ class _EpisodesRouteContent extends StatelessWidget {
               series: series,
               season: season,
               fetchEpisodes: gateway.getEpisodes,
-              imageProvider: imageProvider,
             );
           },
         );
@@ -1087,13 +1009,11 @@ class _PlaybackRouteContent extends StatelessWidget {
 class _MusicLibraryRouteContent extends StatelessWidget {
   final JellyfinGateway gateway;
   final music.AudioPlaybackPort? audioPlaybackPort;
-  final JellyfinImageProvider? imageProvider;
   final models.MediaLibrary library;
 
   const _MusicLibraryRouteContent({
     required this.gateway,
     this.audioPlaybackPort,
-    required this.imageProvider,
     required this.library,
   });
 
@@ -1122,7 +1042,6 @@ class _MusicLibraryRouteContent extends StatelessWidget {
         startIndex: startIndex,
         limit: limit,
       ),
-      imageProvider: imageProvider,
     );
 
     if (port == null) return page;
@@ -1264,13 +1183,11 @@ class _MusicSearchRouteContent extends StatelessWidget {
 class _AiRecommendRouteContent extends StatelessWidget {
   final JellyfinGateway gateway;
   final String aiServiceUrl;
-  final JellyfinImageProvider imageProvider;
   final music.AudioPlaybackPort? audioPlaybackPort;
 
   const _AiRecommendRouteContent({
     required this.gateway,
     required this.aiServiceUrl,
-    required this.imageProvider,
     this.audioPlaybackPort,
   });
 
@@ -1278,7 +1195,6 @@ class _AiRecommendRouteContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return AiRecommendPage(
       aiServiceUrl: aiServiceUrl,
-      imageProvider: imageProvider,
       fetchMediaItemDetail: gateway.getMediaItemDetail,
     );
   }

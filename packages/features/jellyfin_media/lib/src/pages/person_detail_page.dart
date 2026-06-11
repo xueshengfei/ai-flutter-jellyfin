@@ -29,9 +29,6 @@ class PersonDetailPage extends StatefulWidget {
   /// 获取作品列表回调
   final PersonCreditsFetcher fetchPersonCredits;
 
-  /// 图片加载器
-  final JellyfinImageProvider imageProvider;
-
   /// 跳转到媒体详情页
   final void Function(BuildContext context, MediaItem item)? onNavigateToMediaItem;
 
@@ -42,7 +39,6 @@ class PersonDetailPage extends StatefulWidget {
     required this.personType,
     required this.fetchPersonDetail,
     required this.fetchPersonCredits,
-    required this.imageProvider,
     this.onNavigateToMediaItem,
   });
 
@@ -205,7 +201,6 @@ class _PersonDetailPageState extends State<PersonDetailPage> {
                       final item = items[index];
                       return MediaItemCard(
                         item: item,
-                        imageProvider: widget.imageProvider,
                         onTap: () {
                           widget.onNavigateToMediaItem?.call(context, item);
                         },

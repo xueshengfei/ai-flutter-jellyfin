@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_series/src/models/series_models.dart';
 import 'package:jellyfin_series/src/widgets/episode_card.dart';
 import 'package:jellyfin_series/src/widgets/episode_detail_sheet.dart';
@@ -30,9 +29,6 @@ class EpisodesPage extends StatefulWidget {
   /// 额外的 AppBar actions（可选，用于注入 ViewModeSelector 等）
   final List<Widget>? appBarActions;
 
-  /// 图片加载接口（可选，传入时使用 JellyfinImage 加载认证图片）
-  final JellyfinImageProvider? imageProvider;
-
   const EpisodesPage({
     super.key,
     required this.series,
@@ -40,7 +36,6 @@ class EpisodesPage extends StatefulWidget {
     required this.fetchEpisodes,
     this.listBuilder,
     this.appBarActions,
-    this.imageProvider,
   });
 
   @override
@@ -173,7 +168,6 @@ class _EpisodesPageState extends State<EpisodesPage> {
         final episode = result.episodes[index];
         return EpisodeCard(
           episode: episode,
-          imageProvider: widget.imageProvider,
           onTap: () => _showEpisodeDetail(episode),
           onPlay: () => _playEpisode(context, episode),
         );
@@ -201,7 +195,6 @@ class _EpisodesPageState extends State<EpisodesPage> {
         builder: (context, scrollController) => EpisodeDetailSheet(
           episode: episode,
           scrollController: scrollController,
-          imageProvider: widget.imageProvider,
         ),
       ),
     );

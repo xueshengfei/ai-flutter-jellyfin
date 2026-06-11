@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import '../image/jellyfin_image.dart';
-import '../image/jellyfin_image_provider.dart';
-
 /// 带操作按钮的媒体项卡片组件
 ///
 /// 显示媒体项封面、标题、年份等信息，并支持收藏按钮、播放进度、已看标记
 class MediaItemCardWithActions extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaItem item;
   final VoidCallback onTap;
 
@@ -16,7 +13,6 @@ class MediaItemCardWithActions extends StatelessWidget {
 
   const MediaItemCardWithActions({
     super.key,
-    required this.imageProvider,
     required this.item,
     required this.onTap,
     this.onFavoriteToggle,
@@ -185,7 +181,6 @@ class MediaItemCardWithActions extends StatelessWidget {
   Widget _buildCoverImage(BuildContext context) {
     if (item.hasCoverImage) {
       return JellyfinImage(
-        imageProvider: imageProvider,
         itemId: item.id,
         imageTag: item.primaryImageTag,
         fillWidth: 200,

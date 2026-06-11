@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
@@ -10,7 +8,6 @@ import '../../data/jellyfin_gateway.dart';
 class MediaLibrariesPage extends StatefulWidget {
   final JellyfinGateway gateway;
   final String username;
-  final JellyfinImageProvider? imageProvider;
   final void Function(models.MediaLibrary library) onLibraryTap;
   final void Function(models.MediaItem item) onContinueWatchingTap;
   final VoidCallback onLogout;
@@ -21,7 +18,6 @@ class MediaLibrariesPage extends StatefulWidget {
     super.key,
     required this.gateway,
     required this.username,
-    this.imageProvider,
     required this.onLibraryTap,
     required this.onContinueWatchingTap,
     required this.onLogout,
@@ -142,8 +138,6 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
       );
     }
 
-    final imgProvider = widget.imageProvider;
-
     return RefreshIndicator(
       onRefresh: _loadAll,
       child: ListView(
@@ -163,7 +157,6 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
             children: _libraries
                 .map(
                   (lib) => LibraryCard(
-                    imageProvider: imgProvider ?? _StubImageProvider(),
                     library: lib,
                     onTap: () => widget.onLibraryTap(lib),
                   ),
@@ -187,7 +180,6 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
                 itemCount: _continueWatching.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 14),
                 itemBuilder: (context, index) => ContinueWatchingCard(
-                  imageProvider: imgProvider ?? _StubImageProvider(),
                   item: _continueWatching[index],
                   onTap: () =>
                       widget.onContinueWatchingTap(_continueWatching[index]),
@@ -198,34 +190,5 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
         ],
       ),
     );
-  }
-}
-
-/// imageProvider 为 null 时的 fallback（只显示 placeholder）
-class _StubImageProvider implements JellyfinImageProvider {
-  @override
-  String buildImageUrl({
-    required String itemId,
-    JellyfinImageType imageType = JellyfinImageType.primary,
-    String? imageTag,
-    int? fillWidth,
-    int? fillHeight,
-  }) {
-    return '';
-  }
-
-  @override
-  Map<String, String>? get authHeaders => null;
-
-  @override
-  Future<Uint8List> getImage({
-    required String itemId,
-    JellyfinImageType imageType = JellyfinImageType.primary,
-    String? tag,
-    int? fillWidth,
-    int? fillHeight,
-    int? quality,
-  }) async {
-    throw UnsupportedError('No image provider configured');
   }
 }

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
 import '../../image/jellyfin_image.dart';
-import '../../image/jellyfin_image_provider.dart';
 
 /// 卡片网格视图
 ///
 /// 卡片式布局，包含更多元数据和操作按钮
 class CardGridView extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final List<MediaItem> items;
   final int crossAxisCount;
   final ValueChanged<MediaItem>? onTap;
@@ -16,7 +14,6 @@ class CardGridView extends StatelessWidget {
 
   const CardGridView({
     super.key,
-    required this.imageProvider,
     required this.items,
     this.crossAxisCount = 3,
     this.onTap,
@@ -40,7 +37,6 @@ class CardGridView extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = items[index];
         return _MediaItemCard(
-          imageProvider: imageProvider,
           item: item,
           onTap: () => onTap?.call(item),
         );
@@ -50,12 +46,10 @@ class CardGridView extends StatelessWidget {
 }
 
 class _MediaItemCard extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaItem item;
   final VoidCallback onTap;
 
   const _MediaItemCard({
-    required this.imageProvider,
     required this.item,
     required this.onTap,
   });
@@ -72,7 +66,6 @@ class _MediaItemCard extends StatelessWidget {
             // 海报图片
             Expanded(
               child: JellyfinImage(
-                imageProvider: imageProvider,
                 itemId: item.id,
                 imageTag: item.primaryImageTag,
                 fillWidth: 200,

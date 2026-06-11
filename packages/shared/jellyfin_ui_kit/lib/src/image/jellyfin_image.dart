@@ -3,14 +3,21 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'jellyfin_image_provider.dart';
+import 'jellyfin_image_provider_scope.dart';
 
 /// Jellyfin 认证图片 Widget
 ///
+/// 优先从 [JellyfinImageProviderScope] 获取图片加载能力，
+/// 也支持通过构造函数 [imageProvider] 参数直接注入（向后兼容）。
+///
 /// 优先使用 CachedNetworkImage（磁盘+内存缓存），
 /// 如果 URL 为空则降级到 http 请求 + Image.memory。
-/// 不直接依赖任何具体 service 或 client 实现。
 class JellyfinImage extends StatefulWidget {
-  final JellyfinImageProvider imageProvider;
+  /// 图片加载实现（可选）
+  ///
+  /// 为 null 时自动从 [JellyfinImageProviderScope] 获取。
+  /// 两处都没有时显示占位图。
+  final JellyfinImageProvider? imageProvider;
   final String itemId;
   final JellyfinImageType imageType;
   final String? imageTag;
@@ -22,7 +29,7 @@ class JellyfinImage extends StatefulWidget {
 
   const JellyfinImage({
     super.key,
-    required this.imageProvider,
+    this.imageProvider,
     required this.itemId,
     this.imageType = JellyfinImageType.primary,
     this.imageTag,
@@ -44,6 +51,12 @@ class _JellyfinImageState extends State<JellyfinImage> {
   bool _isLoading = true;
   bool _hasError = false;
 
+  /// 获取有效的 imageProvider（构造函数 > Scope）
+  JellyfinImageProvider? _resolveProvider(BuildContext context) {
+    return widget.imageProvider ??
+        JellyfinImageProviderScope.maybeOf(context);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -64,7 +77,17 @@ class _JellyfinImageState extends State<JellyfinImage> {
   }
 
   void _initImage() {
-    final url = widget.imageProvider.buildImageUrl(
+    final provider = _resolveProvider(context);
+    if (provider == null) {
+      setState(() {
+        _useFallback = false;
+        _isLoading = false;
+        _hasError = true;
+      });
+      return;
+    }
+
+    final url = provider.buildImageUrl(
       itemId: widget.itemId,
       imageType: widget.imageType,
       imageTag: widget.imageTag,
@@ -79,7 +102,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
         _isLoading = true;
         _hasError = false;
       });
-      _loadFallback();
+      _loadFallback(provider);
     } else {
       setState(() {
         _useFallback = false;
@@ -87,10 +110,10 @@ class _JellyfinImageState extends State<JellyfinImage> {
     }
   }
 
-  Future<void> _loadFallback() async {
+  Future<void> _loadFallback(JellyfinImageProvider provider) async {
     if (!mounted) return;
     try {
-      final imageData = await widget.imageProvider.getImage(
+      final imageData = await provider.getImage(
         itemId: widget.itemId,
         imageType: widget.imageType,
         tag: widget.imageTag,
@@ -116,14 +139,18 @@ class _JellyfinImageState extends State<JellyfinImage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_useFallback) {
-      return _buildFallback();
+    final provider = _resolveProvider(context);
+    if (provider == null) {
+      return widget.errorWidget ?? _defaultError();
     }
-    return _buildCachedNetworkImage();
+    if (_useFallback) {
+      return _buildFallback(provider);
+    }
+    return _buildCachedNetworkImage(provider);
   }
 
-  Widget _buildCachedNetworkImage() {
-    final url = widget.imageProvider.buildImageUrl(
+  Widget _buildCachedNetworkImage(JellyfinImageProvider provider) {
+    final url = provider.buildImageUrl(
       itemId: widget.itemId,
       imageType: widget.imageType,
       imageTag: widget.imageTag,
@@ -131,7 +158,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
       fillHeight: widget.fillHeight,
     );
 
-    final headers = widget.imageProvider.authHeaders;
+    final headers = provider.authHeaders;
 
     return CachedNetworkImage(
       imageUrl: url,
@@ -144,7 +171,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
     );
   }
 
-  Widget _buildFallback() {
+  Widget _buildFallback(JellyfinImageProvider provider) {
     if (_isLoading) {
       return widget.placeholder ?? _defaultPlaceholder();
     }

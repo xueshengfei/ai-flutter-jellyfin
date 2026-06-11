@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../contracts/personal_repository.dart';
 import '../models/personal_media_query.dart';
@@ -15,13 +14,11 @@ import '../widgets/stats_summary_card.dart';
 final class PersonalStatsPage extends StatefulWidget {
   final PersonalRepository repository;
   final PersonalModuleConfig config;
-  final JellyfinImageProvider imageProvider;
 
   const PersonalStatsPage({
     super.key,
     required this.repository,
     required this.config,
-    required this.imageProvider,
   });
 
   @override
@@ -116,7 +113,6 @@ class _PersonalStatsPageState extends State<PersonalStatsPage> {
                 // 最近观看
                 _RecentWatchSection(
                   future: _recentFuture,
-                  imageProvider: widget.imageProvider,
                 ),
               ],
             ),
@@ -171,11 +167,9 @@ class _BreakdownRow extends StatelessWidget {
 /// 最近观看区域
 class _RecentWatchSection extends StatelessWidget {
   final Future<models.MediaItemListResult> future;
-  final JellyfinImageProvider imageProvider;
 
   const _RecentWatchSection({
     required this.future,
-    required this.imageProvider,
   });
 
   @override
@@ -222,7 +216,6 @@ class _RecentWatchSection extends StatelessWidget {
                     width: 176,
                     height: 224,
                     child: PersonalMediaCard(
-                      imageProvider: imageProvider,
                       item: items[index],
                     ),
                   );

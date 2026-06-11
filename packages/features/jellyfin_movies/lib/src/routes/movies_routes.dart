@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../models/movie_filter_models.dart';
 import '../pages/movie_detail_page.dart';
@@ -59,8 +58,6 @@ final class MoviesFeatureModule extends JellyfinFeatureModule {
         final fetchDetail =
             ServiceRegistry.get<MovieDetailFetcher>(context);
         final itemId = pathParameters['itemId'] ?? '';
-        final imageProvider =
-            ServiceRegistry.tryGet<JellyfinImageProvider>(context);
         // extra 可能包含完整的 MediaItem 或只有 id
         final movie = extra is MediaItem
             ? extra
@@ -73,7 +70,6 @@ final class MoviesFeatureModule extends JellyfinFeatureModule {
         return MovieDetailPage(
           movie: movie,
           fetchDetail: fetchDetail,
-          imageProvider: imageProvider,
         );
 
       default:

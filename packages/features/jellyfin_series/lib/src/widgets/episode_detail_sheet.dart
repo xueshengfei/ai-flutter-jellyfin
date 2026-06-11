@@ -6,13 +6,11 @@ import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 class EpisodeDetailSheet extends StatelessWidget {
   final Episode episode;
   final ScrollController scrollController;
-  final JellyfinImageProvider? imageProvider;
 
   const EpisodeDetailSheet({
     super.key,
     required this.episode,
     required this.scrollController,
-    this.imageProvider,
   });
 
   @override
@@ -124,40 +122,22 @@ class EpisodeDetailSheet extends StatelessWidget {
     );
   }
 
-  /// 构建缩略图：优先使用 JellyfinImage，否则回退到 Image.network
+  /// 构建缩略图：使用 JellyfinImage 自动从 context 解析 imageProvider
   Widget _buildThumbnailImage(BuildContext context) {
-    if (imageProvider != null) {
-      return SizedBox(
-        height: 200,
-        child: JellyfinImage(
-          imageProvider: imageProvider!,
-          itemId: episode.id,
-          imageTag: episode.primaryImageTag,
-          fit: BoxFit.cover,
-          errorWidget: Container(
-            height: 200,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: const Center(
-              child: Icon(Icons.error_outline, color: Colors.grey),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Image.network(
-      episode.getThumbnailImageUrl()!,
+    return SizedBox(
       height: 200,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
+      child: JellyfinImage(
+        itemId: episode.id,
+        imageTag: episode.primaryImageTag,
+        fit: BoxFit.cover,
+        errorWidget: Container(
           height: 200,
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Center(
             child: Icon(Icons.error_outline, color: Colors.grey),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

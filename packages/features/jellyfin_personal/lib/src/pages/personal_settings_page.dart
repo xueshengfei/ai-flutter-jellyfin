@@ -10,13 +10,11 @@ import '../contracts/personal_repository.dart';
 /// 导航通过 ServiceRegistry 获取 AppNavigator。
 final class PersonalSettingsPage extends StatelessWidget {
   final PersonalRepository repository;
-  final JellyfinImageProvider imageProvider;
   final VoidCallback? onLogout;
 
   const PersonalSettingsPage({
     super.key,
     required this.repository,
-    required this.imageProvider,
     this.onLogout,
   });
 
@@ -36,7 +34,7 @@ final class PersonalSettingsPage extends StatelessWidget {
           }
           return ListView(
             children: [
-              _ProfileCard(profile: profile, imageProvider: imageProvider),
+              _ProfileCard(profile: profile),
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.bar_chart_outlined),
@@ -81,16 +79,15 @@ final class PersonalSettingsPage extends StatelessWidget {
 /// 头像 + 用户名 + 服务器信息卡片
 class _ProfileCard extends StatelessWidget {
   final models.UserProfile profile;
-  final JellyfinImageProvider imageProvider;
 
   const _ProfileCard({
     required this.profile,
-    required this.imageProvider,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final imageProvider = JellyfinImageProviderScope.maybeOf(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
@@ -99,7 +96,8 @@ class _ProfileCard extends StatelessWidget {
           CircleAvatar(
             radius: 32,
             backgroundColor: colorScheme.primaryContainer,
-            foregroundImage: profile.primaryImageTag != null
+            foregroundImage: profile.primaryImageTag != null &&
+                    imageProvider != null
                 ? NetworkImage(
                     imageProvider.buildImageUrl(
                       itemId: profile.id,

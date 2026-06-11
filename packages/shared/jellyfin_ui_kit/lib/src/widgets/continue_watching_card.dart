@@ -9,13 +9,11 @@ class ContinueWatchingCard extends StatelessWidget {
   static const double width = 240;
   static const double height = 184;
 
-  final JellyfinImageProvider imageProvider;
   final MediaItem item;
   final VoidCallback? onTap;
 
   const ContinueWatchingCard({
     super.key,
-    required this.imageProvider,
     required this.item,
     this.onTap,
   });
@@ -33,7 +31,7 @@ class ContinueWatchingCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Thumbnail(imageProvider: imageProvider, item: item),
+              _Thumbnail(item: item),
               const SizedBox(height: 8),
               Text(
                 item.name,
@@ -69,11 +67,9 @@ class ContinueWatchingCard extends StatelessWidget {
 }
 
 class _Thumbnail extends StatelessWidget {
-  final JellyfinImageProvider imageProvider;
   final MediaItem item;
 
   const _Thumbnail({
-    required this.imageProvider,
     required this.item,
   });
 
@@ -105,7 +101,6 @@ class _Thumbnail extends StatelessWidget {
           children: [
             _hasAnyImage
                 ? JellyfinImage(
-                    imageProvider: imageProvider,
                     itemId: item.id,
                     imageType: _imageType,
                     imageTag: _imageTag,

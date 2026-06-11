@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../controllers/download_controller.dart';
 import '../models/download_task_view_model.dart';
@@ -11,11 +10,9 @@ class DownloadsPage extends StatefulWidget {
     super.key,
     required this.controller,
     this.onOpenCompletedTask,
-    this.imageProvider,
   });
 
   final DownloadController controller;
-  final JellyfinImageProvider? imageProvider;
 
   /// 已缓存卡片点击回调。
   ///
@@ -137,7 +134,6 @@ class _DownloadsPageState extends State<DownloadsPage> {
               for (final task in downloading)
                 DownloadTaskTile(
                   task: task,
-                  imageProvider: widget.imageProvider,
                   selectionMode: _selectionMode,
                   selected: _selectedTaskIds.contains(task.id),
                   onSelectedChanged: (selected) {
@@ -153,7 +149,6 @@ class _DownloadsPageState extends State<DownloadsPage> {
               for (final task in completed)
                 DownloadTaskTile(
                   task: task,
-                  imageProvider: widget.imageProvider,
                   selectionMode: _selectionMode,
                   selected: _selectedTaskIds.contains(task.id),
                   onSelectedChanged: (selected) {

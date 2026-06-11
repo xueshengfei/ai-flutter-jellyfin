@@ -9,7 +9,6 @@ import 'package:jellyfin_music/src/pages/music_player_page.dart';
 import 'package:jellyfin_music/src/pages/music_search_page.dart';
 import 'package:jellyfin_music/src/services/audio_playback_port.dart';
 import 'package:jellyfin_music/src/services/lyrics_port.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 /// 音乐业务 Feature 模块
 ///
@@ -100,7 +99,6 @@ final class MusicFeatureModule extends JellyfinFeatureModule {
     final fetchAlbums = ServiceRegistry.get<AlbumsFetcher>(context);
     final fetchArtists = ServiceRegistry.get<ArtistsFetcher>(context);
     final fetchSongs = ServiceRegistry.get<SongsFetcher>(context);
-    final imageProvider = ServiceRegistry.tryGet<JellyfinImageProvider>(context);
     final onPlayTracks = ServiceRegistry.tryGet<OnPlayTracks>(context);
     final onSearch = _extractBool(extra, 'hasSearch') == true;
     final onOpenPersonal = _extractBool(extra, 'hasPersonal') == true;
@@ -112,7 +110,6 @@ final class MusicFeatureModule extends JellyfinFeatureModule {
       fetchArtists: fetchArtists,
       fetchSongs: fetchSongs,
       onPlayTracks: onPlayTracks,
-      imageProvider: imageProvider,
       enableSearch: onSearch,
       enablePersonal: onOpenPersonal,
     );

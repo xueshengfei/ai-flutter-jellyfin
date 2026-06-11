@@ -22,15 +22,12 @@ import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 /// 4. card 事件只含 id+reason，客户端并发调 getMediaItemDetail 获取详情
 ///
 /// **业务解耦设计**：
-/// - 通过 [imageProvider] 加载图片，不直接依赖 JellyfinClient
+/// - 通过 JellyfinImage（自动从 JellyfinImageProviderScope 解析）加载图片，不直接依赖 JellyfinClient
 /// - 通过 [fetchMediaItemDetail] 获取详情，不直接依赖 MediaLibraryService
 /// - 通过 AppNavigator（ServiceRegistry 注入）进行页面跳转
 class AiRecommendPage extends StatefulWidget {
   /// AI 服务地址
   final String aiServiceUrl;
-
-  /// 图片加载适配器
-  final JellyfinImageProvider imageProvider;
 
   /// 获取媒体详情的回调
   final MediaItemDetailFetcher fetchMediaItemDetail;
@@ -38,7 +35,6 @@ class AiRecommendPage extends StatefulWidget {
   const AiRecommendPage({
     super.key,
     required this.aiServiceUrl,
-    required this.imageProvider,
     required this.fetchMediaItemDetail,
   });
 
@@ -635,7 +631,6 @@ class _AiRecommendPageState extends State<AiRecommendPage> {
                 flex: 3,
                 child: item != null
                     ? JellyfinImage(
-                        imageProvider: widget.imageProvider,
                         itemId: item.id,
                         imageTag: item.primaryImageTag,
                         fillWidth: 300,

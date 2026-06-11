@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:jellyfin_series/src/widgets/season_card.dart';
 
 /// 季列表页面（解耦版）
@@ -14,14 +13,10 @@ class SeasonsPage extends StatefulWidget {
   /// 获取季列表回调
   final SeasonsFetcher fetchSeasons;
 
-  /// 图片加载接口（可选，传入时使用 JellyfinImage 加载认证图片）
-  final JellyfinImageProvider? imageProvider;
-
   const SeasonsPage({
     super.key,
     required this.series,
     required this.fetchSeasons,
-    this.imageProvider,
   });
 
   @override
@@ -132,7 +127,6 @@ class _SeasonsPageState extends State<SeasonsPage> {
                       return SeasonCard(
                         season: season,
                         seriesName: widget.series.name,
-                        imageProvider: widget.imageProvider,
                         onTap: () {
                           // 通过 AppNavigator 导航到集列表页
                           ServiceRegistry.get<AppNavigator>(context)

@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_models/jellyfin_models.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../models/series_models.dart';
 import '../pages/seasons_page.dart';
@@ -46,9 +45,6 @@ final class SeriesFeatureModule extends JellyfinFeatureModule {
     Map<String, String> pathParameters = const {},
     Object? extra,
   }) {
-    final imageProvider =
-        ServiceRegistry.tryGet<JellyfinImageProvider>(context);
-
     return switch (routeName) {
       'series.library' => _buildSeriesLibraryPage(
           pathParameters: pathParameters,
@@ -58,13 +54,11 @@ final class SeriesFeatureModule extends JellyfinFeatureModule {
           buildContext: context,
           pathParameters: pathParameters,
           extra: extra,
-          imageProvider: imageProvider,
         ),
       JellyfinRouteNames.seriesEpisodes => _buildEpisodesPage(
           buildContext: context,
           pathParameters: pathParameters,
           extra: extra,
-          imageProvider: imageProvider,
         ),
       _ => throw ArgumentError(
           'SeriesFeatureModule: unknown route $routeName',
@@ -91,7 +85,6 @@ final class SeriesFeatureModule extends JellyfinFeatureModule {
     required BuildContext buildContext,
     required Map<String, String> pathParameters,
     Object? extra,
-    JellyfinImageProvider? imageProvider,
   }) {
     final fetchSeasons =
         ServiceRegistry.get<SeasonsFetcher>(buildContext);
@@ -112,7 +105,6 @@ final class SeriesFeatureModule extends JellyfinFeatureModule {
     return SeasonsPage(
       series: series,
       fetchSeasons: fetchSeasons,
-      imageProvider: imageProvider,
     );
   }
 
@@ -120,7 +112,6 @@ final class SeriesFeatureModule extends JellyfinFeatureModule {
     required BuildContext buildContext,
     required Map<String, String> pathParameters,
     Object? extra,
-    JellyfinImageProvider? imageProvider,
   }) {
     final fetchEpisodes =
         ServiceRegistry.get<EpisodesFetcher>(buildContext);
@@ -168,7 +159,6 @@ final class SeriesFeatureModule extends JellyfinFeatureModule {
       series: series,
       season: season,
       fetchEpisodes: fetchEpisodes,
-      imageProvider: imageProvider,
     );
   }
 }

@@ -7,14 +7,12 @@ class SeasonCard extends StatelessWidget {
   final Season season;
   final String seriesName;
   final VoidCallback onTap;
-  final JellyfinImageProvider? imageProvider;
 
   const SeasonCard({
     super.key,
     required this.season,
     required this.seriesName,
     required this.onTap,
-    this.imageProvider,
   });
 
   @override
@@ -111,43 +109,18 @@ class SeasonCard extends StatelessWidget {
     );
   }
 
-  /// 构建封面图片：优先使用 JellyfinImage，否则回退到 Image.network
+  /// 构建封面图片：使用 JellyfinImage 自动从 context 解析 imageProvider
   Widget _buildCoverImage(BuildContext context) {
-    if (imageProvider != null) {
-      return JellyfinImage(
-        imageProvider: imageProvider!,
-        itemId: season.id,
-        imageTag: season.primaryImageTag,
-        fit: BoxFit.cover,
-        errorWidget: Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: Icon(Icons.error_outline, color: Colors.grey),
-          ),
-        ),
-      );
-    }
-
-    return Image.network(
-      season.getCoverImageUrl()!,
+    return JellyfinImage(
+      itemId: season.id,
+      imageTag: season.primaryImageTag,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: Icon(Icons.error_outline, color: Colors.grey),
-          ),
-        );
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
-      },
+      errorWidget: Container(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: const Center(
+          child: Icon(Icons.error_outline, color: Colors.grey),
+        ),
+      ),
     );
   }
 }

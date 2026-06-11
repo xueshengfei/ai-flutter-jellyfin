@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
-import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 
 import '../contracts/personal_repository.dart';
 import '../models/personal_module_config.dart';
@@ -67,7 +66,6 @@ final class PersonalFeatureModule extends JellyfinFeatureModule {
     Object? extra,
   }) {
     final repository = ServiceRegistry.get<PersonalRepository>(context);
-    final imageProvider = ServiceRegistry.get<JellyfinImageProvider>(context);
     final config = ServiceRegistry.tryGet<PersonalModuleConfig>(context) ??
         const PersonalModuleConfig.full();
     final logoutAction = ServiceRegistry.tryGet<LogoutAction>(context);
@@ -76,18 +74,15 @@ final class PersonalFeatureModule extends JellyfinFeatureModule {
       JellyfinRouteNames.profile => PersonalPage(
           repository: repository,
           config: config,
-          imageProvider: imageProvider,
           onLogout: logoutAction?.call,
         ),
       JellyfinRouteNames.profileSettings => PersonalSettingsPage(
           repository: repository,
-          imageProvider: imageProvider,
           onLogout: logoutAction?.call,
         ),
       JellyfinRouteNames.profileStats => PersonalStatsPage(
           repository: repository,
           config: config,
-          imageProvider: imageProvider,
         ),
       _ => throw ArgumentError(
           'PersonalFeatureModule: unknown route $routeName',

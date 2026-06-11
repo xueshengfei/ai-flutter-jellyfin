@@ -103,7 +103,6 @@ class _HomePageState extends State<_HomePage> {
                       },
                       child: AiRecommendPage(
                         aiServiceUrl: aiUrl,
-                        imageProvider: _StubImageProvider(),
                         fetchMediaItemDetail: (id) => _stubDetail(id, jfUrl),
                       ),
                     ),
