@@ -5,6 +5,7 @@ import 'package:jellyfin_models/jellyfin_models.dart';
 import '../models/playback_models.dart';
 import '../models/watch_assist_models.dart';
 import '../pages/video_player_page.dart';
+import '../viewmodels/video_player_viewmodel.dart';
 
 /// 视频播放 Feature 模块
 ///
@@ -55,10 +56,15 @@ final class PlaybackFeatureModule extends JellyfinFeatureModule {
     final onStartDownload =
         ServiceRegistry.tryGet<StartDownloadAction>(context);
 
+    // 创建 ViewModel
+    final viewModel = VideoPlayerViewModel(
+      item: item,
+      playback: playback,
+    );
+
     return switch (routeName) {
       JellyfinRouteNames.playbackVideo => VideoPlayerPage(
-          item: item,
-          playback: playback,
+          viewModel: viewModel,
           fetchWatchAssist: fetchWatchAssist,
           onStartDownload: onStartDownload?.call,
         ),

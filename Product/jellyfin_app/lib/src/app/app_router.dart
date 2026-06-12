@@ -23,7 +23,6 @@ import '../data/watch_assist_client.dart';
 import '../features/home/media_libraries_page.dart';
 import '../session/app_session.dart';
 import '../session/app_session_controller.dart';
-import '../ui/jellyfin_app_image_provider.dart';
 
 /// 从 Jellyfin 服务器地址推导同 IP 不同端口的服务地址
 String deriveServiceUrl(String serverUrl, int port) {
@@ -134,18 +133,11 @@ GoRouter createAppRouter({
     };
   }
 
-  /// 构建 ServiceRegistry + JellyfinImageProviderScope 组合
-  Widget wrapWithProviders(AppSession? session, {required Widget child}) {
-    final imageProvider = JellyfinAppImageProvider(
-      serverUrl: session?.serverUrl ?? '',
-      accessToken: session?.accessToken ?? '',
-    );
-    return JellyfinImageProviderScope(
-      imageProvider: imageProvider,
-      child: ServiceRegistry(
-        services: buildServices(session),
-        child: child,
-      ),
+  /// 构建 ServiceRegistry（图片 Scope 已在 App 根层包裹）
+  Widget wrapWithServices(AppSession? session, {required Widget child}) {
+    return ServiceRegistry(
+      services: buildServices(session),
+      child: child,
     );
   }
 
@@ -163,7 +155,7 @@ GoRouter createAppRouter({
         if (session == null) {
           return const Scaffold(body: Center(child: Text('登录态不存在')));
         }
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return PersonalPage(
@@ -186,7 +178,7 @@ GoRouter createAppRouter({
         if (session == null) {
           return const Scaffold(body: Center(child: Text('登录态不存在')));
         }
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return PersonalSettingsPage(
@@ -208,7 +200,7 @@ GoRouter createAppRouter({
         if (session == null) {
           return const Scaffold(body: Center(child: Text('登录态不存在')));
         }
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return PersonalStatsPage(
@@ -227,7 +219,7 @@ GoRouter createAppRouter({
         final libraryId = state.pathParameters['libraryId']!;
         final libraryName = state.uri.queryParameters['name'] ?? '媒体库';
         final session = sessionController.currentSession;
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return _MoviesRouteContent(
@@ -247,7 +239,7 @@ GoRouter createAppRouter({
         final libraryId = state.pathParameters['libraryId']!;
         final libraryName = state.uri.queryParameters['name'] ?? '剧集';
         final session = sessionController.currentSession;
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return _SeriesListRouteContent(
@@ -271,7 +263,7 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final itemId = state.pathParameters['itemId']!;
         final session = sessionController.currentSession;
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return _MovieDetailRouteContent(
@@ -291,7 +283,7 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final itemId = state.pathParameters['itemId']!;
         final session = sessionController.currentSession;
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return _MediaDetailRouteContent(
@@ -311,7 +303,7 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final seriesId = state.pathParameters['seriesId']!;
         final session = sessionController.currentSession;
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return _SeasonsRouteContent(
@@ -331,7 +323,7 @@ GoRouter createAppRouter({
         final seriesId = state.pathParameters['seriesId']!;
         final seasonId = state.pathParameters['seasonId']!;
         final session = sessionController.currentSession;
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return _EpisodesRouteContent(
@@ -351,7 +343,7 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final itemId = state.pathParameters['itemId']!;
         final serverUrl = sessionController.currentSession?.serverUrl;
-        return wrapWithProviders(
+        return wrapWithServices(
           sessionController.currentSession,
           child: Builder(builder: (context) {
             return _PlaybackRouteContent(
@@ -374,7 +366,7 @@ GoRouter createAppRouter({
       builder: (context, state) {
         final libraryId = state.pathParameters['libraryId']!;
         final libraryName = state.uri.queryParameters['name'] ?? '音乐';
-        return wrapWithProviders(
+        return wrapWithServices(
           sessionController.currentSession,
           child: Builder(builder: (context) {
             return _MusicLibraryRouteContent(
@@ -399,7 +391,7 @@ GoRouter createAppRouter({
       name: JellyfinRouteNames.musicAlbum,
       builder: (context, state) {
         final albumId = state.pathParameters['albumId']!;
-        return wrapWithProviders(
+        return wrapWithServices(
           sessionController.currentSession,
           child: Builder(builder: (context) {
             return _AlbumDetailRouteContent(
@@ -418,7 +410,7 @@ GoRouter createAppRouter({
       name: JellyfinRouteNames.musicArtist,
       builder: (context, state) {
         final artistId = state.pathParameters['artistId']!;
-        return wrapWithProviders(
+        return wrapWithServices(
           sessionController.currentSession,
           child: Builder(builder: (context) {
             return _ArtistDetailRouteContent(
@@ -437,7 +429,7 @@ GoRouter createAppRouter({
       name: JellyfinRouteNames.musicSearch,
       builder: (context, state) {
         final libraryId = state.pathParameters['libraryId']!;
-        return wrapWithProviders(
+        return wrapWithServices(
           sessionController.currentSession,
           child: Builder(builder: (context) {
             return _MusicSearchRouteContent(
@@ -481,7 +473,7 @@ GoRouter createAppRouter({
         if (effectiveAudioPort == null) {
           return const Scaffold(body: Center(child: Text('播放器未初始化')));
         }
-        return wrapWithProviders(
+        return wrapWithServices(
           sessionController.currentSession,
           child: Builder(builder: (context) {
             return MusicPlayerPage(
@@ -540,7 +532,7 @@ GoRouter createAppRouter({
         if (serverUrl == null || serverUrl.isEmpty) {
           return const Scaffold(body: Center(child: Text('未登录')));
         }
-        return wrapWithProviders(
+        return wrapWithServices(
           session,
           child: Builder(builder: (context) {
             return _AiRecommendRouteContent(
@@ -989,9 +981,13 @@ class _PlaybackRouteContent extends StatelessWidget {
                 ? WatchAssistClient(aiServiceUrl: aiServiceUrl!)
                 : null;
 
-        return VideoPlayerPage(
+        final viewModel = VideoPlayerViewModel(
           item: item,
           playback: delegate,
+        );
+
+        return VideoPlayerPage(
+          viewModel: viewModel,
           fetchWatchAssist: watchAssistClient?.fetchWatchAssist,
           onStartDownload: onStartDownload,
         );
