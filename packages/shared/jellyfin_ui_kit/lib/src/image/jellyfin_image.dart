@@ -51,6 +51,9 @@ class _JellyfinImageState extends State<JellyfinImage> {
   bool _isLoading = true;
   bool _hasError = false;
 
+  /// 上次解析到的 provider，用于 didChangeDependencies 去重
+  JellyfinImageProvider? _lastProvider;
+
   /// 获取有效的 imageProvider（构造函数 > Scope）
   JellyfinImageProvider? _resolveProvider(BuildContext context) {
     return widget.imageProvider ??
@@ -60,7 +63,17 @@ class _JellyfinImageState extends State<JellyfinImage> {
   @override
   void initState() {
     super.initState();
-    _initImage();
+    // 不在此处初始化——context 还未就绪，不能调用 dependOnInheritedWidgetOfExactType
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = _resolveProvider(context);
+    if (provider != _lastProvider) {
+      _lastProvider = provider;
+      _initImage();
+    }
   }
 
   @override
@@ -78,6 +91,7 @@ class _JellyfinImageState extends State<JellyfinImage> {
 
   void _initImage() {
     final provider = _resolveProvider(context);
+    _lastProvider = provider;
     if (provider == null) {
       setState(() {
         _useFallback = false;

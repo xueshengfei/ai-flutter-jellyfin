@@ -718,6 +718,11 @@ class _SeriesListRouteContentState extends State<_SeriesListRouteContent> {
     return MediaItemsPage(
       library: widget.library,
       fetchMediaItems: widget.gateway.fetchMediaItems,
+      onNavigateToMediaItem: (context, item) {
+        ServiceRegistry.get<AppNavigator>(context).pushIntent(
+          JellyfinRouteIntents.seriesSeasons(seriesId: item.id),
+        );
+      },
       appBarActions: [
         ViewModeSelector(
           libraryId: widget.library.id,
@@ -1038,6 +1043,11 @@ class _MusicLibraryRouteContent extends StatelessWidget {
         startIndex: startIndex,
         limit: limit,
       ),
+      onPlayTracks: (context, tracks, initialIndex) {
+        if (port == null) return;
+        port.playSong(tracks[initialIndex], tracks, initialIndex);
+        context.push('/playback/music');
+      },
     );
 
     if (port == null) return page;
