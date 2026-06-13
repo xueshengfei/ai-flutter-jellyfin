@@ -34,6 +34,12 @@ test_reports/
 **/test_report/
 **/test_output/
 
+# OpenHarmony / OHOS 依赖与构建缓存（类似 node_modules / .gradle）
+**/oh_modules/
+**/.ohpm/
+**/.hvigor/
+**/ohos/**/node_modules/
+
 # Coverage
 coverage/
 
