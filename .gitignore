@@ -40,6 +40,12 @@ test_reports/
 **/.hvigor/
 **/ohos/**/node_modules/
 
+# Flutter OHOS 编译产物（kernel_blob.bin/isolate_snapshot 等，类似 .apk 中间产物）
+**/rawfile/flutter_assets/
+
+# OHOS 本机 SDK 路径配置（类似 Android local.properties，含个人用户路径）
+**/ohos/local.properties
+
 # Coverage
 coverage/
 
