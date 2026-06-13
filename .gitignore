@@ -28,8 +28,11 @@ build/
 .DS_Store
 Thumbs.db
 
-# Test directories
-**/test/
+# Test outputs (不忽略 test/ 源码目录，那是 Flutter 测试代码必须进 git)
+test_results/
+test_reports/
+**/test_report/
+**/test_output/
 
 # Coverage
 coverage/
