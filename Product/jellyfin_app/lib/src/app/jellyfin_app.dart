@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jellyfin_auth/jellyfin_auth.dart';
+import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
 import 'package:rvc_flutter/rvc_flutter.dart';
 import 'app_router.dart';
 import '../data/audio_playback_adapter.dart';
 import '../data/legacy_jellyfin_gateway.dart';
 import '../data/personal_repository_adapter.dart';
 import '../session/app_session_controller.dart';
+import '../ui/jellyfin_app_image_provider.dart';
 
 /// Jellyfin 产品 App 根 Widget
 class JellyfinApp extends StatefulWidget {
@@ -70,10 +72,30 @@ class _JellyfinAppState extends State<JellyfinApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Jellyfin',
-      debugShowCheckedModeBanner: false,
-      routerConfig: _router,
+    // 监听 session 变化，session 变化时重建 JellyfinImageProviderScope
+    // （登录/登出/切换服务器时 provider 需要跟着换）
+    return ListenableBuilder(
+      listenable: _sessionController,
+      builder: (context, _) {
+        final session = _sessionController.currentSession;
+        final imageProvider = (session != null && session.isValid)
+            ? JellyfinAppImageProvider.fromSession(session)
+            : null;
+
+        final materialApp = MaterialApp.router(
+          title: 'Jellyfin',
+          debugShowCheckedModeBanner: false,
+          routerConfig: _router,
+        );
+
+        // 未登录时不需要图片 provider
+        if (imageProvider == null) return materialApp;
+
+        return JellyfinImageProviderScope(
+          imageProvider: imageProvider,
+          child: materialApp,
+        );
+      },
     );
   }
 }
