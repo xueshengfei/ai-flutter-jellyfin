@@ -17,6 +17,8 @@ dependencies:
     path: ../../shared/jellyfin_ui_kit
   jellyfin_core:
     path: ../../foundation/jellyfin_core
+  liquid_glass_widgets:
+    path: ../../vendor/liquid_glass_widgets
 
 dev_dependencies:
   flutter_test:

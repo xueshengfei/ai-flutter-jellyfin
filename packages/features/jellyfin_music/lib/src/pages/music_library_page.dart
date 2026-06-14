@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jellyfin_core/jellyfin_core.dart';
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:jellyfin_music/src/models/music_models.dart';
 import 'package:jellyfin_music/src/services/audio_playback_port.dart';
 
@@ -45,15 +46,26 @@ class MusicLibraryPage extends StatefulWidget {
 class _MusicLibraryPageState extends State<MusicLibraryPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    // 同步 TabController 状态到 GlassTabBar 的 selectedIndex
+    // 滑动 TabBarView 时让 GlassTabBar 的指示器跟随
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.index != _currentIndex) {
+      setState(() => _currentIndex = _tabController.index);
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -87,30 +99,48 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
               tooltip: '个人中心',
             ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: '专辑', icon: Icon(Icons.album)),
-            Tab(text: '艺术家', icon: Icon(Icons.person)),
-            Tab(text: '歌曲', icon: Icon(Icons.music_note)),
-          ],
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _AlbumsTab(
-            fetchAlbums: widget.fetchAlbums,
-            libraryId: widget.libraryId,
+          // Liquid Glass 风格浮动 Tab 栏（替代原 Material TabBar）
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: GlassTabBar(
+              useOwnLayer: true,
+              height: 56,
+              borderRadius: BorderRadius.circular(28),
+              indicatorBorderRadius: BorderRadius.circular(24),
+              tabs: const [
+                GlassTab(icon: Icon(Icons.album), label: '专辑'),
+                GlassTab(icon: Icon(Icons.person), label: '艺术家'),
+                GlassTab(icon: Icon(Icons.music_note), label: '歌曲'),
+              ],
+              selectedIndex: _currentIndex,
+              onTabSelected: (index) {
+                // 点击 GlassTabBar → 驱动 TabBarView 切换
+                _tabController.animateTo(index);
+              },
+            ),
           ),
-          _ArtistsTab(
-            fetchArtists: widget.fetchArtists,
-            libraryId: widget.libraryId,
-          ),
-          _SongsTab(
-            fetchSongs: widget.fetchSongs,
-            libraryId: widget.libraryId,
-            onPlayTracks: widget.onPlayTracks,
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _AlbumsTab(
+                  fetchAlbums: widget.fetchAlbums,
+                  libraryId: widget.libraryId,
+                ),
+                _ArtistsTab(
+                  fetchArtists: widget.fetchArtists,
+                  libraryId: widget.libraryId,
+                ),
+                _SongsTab(
+                  fetchSongs: widget.fetchSongs,
+                  libraryId: widget.libraryId,
+                  onPlayTracks: widget.onPlayTracks,
+                ),
+              ],
+            ),
           ),
         ],
       ),
