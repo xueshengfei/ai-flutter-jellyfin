@@ -107,9 +107,10 @@ class _MusicLibraryPageState extends State<MusicLibraryPage>
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: GlassTabBar(
               useOwnLayer: true,
-              height: 56,
-              borderRadius: BorderRadius.circular(28),
-              indicatorBorderRadius: BorderRadius.circular(24),
+              height: 64,
+              iconSize: 22,
+              borderRadius: BorderRadius.circular(32),
+              indicatorBorderRadius: BorderRadius.circular(28),
               tabs: const [
                 GlassTab(icon: Icon(Icons.album), label: '专辑'),
                 GlassTab(icon: Icon(Icons.person), label: '艺术家'),
