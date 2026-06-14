@@ -743,7 +743,7 @@ class _SeriesListRouteContentState extends State<_SeriesListRouteContent> {
 }
 
 // ─── 电影详情页内容 ───
-class _MovieDetailRouteContent extends StatelessWidget {
+class _MovieDetailRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final void Function(BuildContext context, models.MediaItem movie)?
@@ -756,9 +756,25 @@ class _MovieDetailRouteContent extends StatelessWidget {
   });
 
   @override
+  State<_MovieDetailRouteContent> createState() =>
+      _MovieDetailRouteContentState();
+}
+
+class _MovieDetailRouteContentState extends State<_MovieDetailRouteContent> {
+  /// 在 initState 缓存 future，避免父级重建时重复发起请求
+  /// （FutureBuilder 反模式：build 里创建 future 会随每次 rebuild 重新触发）
+  late final Future<models.MediaItem> _detailFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailFuture = widget.gateway.getMediaItemDetail(widget.itemId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<models.MediaItem>(
-      future: gateway.getMediaItemDetail(itemId),
+      future: _detailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -770,8 +786,8 @@ class _MovieDetailRouteContent extends StatelessWidget {
         }
         return MovieDetailPage(
           movie: snapshot.data!,
-          fetchDetail: gateway.getMediaItemDetail,
-          onStartDownload: onStartDownload,
+          fetchDetail: widget.gateway.getMediaItemDetail,
+          onStartDownload: widget.onStartDownload,
         );
       },
     );
@@ -779,7 +795,7 @@ class _MovieDetailRouteContent extends StatelessWidget {
 }
 
 // ─── 通用媒体详情页内容 ───
-class _MediaDetailRouteContent extends StatelessWidget {
+class _MediaDetailRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final void Function(BuildContext context, models.MediaItem item)?
@@ -792,9 +808,24 @@ class _MediaDetailRouteContent extends StatelessWidget {
   });
 
   @override
+  State<_MediaDetailRouteContent> createState() =>
+      _MediaDetailRouteContentState();
+}
+
+class _MediaDetailRouteContentState extends State<_MediaDetailRouteContent> {
+  /// 在 initState 缓存 future，避免父级重建时重复发起请求
+  late final Future<models.MediaItem> _detailFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailFuture = widget.gateway.getMediaItemDetail(widget.itemId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<models.MediaItem>(
-      future: gateway.getMediaItemDetail(itemId),
+      future: _detailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -807,11 +838,11 @@ class _MediaDetailRouteContent extends StatelessWidget {
         final item = snapshot.data!;
         return MediaItemDetailPage(
           item: item,
-          fetchDetail: gateway.getMediaItemDetail,
+          fetchDetail: widget.gateway.getMediaItemDetail,
           fetchSeasons: item.type.toLowerCase() == 'series'
-              ? gateway.getSeasons
+              ? widget.gateway.getSeasons
               : null,
-          onStartDownload: onStartDownload,
+          onStartDownload: widget.onStartDownload,
         );
       },
     );
@@ -819,7 +850,7 @@ class _MediaDetailRouteContent extends StatelessWidget {
 }
 
 // ─── 季列表页内容 ───
-class _SeasonsRouteContent extends StatelessWidget {
+class _SeasonsRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final String seriesId;
 
@@ -829,9 +860,23 @@ class _SeasonsRouteContent extends StatelessWidget {
   });
 
   @override
+  State<_SeasonsRouteContent> createState() => _SeasonsRouteContentState();
+}
+
+class _SeasonsRouteContentState extends State<_SeasonsRouteContent> {
+  /// 在 initState 缓存 future，避免父级重建时重复发起请求
+  late final Future<models.MediaItem> _detailFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailFuture = widget.gateway.getMediaItemDetail(widget.seriesId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<models.MediaItem>(
-      future: gateway.getMediaItemDetail(seriesId),
+      future: _detailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -843,7 +888,7 @@ class _SeasonsRouteContent extends StatelessWidget {
         }
         return SeasonsPage(
           series: snapshot.data!,
-          fetchSeasons: gateway.getSeasons,
+          fetchSeasons: widget.gateway.getSeasons,
         );
       },
     );
@@ -851,7 +896,7 @@ class _SeasonsRouteContent extends StatelessWidget {
 }
 
 // ─── 集列表页内容 ───
-class _EpisodesRouteContent extends StatelessWidget {
+class _EpisodesRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final String seriesId;
   final String seasonId;
@@ -863,9 +908,25 @@ class _EpisodesRouteContent extends StatelessWidget {
   });
 
   @override
+  State<_EpisodesRouteContent> createState() => _EpisodesRouteContentState();
+}
+
+class _EpisodesRouteContentState extends State<_EpisodesRouteContent> {
+  /// 在 initState 缓存两个 future（季列表 + 剧集详情），避免父级重建时重复发起请求
+  late final Future<models.SeasonListResult> _seasonsFuture;
+  late final Future<models.MediaItem> _seriesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _seasonsFuture = widget.gateway.getSeasons(widget.seriesId);
+    _seriesFuture = widget.gateway.getMediaItemDetail(widget.seriesId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<models.SeasonListResult>(
-      future: gateway.getSeasons(seriesId),
+      future: _seasonsFuture,
       builder: (context, seasonsSnapshot) {
         if (seasonsSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -877,7 +938,7 @@ class _EpisodesRouteContent extends StatelessWidget {
         }
 
         return FutureBuilder<models.MediaItem>(
-          future: gateway.getMediaItemDetail(seriesId),
+          future: _seriesFuture,
           builder: (context, seriesSnapshot) {
             if (seriesSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
@@ -886,17 +947,17 @@ class _EpisodesRouteContent extends StatelessWidget {
             }
             final series = seriesSnapshot.data ??
                 models.MediaItem(
-                  id: seriesId,
+                  id: widget.seriesId,
                   name: '',
                   type: 'Series',
                   serverUrl: '',
                 );
             final seasons = seasonsSnapshot.data?.seasons ?? [];
             final season = seasons.firstWhere(
-              (s) => s.id == seasonId,
+              (s) => s.id == widget.seasonId,
               orElse: () => models.Season(
-                id: seasonId,
-                seriesId: seriesId,
+                id: widget.seasonId,
+                seriesId: widget.seriesId,
                 name: '',
                 indexNumber: 0,
                 serverUrl: '',
@@ -905,7 +966,7 @@ class _EpisodesRouteContent extends StatelessWidget {
             return EpisodesPage(
               series: series,
               season: season,
-              fetchEpisodes: gateway.getEpisodes,
+              fetchEpisodes: widget.gateway.getEpisodes,
             );
           },
         );
@@ -915,7 +976,7 @@ class _EpisodesRouteContent extends StatelessWidget {
 }
 
 // ─── 视频播放页内容 ───
-class _PlaybackRouteContent extends StatelessWidget {
+class _PlaybackRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final String itemId;
   final String? aiServiceUrl;
@@ -930,9 +991,23 @@ class _PlaybackRouteContent extends StatelessWidget {
   });
 
   @override
+  State<_PlaybackRouteContent> createState() => _PlaybackRouteContentState();
+}
+
+class _PlaybackRouteContentState extends State<_PlaybackRouteContent> {
+  /// 在 initState 缓存 future，避免父级重建时重复发起请求
+  late final Future<models.MediaItem> _detailFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailFuture = widget.gateway.getMediaItemDetail(widget.itemId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<models.MediaItem>(
-      future: gateway.getMediaItemDetail(itemId),
+      future: _detailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -969,7 +1044,7 @@ class _PlaybackRouteContent extends StatelessWidget {
         }
 
         final item = snapshot.data!;
-        final apiClient = _getApiClient(gateway);
+        final apiClient = _getApiClient(widget.gateway);
         if (apiClient == null) {
           return const Scaffold(
             backgroundColor: Colors.black,
@@ -981,10 +1056,10 @@ class _PlaybackRouteContent extends StatelessWidget {
 
         final adapter = PlaybackAdapter(apiClient);
         final delegate = adapter.createDelegate();
-        final watchAssistClient =
-            aiServiceUrl != null && aiServiceUrl!.isNotEmpty
-                ? WatchAssistClient(aiServiceUrl: aiServiceUrl!)
-                : null;
+        final watchAssistClient = widget.aiServiceUrl != null &&
+                widget.aiServiceUrl!.isNotEmpty
+            ? WatchAssistClient(aiServiceUrl: widget.aiServiceUrl!)
+            : null;
 
         final viewModel = VideoPlayerViewModel(
           item: item,
@@ -994,7 +1069,7 @@ class _PlaybackRouteContent extends StatelessWidget {
         return VideoPlayerPage(
           viewModel: viewModel,
           fetchWatchAssist: watchAssistClient?.fetchWatchAssist,
-          onStartDownload: onStartDownload,
+          onStartDownload: widget.onStartDownload,
         );
       },
     );
@@ -1060,7 +1135,7 @@ class _MusicLibraryRouteContent extends StatelessWidget {
 }
 
 // ─── 专辑详情页内容 ───
-class _AlbumDetailRouteContent extends StatelessWidget {
+class _AlbumDetailRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final music.AudioPlaybackPort? audioPlaybackPort;
   final String albumId;
@@ -1072,10 +1147,25 @@ class _AlbumDetailRouteContent extends StatelessWidget {
   });
 
   @override
+  State<_AlbumDetailRouteContent> createState() =>
+      _AlbumDetailRouteContentState();
+}
+
+class _AlbumDetailRouteContentState extends State<_AlbumDetailRouteContent> {
+  /// 在 initState 缓存 future，避免父级重建时重复发起请求
+  late final Future<dynamic> _albumFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _albumFuture = widget.gateway.getAlbumDetail(widget.albumId);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final port = audioPlaybackPort;
+    final port = widget.audioPlaybackPort;
     final futurePage = FutureBuilder<dynamic>(
-      future: gateway.getAlbumDetail(albumId),
+      future: _albumFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -1087,8 +1177,8 @@ class _AlbumDetailRouteContent extends StatelessWidget {
         }
         return AlbumDetailPage(
           album: snapshot.data!,
-          fetchAlbumDetail: gateway.getAlbumDetail,
-          fetchAlbumSongs: gateway.getAlbumSongs,
+          fetchAlbumDetail: widget.gateway.getAlbumDetail,
+          fetchAlbumSongs: widget.gateway.getAlbumSongs,
           onPlaySong: (context, song, playlist, initialIndex) {
             if (port == null) return;
             final tracks = _songsToTracks(playlist);
@@ -1109,7 +1199,7 @@ class _AlbumDetailRouteContent extends StatelessWidget {
 }
 
 // ─── 艺术家详情页内容 ───
-class _ArtistDetailRouteContent extends StatelessWidget {
+class _ArtistDetailRouteContent extends StatefulWidget {
   final JellyfinGateway gateway;
   final music.AudioPlaybackPort? audioPlaybackPort;
   final String artistId;
@@ -1121,10 +1211,25 @@ class _ArtistDetailRouteContent extends StatelessWidget {
   });
 
   @override
+  State<_ArtistDetailRouteContent> createState() =>
+      _ArtistDetailRouteContentState();
+}
+
+class _ArtistDetailRouteContentState extends State<_ArtistDetailRouteContent> {
+  /// 在 initState 缓存 future，避免父级重建时重复发起请求
+  late final Future<dynamic> _artistFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _artistFuture = widget.gateway.getArtistDetail(widget.artistId);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final port = audioPlaybackPort;
+    final port = widget.audioPlaybackPort;
     final futurePage = FutureBuilder<dynamic>(
-      future: gateway.getArtistDetail(artistId),
+      future: _artistFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -1136,8 +1241,8 @@ class _ArtistDetailRouteContent extends StatelessWidget {
         }
         return ArtistDetailPage(
           artist: snapshot.data!,
-          fetchArtistDetail: gateway.getArtistDetail,
-          fetchArtistAlbums: gateway.getArtistAlbums,
+          fetchArtistDetail: widget.gateway.getArtistDetail,
+          fetchArtistAlbums: widget.gateway.getArtistAlbums,
         );
       },
     );
