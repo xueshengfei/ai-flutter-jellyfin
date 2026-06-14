@@ -133,7 +133,7 @@ GoRouter createAppRouter({
     };
   }
 
-  /// 构建 ServiceRegistry（图片 Scope 已在 App 根层包裹）
+  /// 构建 ServiceRegistry（图片 Scope 已在 JellyfinApp 根层 ListenableBuilder 内包裹）
   Widget wrapWithServices(AppSession? session, {required Widget child}) {
     return ServiceRegistry(
       services: buildServices(session),
