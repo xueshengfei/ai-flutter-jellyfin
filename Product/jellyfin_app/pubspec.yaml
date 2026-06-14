@@ -64,6 +64,8 @@ dependencies:
     path: ../../packages/features/jellyfin_download
   rvc_flutter:
     path: ../../packages/features/rvc_flutter
+  liquid_glass_widgets:
+    path: ../../packages/vendor/liquid_glass_widgets
   just_audio: ^0.9.46
 
 dev_dependencies:

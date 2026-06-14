@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jellyfin_ai_recommendation/jellyfin_ai_recommendation.dart';
 import 'package:jellyfin_models/jellyfin_models.dart' as models;
 import 'package:jellyfin_ui_kit/jellyfin_ui_kit.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../data/jellyfin_gateway.dart';
 
 /// 媒体库列表页面 — 登录后首页
@@ -84,7 +85,17 @@ class _MediaLibrariesPageState extends State<MediaLibrariesPage> {
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Center(
+            // Liquid Glass 最小集成示例 — standalone 模式
+            // 在 Android 上验证 Impeller 渲染是否正常
+            child: GlassContainer(
+              useOwnLayer: true,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              shape: const LiquidRoundedSuperellipse(borderRadius: 14),
+              settings: const LiquidGlassSettings(
+                thickness: 20,
+                blur: 6,
+              ),
               child: Text(
                 widget.username,
                 style: const TextStyle(fontWeight: FontWeight.bold),
