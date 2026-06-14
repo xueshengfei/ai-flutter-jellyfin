@@ -65,3 +65,6 @@ scripts/build_diagram_pack_docx.py
 
 # FVM Version Cache
 .fvm/
+
+# 截图（本地调试用，不入库）
+screenshots/
